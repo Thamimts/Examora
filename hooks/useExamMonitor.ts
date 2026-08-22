@@ -1,0 +1,3 @@
+import { useEffect } from 'react'
+import { useMonitorStore } from '@/store/monitorStore'
+export function useExamMonitor(attemptId: string, enabled = true) { const addEvent = useMonitorStore((s) => s.addEvent); useEffect(() => { if (!enabled) return; const onBlur = () => addEvent({ attemptId, type: 'WINDOW_BLUR' }); const onVisibility = () => { if (document.hidden) addEvent({ attemptId, type: 'TAB_SWITCH' }) }; window.addEventListener('blur', onBlur); document.addEventListener('visibilitychange', onVisibility); return () => { window.removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onVisibility) } }, [attemptId, enabled, addEvent]) }

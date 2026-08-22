@@ -1,0 +1,3 @@
+import { api } from './api'
+import type { AIAnalysis, AnalyticsOverview, ExamGenerationRequest, GeneratedExam, AdaptiveSession, StudentAnalytics } from '@/types/ai'
+export const aiApi = { analysis: (studentId: string, examId: string) => api.get<AIAnalysis>(`/ai/analysis/${studentId}/${examId}`), studentAnalytics: (studentId: string) => api.get<StudentAnalytics>(`/ai/analytics/students/${studentId}`), generateExam: (payload: ExamGenerationRequest) => api.post<GeneratedExam>('/ai/exams/generate', payload), adaptiveSession: (examId: string) => api.get<AdaptiveSession>(`/adaptive/exams/${examId}/session`), analytics: () => api.get<AnalyticsOverview>('/analytics/overview') }

@@ -1,0 +1,2 @@
+import api from './api'; import type { ApiResponse, Exam } from '@/types'
+export const examApi = { list: () => api.get<ApiResponse<Exam[]>>('/exams'), get: (id: string) => api.get<ApiResponse<Exam>>(`/exams/${id}`), create: (payload: Partial<Exam>) => api.post<ApiResponse<Exam>>('/exams', payload), update: (id: string, payload: Partial<Exam>) => api.put<ApiResponse<Exam>>(`/exams/${id}`, payload), remove: (id: string) => api.delete(`/exams/${id}`), publish: (id: string) => api.post<ApiResponse<Exam>>(`/exams/${id}/publish`) }
