@@ -1,0 +1,3 @@
+import { useAuthStore } from '@/store/authStore'
+export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-border bg-card p-5 ${className}`}>{children}</section> }
+export function Header({ title, description }: { title: string; description: string }) { return <header className="mb-8"><p className="text-xs font-semibold uppercase tracking-widest text-primary">{useAuthStore.getState().user?.role} workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></header> }

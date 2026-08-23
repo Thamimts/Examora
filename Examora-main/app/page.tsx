@@ -1,0 +1,275 @@
+'use client'
+import dynamic from 'next/dynamic'
+import { useEffect, useMemo, useState } from 'react'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { BookOpen, Check, ChevronLeft, ChevronRight, Clock3, FileText, Flag, LayoutDashboard, LogOut, Plus, Save, ShieldCheck, Trash2, Users, X } from 'lucide-react'
+import { useAuthStore, demoUser } from '@/store/authStore'
+import { questionKey, useExamStore } from '@/store/examStore'
+import { mockExams, mockResults } from '@/mock/data'
+import type { Role, Exam, Question } from '@/types'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { StudentAIAnalysis, AdaptiveExam, ProctorMonitor, AdminAnalytics } from '@/features/ai/AIViews'
+import { authApi } from '@/services/authApi'
+import { examApi } from '@/services/examApi'
+import { userApi } from '@/services/userApi'
+import { useQuery } from '@tanstack/react-query'
+import { QuestionBank } from '@/features/admin/QuestionBank'
+
+const questions: Question[] = [{ id: 'q1', text: 'Which principle describes the separation of concerns in software design?', options: ['Encapsulation', 'Modularity', 'Inheritance', 'Polymorphism'] }, { id: 'q2', text: 'Explain why formative assessment is useful during a course.', options: [] }, { id: 'q3', text: 'Which HTTP method is conventionally used to update a resource?', options: ['GET', 'POST', 'PUT', 'DELETE'] }]
+const nav: Record<Role, { label: string; href: string }[]> = { STUDENT: [{ label: 'Dashboard', href: '/student/dashboard' }, { label: 'My exams', href: '/student/exams' }, { label: 'History', href: '/student/history' }, { label: 'AI analysis', href: '/student/ai-analysis' }, { label: 'Adaptive practice', href: '/student/adaptive/1' }], TEACHER: [{ label: 'Dashboard', href: '/teacher/dashboard' }, { label: 'Exams', href: '/teacher/exams' }, { label: 'Create exam', href: '/teacher/exams/create' }, { label: 'Proctor monitor', href: '/teacher/monitor/attempt-1' }], ADMIN: [{ label: 'Dashboard', href: '/admin/dashboard' }, { label: 'Users', href: '/admin/users' }, { label: 'Question bank', href: '/admin/question-bank' }, { label: 'Analytics', href: '/admin/analytics' }] }
+function Shell({ children }: { children: React.ReactNode }) { const { user, logout } = useAuthStore(); const navigate = useNavigate(); if (!user) return <Navigate to="/login" replace />; return <div className="min-h-screen bg-background"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card p-5 lg:flex lg:flex-col"><div className="flex items-center gap-3 px-2 pb-10"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><nav className="space-y-1">{nav[user.role].map(item => <NavLink key={item.href} to={item.href} className={({isActive}) => `block rounded-xl px-3 py-2.5 text-sm ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{item.label}</NavLink>)}</nav><button className="mt-auto flex gap-2 px-3 py-2 text-sm text-muted-foreground" onClick={async () => { try { await authApi.logout() } finally { logout(); navigate('/login') } }}><LogOut size={16}/> Sign out</button></aside><main className="min-h-screen pb-20 lg:pl-64 lg:pb-0"><div className="mx-auto max-w-7xl p-4 sm:p-5 md:p-8">{children}</div></main><nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-border bg-card/95 p-2 backdrop-blur lg:hidden">{nav[user.role].slice(0, 3).map(item => <NavLink key={item.href} to={item.href} className={({isActive}) => `min-w-0 rounded-lg px-1 py-2 text-center text-[11px] ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><span className="block truncate">{item.label}</span></NavLink>)}</nav></div> }
+function Header({ title, description }: { title: string; description: string }) { return <header className="mb-8"><p className="text-xs font-semibold uppercase tracking-widest text-primary">{useAuthStore.getState().user?.role} workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></header> }
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-border bg-card p-5 ${className}`}>{children}</section> }
+function StudentExams() { const navigate = useNavigate(); return <><Header title="My exams" description="Review assigned assessments and start when you are ready."/><div className="grid gap-4 md:grid-cols-2">{mockExams.map(exam => <Card key={exam.id}><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-primary">{exam.subject}</p><h2 className="mt-2 font-semibold">{exam.title}</h2><p className="mt-2 text-sm text-muted-foreground">{exam.duration} minutes · {exam.participants} participants</p></div><BookOpen className="text-primary"/></div><button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>View instructions <ChevronRight size={16}/></button></Card>)}</div></> }
+function Instructions() { const { id = '1' } = useParams(); const navigate = useNavigate(); const exam = mockExams.find(x => x.id === id) || mockExams[0]; return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><FileText/></div><div><h2 className="font-semibold">{exam.title}</h2><p className="text-sm text-muted-foreground">{exam.subject} · {exam.duration} minutes</p></div></div><div className="mt-8 grid gap-3 text-sm"><p>• You can navigate between questions and mark items for review.</p><p>• Your answers autosave locally and sync when the API is available.</p><p>• The exam submits automatically when the timer reaches zero.</p><p>• Descriptive answers are reviewed by your teacher.</p></div><button className="mt-8 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/exams/${id}`)}>Start exam</button></Card></> }
+function Attempt() { const { id = '1' } = useParams(); const navigate = useNavigate(); const store = useExamStore(); const attempt = store.attempts[id]; const [seconds, setSeconds] = useState(0); useEffect(() => { const existing = store.attempts[id]; const start = existing?.startAt ?? new Date().toISOString(); const end = existing?.endAt ?? new Date(Date.now() + 1800000).toISOString(); store.start(id, start, end); const update = () => { const remaining = Math.max(0, Math.ceil((new Date(end).getTime() - Date.now()) / 1000)); setSeconds(remaining); if (remaining === 0 && !store.attempts[id]?.submitted) { store.submit(id); navigate(`/student/exams/${id}/result`, { replace: true }) } }; update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer) }, [id, navigate, store]); const index = attempt?.questionIndex || 0; const q = questions[index]; const answer = attempt?.answers[questionKey(id, q.id)] || ''; return <div className="mx-auto max-w-5xl"><div className="mb-6 flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-widest text-primary">Live attempt</p><h1 className="mt-2 text-2xl font-semibold">Foundations assessment</h1></div><div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700"><Clock3 size={17}/>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</div></div><div className="grid gap-6 lg:grid-cols-[1fr_260px]"><Card><div className="flex items-center justify-between text-sm text-muted-foreground"><span>Question {index + 1} of {questions.length}</span><span>{Math.round(((index + 1) / questions.length) * 100)}% complete</span></div><div className="mt-3 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary transition-all" style={{width: `${((index + 1) / questions.length) * 100}%`}}/></div><h2 className="mt-10 text-xl font-semibold leading-8">{q.text}</h2>{q.options.length ? <div className="mt-7 space-y-3">{q.options.map(option => <button key={option} onClick={() => store.answer(q.id, option)} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${answer === option ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}><span className={`grid size-6 place-items-center rounded-full border text-xs ${answer === option ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>{answer === option && <Check size={14}/>}</span>{option}</button>)}</div> : <textarea className="field mt-7 min-h-40" value={String(answer)} onChange={e => store.answer(q.id, e.target.value)} placeholder="Write your answer here..."/>}<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"><button className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm" disabled={index === 0} onClick={() => store.move(index - 1)}><ChevronLeft size={16}/> Previous</button><div className="flex gap-2"><button className="rounded-xl border border-border px-4 py-2 text-sm" onClick={() => store.toggleReview(q.id)}><Flag size={15} className="mr-2 inline"/>Mark review</button><button className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground" onClick={() => index === questions.length - 1 ? navigate(`/student/exams/${id}/result`) : store.move(index + 1)}>{index === questions.length - 1 ? 'Submit exam' : 'Next'} <ChevronRight size={16} className="ml-1 inline"/></button></div></div></Card><Card><h2 className="font-semibold">Question navigator</h2><div className="mt-4 grid grid-cols-5 gap-2">{questions.map((question, i) => <button key={question.id} onClick={() => store.move(i)} className={`grid size-9 place-items-center rounded-lg text-sm ${i === index ? 'bg-primary text-primary-foreground' : attempt?.review[question.id] ? 'bg-amber-500/20 text-amber-700' : 'bg-muted'}`}>{i + 1}</button>)}</div><p className="mt-6 text-xs leading-5 text-muted-foreground">Answers save automatically. Reconnect to continue syncing after a network interruption.</p></Card></div></div> }
+function ResultPage() { const { id = '1' } = useParams(); const navigate = useNavigate(); return <><Header title="Exam result" description="Your submission has been recorded successfully."/><Card className="max-w-2xl"><div className="text-center"><div className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-500/10 text-emerald-600"><Check size={30}/></div><p className="mt-5 text-5xl font-semibold">86%</p><p className="mt-2 text-sm text-muted-foreground">Foundations assessment · 18 of 20 correct</p></div><div className="mt-8 grid grid-cols-3 gap-3 text-center"><div className="rounded-xl bg-muted p-3"><b>18</b><p className="text-xs text-muted-foreground">Correct</p></div><div className="rounded-xl bg-muted p-3"><b>2</b><p className="text-xs text-muted-foreground">Incorrect</p></div><div className="rounded-xl bg-muted p-3"><b>24m</b><p className="text-xs text-muted-foreground">Time used</p></div></div><button className="mt-8 w-full rounded-xl border border-border px-4 py-3 text-sm" onClick={() => navigate('/student/history')}>Back to history</button></Card></> }
+function History() { return <><Header title="Exam history" description="Review your completed attempts and results."/><Card><div className="divide-y divide-border">{mockResults.map(r => <div key={r.id} className="flex items-center justify-between gap-4 py-4 first:pt-0"><div><p className="font-medium">{r.examTitle}</p><p className="mt-1 text-sm text-muted-foreground">{r.subject} · {r.date}</p></div><span className="font-semibold text-emerald-600">{r.score}%</span></div>)}</div></Card></> }
+function TeacherExams() {
+  const navigate = useNavigate()
+
+  const query = useQuery({
+    queryKey: ['teacher-exams'],
+    queryFn: async () => (await examApi.list()).data,
+    retry: 1,
+  })
+
+  const items = query.data ?? []
+
+  return (
+    <>
+      <Header
+        title="Exam management"
+        description="Create, edit, validate, and publish assessments."
+      />
+
+      <div className="mb-5 flex justify-end">
+        <button
+          onClick={() => navigate('/teacher/exams/create')}
+          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground"
+        >
+          <Plus size={16} />
+          Create exam
+        </button>
+      </div>
+
+      <Card>
+        {query.isPending ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Loading exams...
+          </p>
+        ) : query.isError ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-destructive">
+              Unable to load exams from the API.
+            </p>
+
+            <button
+              className="mt-3 rounded-lg border border-border px-3 py-2 text-sm"
+              onClick={() => query.refetch()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No exams created yet.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {items.map((exam) => (
+              <div
+                key={exam.id}
+                className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0"
+              >
+                <div>
+                  <p className="font-medium">
+                    {exam.title}
+                  </p>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {exam.subject} · {exam.durationMinutes} min
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Status: {exam.status}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-lg border border-border px-3 py-2 text-xs"
+                    onClick={() =>
+                      navigate(
+                        `/teacher/exams/${exam.id}/questions`
+                      )
+                    }
+                  >
+                    Questions
+                  </button>
+
+                  <button
+                    className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary"
+                    onClick={async () => {
+                      try {
+                        await examApi.publish(exam.id)
+                        await query.refetch()
+                      } catch {
+                        alert('Unable to publish exam.')
+                      }
+                    }}
+                    disabled={exam.status === 'PUBLISHED'}
+                  >
+                    {exam.status === 'PUBLISHED'
+                      ? 'Published'
+                      : 'Publish'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
+  )
+}
+function CreateExam() {
+  const navigate = useNavigate()
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const schema = z.object({
+    title: z.string().min(3),
+    subject: z.string().min(2),
+    duration: z.coerce.number().min(1).max(300),
+  })
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(schema),
+  })
+
+  const submit = async (values: {
+    title: string
+    subject: string
+    duration: number
+  }) => {
+    setLoading(true)
+    setError('')
+
+    try {
+      await examApi.create({
+        title: values.title,
+        subject: values.subject,
+        durationMinutes: values.duration,
+      })
+
+      navigate('/teacher/exams')
+    } catch (cause) {
+      console.error(cause)
+      setError('Unable to create the exam. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Header
+        title="Create an exam"
+        description="Set the assessment details, then add and validate questions."
+      />
+
+      <Card className="max-w-2xl">
+        <form
+          className="space-y-5"
+          onSubmit={handleSubmit(submit)}
+        >
+          <label className="block text-sm font-medium">
+            Title
+
+            <input
+              className="field mt-2"
+              {...register('title')}
+              placeholder="e.g. Biology midterm"
+            />
+
+            {errors.title && (
+              <span className="text-xs text-destructive">
+                Enter a title
+              </span>
+            )}
+          </label>
+
+          <label className="block text-sm font-medium">
+            Subject
+
+            <input
+              className="field mt-2"
+              {...register('subject')}
+              placeholder="Biology"
+            />
+
+            {errors.subject && (
+              <span className="text-xs text-destructive">
+                Enter a subject
+              </span>
+            )}
+          </label>
+
+          <label className="block text-sm font-medium">
+            Duration in minutes
+
+            <input
+              className="field mt-2"
+              type="number"
+              {...register('duration')}
+            />
+
+            {errors.duration && (
+              <span className="text-xs text-destructive">
+                Duration must be between 1 and 300 minutes
+              </span>
+            )}
+          </label>
+
+          {error && (
+            <p
+              role="alert"
+              className="text-sm text-destructive"
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm text-primary-foreground disabled:opacity-60"
+          >
+            <Save size={16} />
+
+            {loading ? 'Saving…' : 'Save draft'}
+          </button>
+        </form>
+      </Card>
+    </>
+  )
+}
+     
+function QuestionsPage() { const [items, setItems] = useState<Question[]>(questions); const [text, setText] = useState(''); const [type, setType] = useState<'MCQ' | 'DESCRIPTIVE'>('MCQ'); return <><Header title="Question authoring" description="Build a balanced assessment with MCQ and descriptive questions."/><Card><div className="flex flex-wrap gap-3"><input className="field max-w-xl" value={text} onChange={e => setText(e.target.value)} placeholder="Question text"/><select className="field w-auto" value={type} onChange={e => setType(e.target.value as 'MCQ' | 'DESCRIPTIVE')}><option value="MCQ">MCQ</option><option value="DESCRIPTIVE">Descriptive</option></select><button className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground" onClick={() => { if (text.trim()) { setItems([...items, { id: `q${Date.now()}`, text, options: type === 'MCQ' ? ['Option A', 'Option B', 'Option C'] : [] }]); setText('') } }}>Add question</button></div><div className="mt-6 space-y-3">{items.map((q, i) => <div key={q.id} className="flex items-start justify-between rounded-xl bg-muted p-4"><div><p className="text-xs text-primary">Question {i + 1} · {q.options.length ? 'MCQ' : 'Descriptive'}</p><p className="mt-1 text-sm font-medium">{q.text}</p></div><button onClick={() => setItems(items.filter(x => x.id !== q.id))} className="text-muted-foreground"><Trash2 size={16}/></button></div>)}</div></Card></> }
+function Auth({ mode }: { mode: 'login' | 'register' }) { const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [email, setEmail] = useState('student@examwise.edu'); return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1><p className="mt-2 text-sm text-muted-foreground">Demo roles: use admin@, teacher@, or student@.</p><form className="mt-6 space-y-4" onSubmit={e => { e.preventDefault(); const role = email.includes('admin') ? 'ADMIN' : email.includes('teacher') ? 'TEACHER' : 'STUDENT'; setAuth({ token: 'demo-token', user: demoUser(role) }); navigate(`/${role.toLowerCase()}/dashboard`) }}><label className="block text-sm font-medium">Email<input className="field mt-2" value={email} onChange={e => setEmail(e.target.value)} /></label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" defaultValue="password123" /></label><button className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground">{mode === 'login' ? 'Sign in' : 'Register'}</button></form></Card></div> }
+function Protected({ roles, children }: { roles: Role[]; children: React.ReactNode }) { const user = useAuthStore(s => s.user); if (!user) return <Navigate to="/login" replace/>; if (!roles.includes(user.role)) return <Navigate to={`/${user.role.toLowerCase()}/dashboard`} replace/>; return <Shell>{children}</Shell> }
+function AdminUsers() { const query = useQuery({ queryKey: ['admin-users'], queryFn: async () => (await userApi.list()).data.data, retry: 1 }); return <><Header title="User management" description="Review users provisioned by the examination service."/><Card>{query.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-muted"/>)}</div> : query.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load users from the API.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}>Retry</button></div> : query.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-3 py-3">Name</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Role</th></tr></thead><tbody className="divide-y divide-border">{query.data.map(user => <tr key={user.id}><td className="px-3 py-4 font-medium">{user.name}</td><td className="px-3 py-4 text-muted-foreground">{user.email}</td><td className="px-3 py-4">{user.role}</td></tr>)}</tbody></table></div> : <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>}</Card></> }
+function Dashboard() { const role = useAuthStore.getState().user?.role; return <><Header title={role === 'ADMIN' ? 'System overview' : role === 'TEACHER' ? 'Teacher dashboard' : 'Good morning, Alex'} description="Monitor examination activity and keep your work moving."/><div className="grid gap-4 sm:grid-cols-3"><Card><p className="text-sm text-muted-foreground">Exams completed</p><p className="mt-2 text-3xl font-semibold">12</p></Card><Card><p className="text-sm text-muted-foreground">Average score</p><p className="mt-2 text-3xl font-semibold">86%</p></Card><Card><p className="text-sm text-muted-foreground">Upcoming exams</p><p className="mt-2 text-3xl font-semibold">3</p></Card></div><Card className="mt-6"><h2 className="font-semibold">Recent activity</h2><p className="mt-3 text-sm text-muted-foreground">Your API-ready workspace is connected. Visit My exams to start an assessment.</p></Card></> }
+function RealAuth({ mode }: { mode: 'login' | 'register' }) { const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const schema = mode === 'login' ? z.object({ email: z.string().email(), password: z.string().min(1) }) : z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) }); const { register, handleSubmit, formState: { errors } } = useForm<any>({ resolver: zodResolver(schema) }); const submit = async (values: any) => { setLoading(true); setError(''); try { const response = mode === 'login' ? await authApi.login({ email: values.email, password: values.password }) : await authApi.register(values); const auth = response.data.data; setAuth(auth); navigate(`/${auth.user.role.toLowerCase()}/dashboard`); } catch (cause) { setError('Unable to connect to the examination service. Check your credentials or try again.'); } finally { setLoading(false); } }; return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1><p className="mt-2 text-sm text-muted-foreground">Use your examination system account to continue.</p><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? <>New here? <NavLink className="font-medium text-primary hover:underline" to="/register">Create an account</NavLink></> : <>Already have an account? <NavLink className="font-medium text-primary hover:underline" to="/login">Sign in</NavLink></>}</p><form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)}>{mode === 'register' && <label className="block text-sm font-medium">Name<input className="field mt-2" {...register('name')} />{errors.name && <span className="text-xs text-destructive">Enter your name</span>}</label>}<label className="block text-sm font-medium">Email<input className="field mt-2" type="email" {...register('email')} />{errors.email && <span className="text-xs text-destructive">Enter a valid email</span>}</label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" {...register('password')} />{errors.password && <span className="text-xs text-destructive">Use a valid password</span>}</label>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<button disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60">{loading ? 'Connecting…' : mode === 'login' ? 'Sign in' : 'Register'}</button></form></Card></div> }
+function App() { return <Routes><Route path="/login" element={<RealAuth mode="login"/>}/><Route path="/register" element={<RealAuth mode="register"/>}/><Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAIAnalysis/></Protected>}/><Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentAIAnalysis/></Protected>}/><Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><AdaptiveExam/></Protected>}/><Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER']}><ProctorMonitor/></Protected>}/><Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><AdminAnalytics/></Protected>}/><Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><Dashboard/></Protected>}/><Route path="/student/exams" element={<Protected roles={['STUDENT']}><StudentExams/></Protected>}/><Route path="/student/exams/:id/instructions" element={<Protected roles={['STUDENT']}><Instructions/></Protected>}/><Route path="/student/exams/:id" element={<Protected roles={['STUDENT']}><Attempt/></Protected>}/><Route path="/student/exams/:id/result" element={<Protected roles={['STUDENT']}><ResultPage/></Protected>}/><Route path="/student/history" element={<Protected roles={['STUDENT']}><History/></Protected>}/><Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><Dashboard/></Protected>}/><Route path="/teacher/exams" element={<Protected roles={['TEACHER']}><TeacherExams/></Protected>}/><Route path="/teacher/exams/create" element={<Protected roles={['TEACHER']}><CreateExam/></Protected>}/><Route path="/teacher/exams/:id/questions" element={<Protected roles={['TEACHER']}><QuestionsPage/></Protected>}/><Route path="/admin/dashboard" element={<Protected roles={['ADMIN']}><Dashboard/></Protected>}/><Route path="/admin/users" element={<Protected roles={['ADMIN']}><AdminUsers/></Protected>}/><Route path="/admin/question-bank" element={<Protected roles={['ADMIN']}><QuestionBank/></Protected>}/><Route path="*" element={<Navigate to="/login" replace/>}/></Routes> }
+const queryClient = new QueryClient()
+function ClientPage() { return <QueryClientProvider client={queryClient}><BrowserRouter><App/></BrowserRouter></QueryClientProvider> }
+export default dynamic(() => Promise.resolve(ClientPage), { ssr: false })
