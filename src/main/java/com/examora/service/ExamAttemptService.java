@@ -60,6 +60,14 @@ public class ExamAttemptService {
     public ExamSubmissionResponse submit(String examId, User student, ExamSubmissionRequest request) {
         requireStudent(student);
         Exam exam = requireAvailableExam(examId);
+        Result existingResult = resultRepository.findByUserIdAndExamId(student.id(), exam.id()).orElse(null);
+        if (existingResult != null) {
+            return new ExamSubmissionResponse(
+                    existingResult,
+                    existingResult.score(),
+                    existingResult.total(),
+                    percentage(existingResult.score(), existingResult.total()));
+        }
         List<Question> questions = questionRepository.findByExamId(exam.id());
         if (questions.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "This exam has no questions.");
@@ -107,8 +115,7 @@ public class ExamAttemptService {
         resultRepository.create(result);
         examRepository.updateStats(exam.id());
 
-        double percentage = questions.isEmpty() ? 0.0 : Math.round((score * 10000.0) / questions.size()) / 100.0;
-        return new ExamSubmissionResponse(result, score, questions.size(), percentage);
+        return new ExamSubmissionResponse(result, score, questions.size(), percentage(score, questions.size()));
     }
 
     private AnswerEvaluation evaluate(Question question, SubmittedAnswer submittedAnswer) {
@@ -156,6 +163,10 @@ public class ExamAttemptService {
 
     private boolean matches(String expected, String actual) {
         return expected != null && actual != null && expected.trim().equalsIgnoreCase(actual.trim());
+    }
+
+    private double percentage(int score, int total) {
+        return total == 0 ? 0.0 : Math.round((score * 10000.0) / total) / 100.0;
     }
 
     private String blankToNull(String value) {
