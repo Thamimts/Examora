@@ -97,12 +97,23 @@ public class QuestionService {
 
     private Question normalize(String id, String examId, Question question) {
         requireExam(examId);
+        List<String> options = question.options() == null ? List.of() : question.options().stream()
+                .filter(option -> option != null && !option.isBlank())
+                .map(String::trim)
+                .toList();
+        String answer = blankToNull(question.answer());
+        if (options.size() < 2) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "A multiple-choice question requires at least two options.");
+        }
+        if (answer == null || options.stream().noneMatch(option -> option.equalsIgnoreCase(answer))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The correct answer must match one of the options.");
+        }
         return new Question(
                 id == null || id.isBlank() ? UUID.randomUUID().toString() : id,
                 examId.trim(),
                 required(question.text()),
-                question.options() == null ? List.of() : question.options(),
-                blankToNull(question.answer()));
+                options,
+                answer);
     }
 
     private void replaceOptions(String questionId, List<String> options, String answer) {

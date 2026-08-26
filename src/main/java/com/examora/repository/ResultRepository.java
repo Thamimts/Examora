@@ -38,6 +38,16 @@ public class ResultRepository {
                 userId);
     }
 
+    public Optional<Result> findByUserIdAndExamId(String userId, String examId) {
+        return jdbcTemplate.query(
+                        "select id, user_id, exam_id, exam_title, subject, score, date, total from results where user_id = ? and exam_id = ?",
+                        this::mapResult,
+                        userId,
+                        examId)
+                .stream()
+                .findFirst();
+    }
+
     public Result create(Result result) {
         jdbcTemplate.update(
                 "insert into results (id, user_id, exam_id, exam_title, subject, score, date, total) values (?, ?, ?, ?, ?, ?, ?, ?)",

@@ -146,6 +146,14 @@ class ExamFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.result.userId").value("student-1"))
                 .andExpect(jsonPath("$.data.result.examId").value(examId));
 
+        mockMvc.perform(post("/api/exams/" + examId + "/submit")
+                        .header("Authorization", bearer(studentToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":[{\"questionId\":\"" + hiddenQuestionId + "\",\"value\":\"3\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.score").value(1))
+                .andExpect(jsonPath("$.data.total").value(1));
+
         Integer savedAnswers = jdbcTemplate.queryForObject("select count(*) from answers where user_id = ? and exam_id = ?", Integer.class, "student-1", examId);
         Integer savedResults = jdbcTemplate.queryForObject("select count(*) from results where user_id = ? and exam_id = ? and score = 1 and total = 1", Integer.class, "student-1", examId);
         assertThat(savedAnswers).isEqualTo(1);
@@ -155,6 +163,24 @@ class ExamFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].examId").value(examId))
                 .andExpect(jsonPath("$.data[0].score").value(1));
+    }
+
+    @Test
+    void questionRequiresOptionsAndAValidCorrectAnswer() throws Exception {
+        String teacherToken = login("teacher@example.com", "teacher123");
+        String examId = createExam(teacherToken, "Validation", "Math", "DRAFT");
+
+        mockMvc.perform(post("/api/exams/" + examId + "/questions")
+                        .header("Authorization", bearer(teacherToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Incomplete MCQ\",\"options\":[\"Only one\"],\"answer\":\"Only one\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/exams/" + examId + "/questions")
+                        .header("Authorization", bearer(teacherToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Wrong answer\",\"options\":[\"A\",\"B\"],\"answer\":\"C\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
