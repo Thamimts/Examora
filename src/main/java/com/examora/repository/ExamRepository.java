@@ -38,8 +38,12 @@ public class ExamRepository {
     }
 
     public Exam create(Exam exam) {
+        return create(exam, null);
+    }
+
+    public Exam create(Exam exam, String createdBy) {
         jdbcTemplate.update(
-                "insert into exams (id, title, subject, date, duration, status, participants, average_score) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                "insert into exams (id, title, subject, date, duration, status, participants, average_score, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 exam.id(),
                 exam.title(),
                 exam.subject(),
@@ -47,8 +51,13 @@ public class ExamRepository {
                 exam.duration(),
                 exam.status(),
                 exam.participants(),
-                exam.averageScore());
+                exam.averageScore(),
+                createdBy);
         return exam;
+    }
+
+    public Optional<String> findOwnerId(String id) {
+        return jdbcTemplate.query("select created_by from exams where id = ?", (rs, row) -> rs.getString(1), id).stream().findFirst();
     }
 
     public int update(String id, Exam exam) {

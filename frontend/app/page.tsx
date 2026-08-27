@@ -9,7 +9,6 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { StudentAIAnalysis, AdaptiveExam, ProctorMonitor, AdminAnalytics } from '@/features/ai/AIViews'
 import { authApi } from '@/services/authApi'
 import { userApi } from '@/services/userApi'
 import { examApi } from '@/services/examApi'
@@ -17,7 +16,23 @@ import { questionApi } from '@/services/questionApi'
 import { resultApi } from '@/services/resultApi'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 
-const nav: Record<Role, { label: string; href: string }[]> = { STUDENT: [{ label: 'Dashboard', href: '/student/dashboard' }, { label: 'My exams', href: '/student/exams' }, { label: 'History', href: '/student/history' }, { label: 'AI analysis', href: '/student/ai-analysis' }, { label: 'Adaptive practice', href: '/student/adaptive/1' }], TEACHER: [{ label: 'Dashboard', href: '/teacher/dashboard' }, { label: 'Exams', href: '/teacher/exams' }, { label: 'Create exam', href: '/teacher/exams/create' }, { label: 'Proctor monitor', href: '/teacher/monitor/attempt-1' }], ADMIN: [{ label: 'Dashboard', href: '/admin/dashboard' }, { label: 'Users', href: '/admin/users' }, { label: 'Question bank', href: '/admin/question-bank' }, { label: 'Analytics', href: '/admin/analytics' }] }
+const nav: Record<Role, { label: string; href: string }[]> = {
+  STUDENT: [
+    { label: 'Dashboard', href: '/student/dashboard' },
+    { label: 'My exams', href: '/student/exams' },
+    { label: 'History', href: '/student/history' },
+  ],
+  TEACHER: [
+    { label: 'Dashboard', href: '/teacher/dashboard' },
+    { label: 'Exams', href: '/teacher/exams' },
+    { label: 'Create exam', href: '/teacher/exams/create' },
+  ],
+  ADMIN: [
+    { label: 'Dashboard', href: '/admin/dashboard' },
+    { label: 'Users', href: '/admin/users' },
+    { label: 'Question bank', href: '/admin/question-bank' },
+  ],
+}
 function Shell({ children }: { children: React.ReactNode }) { const { user, logout } = useAuthStore(); const navigate = useNavigate(); if (!user) return <Navigate to="/login" replace />; return <div className="min-h-screen bg-background"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card p-5 lg:flex lg:flex-col"><div className="flex items-center gap-3 px-2 pb-10"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><nav className="space-y-1">{nav[user.role].map(item => <NavLink key={item.href} to={item.href} className={({isActive}) => `block rounded-xl px-3 py-2.5 text-sm ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{item.label}</NavLink>)}</nav><button className="mt-auto flex gap-2 px-3 py-2 text-sm text-muted-foreground" onClick={async () => { try { await authApi.logout() } finally { logout(); navigate('/login') } }}><LogOut size={16}/> Sign out</button></aside><main className="min-h-screen pb-20 lg:pl-64 lg:pb-0"><div className="mx-auto max-w-7xl p-4 sm:p-5 md:p-8">{children}</div></main><nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-border bg-card/95 p-2 backdrop-blur lg:hidden">{nav[user.role].slice(0, 3).map(item => <NavLink key={item.href} to={item.href} className={({isActive}) => `min-w-0 rounded-lg px-1 py-2 text-center text-[11px] ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><span className="block truncate">{item.label}</span></NavLink>)}</nav></div> }
 function Header({ title, description }: { title: string; description: string }) { return <header className="mb-8"><p className="text-xs font-semibold uppercase tracking-widest text-primary">{useAuthStore.getState().user?.role} workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></header> }
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-border bg-card p-5 ${className}`}>{children}</section> }
@@ -31,9 +46,96 @@ function CreateExam() { const navigate = useNavigate(); const queryClient = useQ
 function QuestionsPage() { const { id = '' } = useParams(); const queryClient = useQueryClient(); const [text, setText] = useState(''); const [options, setOptions] = useState(['', '', '', '']); const [correctIndex, setCorrectIndex] = useState(0); const questionsQuery = useQuery({ queryKey: ['exam-questions', id], queryFn: async () => (await questionApi.list(id)).data.data, enabled: Boolean(id), retry: 1 }); const createMutation = useMutation({ mutationFn: () => { const cleanedOptions = options.map(option => option.trim()).filter(Boolean); const answer = options[correctIndex]?.trim(); return questionApi.create(id, { text, options: cleanedOptions, answer }) }, onSuccess: () => { setText(''); setOptions(['', '', '', '']); setCorrectIndex(0); queryClient.invalidateQueries({ queryKey: ['exam-questions', id] }) } }); const deleteMutation = useMutation({ mutationFn: (questionId: string) => questionApi.remove(questionId), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exam-questions', id] }) }); const cleanedOptions = options.map(option => option.trim()).filter(Boolean); const canAdd = text.trim().length > 0 && cleanedOptions.length >= 2 && Boolean(options[correctIndex]?.trim()); return <><Header title="Question authoring" description="Build multiple-choice questions and mark the correct answer."/><Card><div className="grid gap-4"><label className="block text-sm font-medium">Question text<input className="field mt-2" value={text} onChange={e => setText(e.target.value)} placeholder="Question text"/></label><div className="grid gap-3 md:grid-cols-2">{options.map((option, optionIndex) => <label key={optionIndex} className="block text-sm font-medium">Option {optionIndex + 1}<div className="mt-2 flex gap-2"><input className="field" value={option} onChange={e => setOptions(current => current.map((item, i) => i === optionIndex ? e.target.value : item))} placeholder={`Option ${optionIndex + 1}`}/><button type="button" aria-label={`Mark option ${optionIndex + 1} correct`} onClick={() => setCorrectIndex(optionIndex)} className={`grid size-11 shrink-0 place-items-center rounded-xl border ${correctIndex === optionIndex ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}><Check size={17}/></button></div></label>)}</div>{createMutation.isError && <p className="text-sm text-destructive">Unable to add this question. Check the options and correct answer.</p>}<button disabled={!canAdd || createMutation.isPending} className="w-fit rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50" onClick={() => createMutation.mutate()}>Add question</button></div><div className="mt-6 space-y-3">{questionsQuery.isPending ? <div className="h-24 animate-pulse rounded-xl bg-muted"/> : questionsQuery.isError ? <p className="text-sm text-destructive">Unable to load questions.</p> : questionsQuery.data?.length ? questionsQuery.data.map((q, i) => <div key={q.id} className="flex items-start justify-between rounded-xl bg-muted p-4"><div><p className="text-xs text-primary">Question {i + 1} · MCQ</p><p className="mt-1 text-sm font-medium">{q.text}</p><p className="mt-2 text-xs text-muted-foreground">Options: {q.options.join(', ')}</p>{q.answer && <p className="mt-1 text-xs font-medium text-emerald-700">Correct answer: {q.answer}</p>}</div><button onClick={() => deleteMutation.mutate(q.id)} className="text-muted-foreground"><Trash2 size={16}/></button></div>) : <p className="rounded-xl bg-muted p-6 text-center text-sm text-muted-foreground">No questions added yet.</p>}</div></Card></> }
 function Protected({ roles, children }: { roles: Role[]; children: React.ReactNode }) { const user = useAuthStore(s => s.user); if (!user) return <Navigate to="/login" replace/>; if (!roles.includes(user.role)) return <Navigate to={`/${user.role.toLowerCase()}/dashboard`} replace/>; return <Shell>{children}</Shell> }
 function AdminUsers() { const query = useQuery({ queryKey: ['admin-users'], queryFn: async () => (await userApi.list()).data.data, retry: 1 }); return <><Header title="User management" description="Review users provisioned by the examination service."/><Card>{query.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-muted"/>)}</div> : query.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load users from the API.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}>Retry</button></div> : query.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-3 py-3">Name</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Role</th></tr></thead><tbody className="divide-y divide-border">{query.data.map(user => <tr key={user.id}><td className="px-3 py-4 font-medium">{user.name}</td><td className="px-3 py-4 text-muted-foreground">{user.email}</td><td className="px-3 py-4">{user.role}</td></tr>)}</tbody></table></div> : <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>}</Card></> }
-function Dashboard() { const role = useAuthStore.getState().user?.role; return <><Header title={role === 'ADMIN' ? 'System overview' : role === 'TEACHER' ? 'Teacher dashboard' : 'Good morning, Alex'} description="Monitor examination activity and keep your work moving."/><div className="grid gap-4 sm:grid-cols-3"><Card><p className="text-sm text-muted-foreground">Exams completed</p><p className="mt-2 text-3xl font-semibold">12</p></Card><Card><p className="text-sm text-muted-foreground">Average score</p><p className="mt-2 text-3xl font-semibold">86%</p></Card><Card><p className="text-sm text-muted-foreground">Upcoming exams</p><p className="mt-2 text-3xl font-semibold">3</p></Card></div><Card className="mt-6"><h2 className="font-semibold">Recent activity</h2><p className="mt-3 text-sm text-muted-foreground">Your API-ready workspace is connected. Visit My exams to start an assessment.</p></Card></> }
+function Dashboard() {
+  const user = useAuthStore((state) => state.user)
+  const examsQuery = useQuery({
+    queryKey: ['dashboard-exams', user?.role],
+    queryFn: async () => (await examApi.list()).data.data,
+    enabled: Boolean(user),
+    retry: 1,
+  })
+  const resultsQuery = useQuery({
+    queryKey: ['dashboard-results', user?.id],
+    queryFn: async () => (await resultApi.mine()).data.data,
+    enabled: user?.role === 'STUDENT',
+    retry: 1,
+  })
+  const exams = examsQuery.data ?? []
+  const results = resultsQuery.data ?? []
+  const completed = results.length
+  const average = completed ? Math.round(results.reduce((sum, item) => sum + (item.total ? (item.score * 100) / item.total : 0), 0) / completed) : 0
+  const published = exams.filter((exam) => exam.status !== 'DRAFT').length
+
+  return (
+    <>
+      <Header
+        title={user?.role === 'ADMIN' ? 'System overview' : user?.role === 'TEACHER' ? 'Teacher dashboard' : `Good morning, ${user?.name ?? 'student'}`}
+        description="Live numbers pulled from the backend database."
+      />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Completed exams' : 'Total exams'}</p>
+          <p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? completed : exams.length}</p>
+        </Card>
+        <Card>
+          <p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Average score' : 'Published exams'}</p>
+          <p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? `${average}%` : published}</p>
+        </Card>
+        <Card>
+          <p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Available exams' : 'Users in system'}</p>
+          <p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? exams.length : user?.role === 'ADMIN' ? (useQuery({ queryKey: ['dashboard-users'], queryFn: async () => (await userApi.list()).data.data, enabled: user?.role === 'ADMIN', retry: 1 }).data?.length ?? 0) : exams.length}</p>
+        </Card>
+      </div>
+      <Card className="mt-6">
+        <h2 className="font-semibold">Recent activity</h2>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {examsQuery.isPending || resultsQuery.isPending ? 'Loading current records from the API...' : 'This dashboard is backed by the live database, not local mock data.'}
+        </p>
+      </Card>
+    </>
+  )
+}
 function RealAuth({ mode }: { mode: 'login' | 'register' }) { const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const schema = mode === 'login' ? z.object({ email: z.string().email(), password: z.string().min(1) }) : z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) }); const { register, handleSubmit, formState: { errors } } = useForm<any>({ resolver: zodResolver(schema) }); const submit = async (values: any) => { setLoading(true); setError(''); try { const response = mode === 'login' ? await authApi.login({ email: values.email, password: values.password }) : await authApi.register(values); const auth = response.data.data; setAuth(auth); navigate(`/${auth.user.role.toLowerCase()}/dashboard`); } catch (cause) { setError('Unable to connect to the examination service. Check your credentials or try again.'); } finally { setLoading(false); } }; return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1><p className="mt-2 text-sm text-muted-foreground">Use your examination system account to continue.</p><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? <>New here? <NavLink className="font-medium text-primary hover:underline" to="/register">Create an account</NavLink></> : <>Already have an account? <NavLink className="font-medium text-primary hover:underline" to="/login">Sign in</NavLink></>}</p><form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)}>{mode === 'register' && <label className="block text-sm font-medium">Name<input className="field mt-2" {...register('name')} />{errors.name && <span className="text-xs text-destructive">Enter your name</span>}</label>}<label className="block text-sm font-medium">Email<input className="field mt-2" type="email" {...register('email')} />{errors.email && <span className="text-xs text-destructive">Enter a valid email</span>}</label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" {...register('password')} />{errors.password && <span className="text-xs text-destructive">Use a valid password</span>}</label>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<button disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60">{loading ? 'Connecting…' : mode === 'login' ? 'Sign in' : 'Register'}</button></form></Card></div> }
-function App() { return <Routes><Route path="/login" element={<RealAuth mode="login"/>}/><Route path="/register" element={<RealAuth mode="register"/>}/><Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAIAnalysis/></Protected>}/><Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentAIAnalysis/></Protected>}/><Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><AdaptiveExam/></Protected>}/><Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER']}><ProctorMonitor/></Protected>}/><Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><AdminAnalytics/></Protected>}/><Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><Dashboard/></Protected>}/><Route path="/student/exams" element={<Protected roles={['STUDENT']}><StudentExams/></Protected>}/><Route path="/student/exams/:id/instructions" element={<Protected roles={['STUDENT']}><Instructions/></Protected>}/><Route path="/student/exams/:id" element={<Protected roles={['STUDENT']}><Attempt/></Protected>}/><Route path="/student/exams/:id/result" element={<Protected roles={['STUDENT']}><ResultPage/></Protected>}/><Route path="/student/history" element={<Protected roles={['STUDENT']}><History/></Protected>}/><Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><Dashboard/></Protected>}/><Route path="/teacher/exams" element={<Protected roles={['TEACHER']}><TeacherExams/></Protected>}/><Route path="/teacher/exams/create" element={<Protected roles={['TEACHER']}><CreateExam/></Protected>}/><Route path="/teacher/exams/:id/questions" element={<Protected roles={['TEACHER']}><QuestionsPage/></Protected>}/><Route path="/admin/dashboard" element={<Protected roles={['ADMIN']}><Dashboard/></Protected>}/><Route path="/admin/users" element={<Protected roles={['ADMIN']}><AdminUsers/></Protected>}/><Route path="/admin/question-bank" element={<Protected roles={['ADMIN']}><QuestionBank/></Protected>}/><Route path="*" element={<Navigate to="/login" replace/>}/></Routes> }
+function FeatureUnavailable({ title, description }: { title: string; description: string }) {
+  return (
+    <>
+      <Header title={title} description={description} />
+      <Card className="max-w-2xl">
+        <p className="text-sm text-muted-foreground">
+          The backend does not expose a real API for this screen yet, so the app shows a clear placeholder instead of fake data.
+        </p>
+      </Card>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<RealAuth mode="login" />} />
+      <Route path="/register" element={<RealAuth mode="register" />} />
+      <Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><FeatureUnavailable title="AI Performance Analysis" description="Personalized analytics will appear here once the backend exposes that endpoint." /></Protected>} />
+      <Route path="/student/analysis" element={<Protected roles={['STUDENT']}><FeatureUnavailable title="AI Performance Analysis" description="Personalized analytics will appear here once the backend exposes that endpoint." /></Protected>} />
+      <Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><FeatureUnavailable title="Adaptive practice" description="This screen needs an adaptive-session API before it can show real data." /></Protected>} />
+      <Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER']}><FeatureUnavailable title="Live proctoring monitor" description="This screen needs a real attempt telemetry API before it can show live events." /></Protected>} />
+      <Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><FeatureUnavailable title="AI analytics" description="This screen needs backend analytics endpoints before it can render live metrics." /></Protected>} />
+      <Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><Dashboard /></Protected>} />
+      <Route path="/student/exams" element={<Protected roles={['STUDENT']}><StudentExams /></Protected>} />
+      <Route path="/student/exams/:id/instructions" element={<Protected roles={['STUDENT']}><Instructions /></Protected>} />
+      <Route path="/student/exams/:id" element={<Protected roles={['STUDENT']}><Attempt /></Protected>} />
+      <Route path="/student/exams/:id/result" element={<Protected roles={['STUDENT']}><ResultPage /></Protected>} />
+      <Route path="/student/history" element={<Protected roles={['STUDENT']}><History /></Protected>} />
+      <Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><Dashboard /></Protected>} />
+      <Route path="/teacher/exams" element={<Protected roles={['TEACHER']}><TeacherExams /></Protected>} />
+      <Route path="/teacher/exams/create" element={<Protected roles={['TEACHER']}><CreateExam /></Protected>} />
+      <Route path="/teacher/exams/:id/questions" element={<Protected roles={['TEACHER']}><QuestionsPage /></Protected>} />
+      <Route path="/admin/dashboard" element={<Protected roles={['ADMIN']}><Dashboard /></Protected>} />
+      <Route path="/admin/users" element={<Protected roles={['ADMIN']}><AdminUsers /></Protected>} />
+      <Route path="/admin/question-bank" element={<Protected roles={['ADMIN']}><QuestionBank /></Protected>} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  )
+}
 const queryClient = new QueryClient()
 function ClientPage() { return <QueryClientProvider client={queryClient}><BrowserRouter><App/></BrowserRouter></QueryClientProvider> }
 export default dynamic(() => Promise.resolve(ClientPage), { ssr: false })

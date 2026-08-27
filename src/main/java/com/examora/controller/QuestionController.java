@@ -46,23 +46,23 @@ public class QuestionController {
     }
 
     @PostMapping("/api/questions")
-    public ApiResponse<Question> create(@RequestBody Question question) {
-        return ApiResponse.ok("Created", questionService.create(question));
+    public ApiResponse<Question> create(@RequestBody Question question, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Created", questionService.create(question, authService.requireUser(authorizationHeader)));
     }
 
     @PostMapping("/api/exams/{examId}/questions")
-    public ApiResponse<Question> createForExam(@PathVariable String examId, @RequestBody Question question) {
-        return ApiResponse.ok("Created", questionService.create(examId, question));
+    public ApiResponse<Question> createForExam(@PathVariable String examId, @RequestBody Question question, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Created", questionService.create(examId, question, authService.requireUser(authorizationHeader)));
     }
 
     @PutMapping("/api/questions/{id}")
-    public ApiResponse<Question> update(@PathVariable String id, @RequestBody Question question) {
-        return ApiResponse.ok("Updated", questionService.update(id, question));
+    public ApiResponse<Question> update(@PathVariable String id, @RequestBody Question question, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Updated", questionService.update(id, question, authService.requireUser(authorizationHeader)));
     }
 
     @DeleteMapping("/api/questions/{id}")
-    public ApiResponse<Void> delete(@PathVariable String id) {
-        questionService.delete(id);
+    public ApiResponse<Void> delete(@PathVariable String id, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        questionService.delete(id, authService.requireUser(authorizationHeader));
         return ApiResponse.ok("Deleted", null);
     }
 }

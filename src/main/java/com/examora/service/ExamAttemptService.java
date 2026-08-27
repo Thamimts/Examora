@@ -7,6 +7,7 @@ import com.examora.dto.ExamDtos.SubmittedAnswer;
 import com.examora.exception.ApiException;
 import com.examora.model.Answer;
 import com.examora.model.Exam;
+import com.examora.model.ExamAttempt;
 import com.examora.model.Question;
 import com.examora.model.QuestionOption;
 import com.examora.model.Result;
@@ -14,10 +15,12 @@ import com.examora.model.Role;
 import com.examora.model.User;
 import com.examora.repository.AnswerRepository;
 import com.examora.repository.ExamRepository;
+import com.examora.repository.ExamAttemptRepository;
 import com.examora.repository.QuestionOptionRepository;
 import com.examora.repository.QuestionRepository;
 import com.examora.repository.ResultRepository;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,24 +39,29 @@ public class ExamAttemptService {
     private final QuestionOptionRepository optionRepository;
     private final AnswerRepository answerRepository;
     private final ResultRepository resultRepository;
+    private final ExamAttemptRepository attemptRepository;
 
     public ExamAttemptService(
             ExamRepository examRepository,
             QuestionRepository questionRepository,
             QuestionOptionRepository optionRepository,
             AnswerRepository answerRepository,
-            ResultRepository resultRepository) {
+            ResultRepository resultRepository,
+            ExamAttemptRepository attemptRepository) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.answerRepository = answerRepository;
         this.resultRepository = resultRepository;
+        this.attemptRepository = attemptRepository;
     }
 
     public StartExamResponse start(String examId, User student) {
         requireStudent(student);
         Exam exam = requireAvailableExam(examId);
-        return new StartExamResponse(exam.id(), student.id(), "STARTED", exam);
+        ExamAttempt attempt = activeOrCreate(exam, student);
+        return new StartExamResponse(exam.id(), student.id(), attempt.status(), exam, attempt.id(),
+                attempt.startedAt().toString(), attempt.expiresAt().toString());
     }
 
     @Transactional
@@ -67,6 +75,11 @@ public class ExamAttemptService {
                     existingResult.score(),
                     existingResult.total(),
                     percentage(existingResult.score(), existingResult.total()));
+        }
+        ExamAttempt attempt = activeOrCreate(exam, student);
+        if (!Instant.now().isBefore(attempt.expiresAt())) {
+            attemptRepository.markExpired(attempt.id());
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
         }
         List<Question> questions = questionRepository.findByExamId(exam.id());
         if (questions.isEmpty()) {
@@ -94,7 +107,7 @@ public class ExamAttemptService {
             if (evaluation.correct()) {
                 score++;
             }
-            answerRepository.create(new Answer(
+            answerRepository.createForAttempt(attempt.id(), new Answer(
                     UUID.randomUUID().toString(),
                     student.id(),
                     exam.id(),
@@ -113,9 +126,38 @@ public class ExamAttemptService {
                 LocalDate.now().toString(),
                 questions.size());
         resultRepository.create(result);
+        if (attemptRepository.markSubmitted(attempt.id(), Instant.now()) != 1) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt is no longer active.");
+        }
         examRepository.updateStats(exam.id());
 
         return new ExamSubmissionResponse(result, score, questions.size(), percentage(score, questions.size()));
+    }
+
+    public ExamAttempt requireOwnedAttempt(String attemptId, User student) {
+        requireStudent(student);
+        ExamAttempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam attempt not found."));
+        if (!attempt.studentId().equals(student.id())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "This attempt belongs to another student.");
+        }
+        if (!"STARTED".equals(attempt.status()) || !Instant.now().isBefore(attempt.expiresAt())) {
+            if ("STARTED".equals(attempt.status())) attemptRepository.markExpired(attempt.id());
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt is not active.");
+        }
+        return attempt;
+    }
+
+    private ExamAttempt activeOrCreate(Exam exam, User student) {
+        ExamAttempt active = attemptRepository.findActive(exam.id(), student.id()).orElse(null);
+        if (active != null) {
+            if (Instant.now().isBefore(active.expiresAt())) return active;
+            attemptRepository.markExpired(active.id());
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
+        }
+        Instant now = Instant.now();
+        return attemptRepository.create(new ExamAttempt(UUID.randomUUID().toString(), exam.id(), student.id(),
+                1, "STARTED", now, now.plusSeconds(exam.duration() * 60L), null, 0));
     }
 
     private AnswerEvaluation evaluate(Question question, SubmittedAnswer submittedAnswer) {
