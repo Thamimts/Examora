@@ -46,24 +46,24 @@ public class ExamController {
     }
 
     @PostMapping
-    public ApiResponse<Exam> create(@RequestBody Exam exam) {
-        return ApiResponse.ok("Created", examService.create(exam));
+    public ApiResponse<Exam> create(@RequestBody Exam exam, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Created", examService.create(exam, authService.requireUser(authorizationHeader)));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<Exam> update(@PathVariable String id, @RequestBody Exam exam) {
-        return ApiResponse.ok("Updated", examService.update(id, exam));
+    public ApiResponse<Exam> update(@PathVariable String id, @RequestBody Exam exam, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Updated", examService.update(id, exam, authService.requireUser(authorizationHeader)));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable String id) {
-        examService.delete(id);
+    public ApiResponse<Void> delete(@PathVariable String id, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        examService.delete(id, authService.requireUser(authorizationHeader));
         return ApiResponse.ok("Deleted", null);
     }
 
     @PostMapping("/{id}/publish")
-    public ApiResponse<Exam> publish(@PathVariable String id) {
-        return ApiResponse.ok("Published", examService.publish(id));
+    public ApiResponse<Exam> publish(@PathVariable String id, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Published", examService.publish(id, authService.requireUser(authorizationHeader)));
     }
 
     @PostMapping("/{id}/start")

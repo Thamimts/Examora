@@ -43,28 +43,48 @@ public class ExamService {
         return exam;
     }
 
-    public Exam create(Exam exam) {
+    public Exam create(Exam exam, User actor) {
+        requireTeacher(actor);
         Exam normalized = normalize(exam.id(), exam);
-        return examRepository.create(normalized);
+        return examRepository.create(normalized, actor.id());
     }
 
-    public Exam update(String id, Exam exam) {
+    public Exam update(String id, Exam exam, User actor) {
         findById(id);
+        requireOwner(id, actor);
         examRepository.update(id, normalize(id, exam));
         return findById(id);
     }
 
-    public void delete(String id) {
+    public void delete(String id, User actor) {
+        requireOwner(id, actor);
         if (examRepository.delete(id) == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Exam not found.");
         }
     }
 
-    public Exam publish(String id) {
+    public Exam publish(String id, User actor) {
+        requireOwner(id, actor);
         if (examRepository.publish(id) == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Exam not found.");
         }
         return findById(id);
+    }
+
+    public void requireOwner(String examId, User actor) {
+        if (actor.role() == Role.ADMIN) return;
+        requireTeacher(actor);
+        String ownerId = examRepository.findOwnerId(examId).orElse(null);
+        // Legacy rows without an owner remain manageable by teachers during migration.
+        if (ownerId != null && !ownerId.equals(actor.id())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You do not own this exam.");
+        }
+    }
+
+    private void requireTeacher(User actor) {
+        if (actor == null || (actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or administrator access is required.");
+        }
     }
 
     public boolean isDraft(Exam exam) {

@@ -19,6 +19,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/exception/GlobalExceptionHandler.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Answer.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Exam.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/ExamAttempt.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/ProctorEvent.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Question.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/QuestionOption.java
@@ -26,6 +27,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Role.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/User.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/AnswerRepository.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ExamAttemptRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ExamRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ProctorRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/QuestionOptionRepository.java

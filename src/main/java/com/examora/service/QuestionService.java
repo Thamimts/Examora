@@ -67,7 +67,8 @@ public class QuestionService {
     }
 
     @Transactional
-    public Question create(String examId, Question question) {
+    public Question create(String examId, Question question, User actor) {
+        requireAuthoring(examId, actor);
         Question normalized = normalize(question.id(), examId, question);
         questionRepository.create(normalized);
         replaceOptions(normalized.id(), normalized.options(), normalized.answer());
@@ -75,13 +76,14 @@ public class QuestionService {
     }
 
     @Transactional
-    public Question create(Question question) {
-        return create(question.examId(), question);
+    public Question create(Question question, User actor) {
+        return create(question.examId(), question, actor);
     }
 
     @Transactional
-    public Question update(String id, Question question) {
+    public Question update(String id, Question question, User actor) {
         Question existing = findById(id);
+        requireAuthoring(existing.examId(), actor);
         String targetExamId = question.examId() == null || question.examId().isBlank() ? existing.examId() : question.examId();
         Question normalized = normalize(id, targetExamId, question);
         questionRepository.update(id, normalized);
@@ -89,9 +91,22 @@ public class QuestionService {
         return findById(id);
     }
 
-    public void delete(String id) {
+    public void delete(String id, User actor) {
+        requireAuthoring(findById(id).examId(), actor);
         if (questionRepository.delete(id) == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Question not found.");
+        }
+    }
+
+    private void requireAuthoring(String examId, User actor) {
+        if (actor == null || (actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or administrator access is required.");
+        }
+        if (actor.role() != Role.ADMIN) {
+            String owner = examRepository.findOwnerId(examId).orElse(null);
+            if (owner != null && !owner.equals(actor.id())) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "You do not own this exam.");
+            }
         }
     }
 

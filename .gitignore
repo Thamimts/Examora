@@ -43,6 +43,7 @@ Thumbs.db
 *.tgz
 *.tmp
 *.temp
+.attach_pid*
 
 # v0 sandbox internal files
 __v0_runtime_loader.js

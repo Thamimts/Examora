@@ -8,7 +8,8 @@ public final class ExamDtos {
     private ExamDtos() {
     }
 
-    public record StartExamResponse(String examId, String studentId, String status, Exam exam) {
+    public record StartExamResponse(String examId, String studentId, String status, Exam exam,
+                                    String attemptId, String startedAt, String expiresAt) {
     }
 
     public record ExamSubmissionRequest(List<SubmittedAnswer> answers) {
