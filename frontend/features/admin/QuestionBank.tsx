@@ -1,74 +1,28 @@
 'use client'
-
 import { useMemo, useState } from 'react'
-import { Search, Trash2, RefreshCcw } from 'lucide-react'
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
+import { Edit3, Plus, RefreshCcw, Search, Trash2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, Header } from '@/components/shared'
+import { ConfirmDialog, useToast } from '@/components/feedback'
 import { questionApi } from '@/services/questionApi'
+import type { Question } from '@/types'
+
+type Editable = Omit<Question, 'id'> & { id?: string }
+const blank = (): Editable => ({ text: '', options: ['', '', '', ''], answer: '', type: 'MCQ' })
 
 export function QuestionBank() {
-  const queryClient = useQueryClient()
-  const [search, setSearch] = useState('')
-  const questionsQuery = useQuery({
-    queryKey: ['question-bank'],
-    queryFn: async () => (await questionApi.listAll()).data.data,
-    retry: 1,
-  })
-  const removeMutation = useMutation({
-    mutationFn: (id: string) => questionApi.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['question-bank'] }),
-  })
-  const filtered = useMemo(
-    () => (questionsQuery.data ?? []).filter((item) => item.text.toLowerCase().includes(search.toLowerCase())),
-    [questionsQuery.data, search],
-  )
-
-  return (
-    <>
-      <Header
-        title="Question bank"
-        description="Browse the live question data stored in the backend database."
-      />
-      <Card>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">Search questions</span>
-            <Search className="pointer-events-none absolute left-3 top-3 text-muted-foreground" size={16} />
-            <input className="field pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search questions" />
-          </label>
-          <button className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs hover:bg-muted" type="button" onClick={() => questionsQuery.refetch()}>
-            <RefreshCcw size={14} /> Refresh
-          </button>
-        </div>
-        <div className="mt-5 text-sm text-muted-foreground">{filtered.length} question{filtered.length === 1 ? '' : 's'}</div>
-        <div className="mt-4 space-y-3">
-          {questionsQuery.isPending ? (
-            <div className="h-24 animate-pulse rounded-xl bg-muted" />
-          ) : questionsQuery.isError ? (
-            <p className="py-8 text-center text-sm text-destructive">Unable to load questions from the database.</p>
-          ) : filtered.length ? (
-            filtered.map((item, index) => (
-              <article key={item.id} className="flex min-w-0 items-start justify-between gap-3 rounded-xl bg-muted p-4">
-                <div className="min-w-0">
-                  <p className="text-xs text-primary">Question {index + 1} · {item.options.length ? 'MCQ' : 'Descriptive'}</p>
-                  <p className="mt-1 break-words text-sm font-medium">{item.text}</p>
-                  {item.options.length > 0 && <p className="mt-2 break-words text-xs text-muted-foreground">{item.options.join(' · ')}</p>}
-                </div>
-                <button
-                  aria-label={`Delete question ${index + 1}`}
-                  className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-background hover:text-destructive"
-                  type="button"
-                  onClick={() => removeMutation.mutate(item.id)}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </article>
-            ))
-          ) : (
-            <p className="py-10 text-center text-sm text-muted-foreground">No questions match your search.</p>
-          )}
-        </div>
-      </Card>
-    </>
-  )
+  const client = useQueryClient(), toast = useToast()
+  const [search, setSearch] = useState(''), [type, setType] = useState('ALL'), [page, setPage] = useState(1), [editor, setEditor] = useState<Editable | null>(null), [deleting, setDeleting] = useState<string | null>(null)
+  const query = useQuery({ queryKey: ['question-bank'], queryFn: async () => (await questionApi.listAll()).data.data, retry: 1 })
+  const save = useMutation({ mutationFn: (item: Editable) => item.id ? questionApi.update(item.id, item) : questionApi.createGlobal(item), onSuccess: () => { client.invalidateQueries({ queryKey: ['question-bank'] }); setEditor(null); toast.success('Question saved successfully.') }, onError: () => toast.error('Unable to save this question.') })
+  const remove = useMutation({ mutationFn: (id: string) => questionApi.remove(id), onSuccess: () => { client.invalidateQueries({ queryKey: ['question-bank'] }); setDeleting(null); toast.success('Question deleted.') }, onError: () => toast.error('Unable to delete this question.') })
+  const filtered = useMemo(() => (query.data ?? []).filter(q => q.text.toLowerCase().includes(search.toLowerCase()) && (type === 'ALL' || (type === 'TRUE_FALSE' ? q.options.length === 2 : q.options.length > 2))), [query.data, search, type])
+  const size = 8, pages = Math.max(1, Math.ceil(filtered.length / size)), visible = filtered.slice((page - 1) * size, page * size)
+  const update = (patch: Partial<Editable>) => setEditor(current => current ? { ...current, ...patch } : null)
+  const chooseType = (next: 'MCQ' | 'TRUE_FALSE') => update({ type: next, options: next === 'TRUE_FALSE' ? ['True', 'False'] : ['', '', '', ''], answer: next === 'TRUE_FALSE' ? 'True' : '' })
+  return <><Header title="Question bank" description="Create reusable questions and maintain a clean assessment library."/><Card>
+    <div className="flex flex-col gap-3 lg:flex-row"><label className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 text-muted-foreground" size={16}/><input className="field pl-9" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search questions"/></label><select className="field lg:w-44" value={type} onChange={e => { setType(e.target.value); setPage(1) }}><option value="ALL">All types</option><option value="MCQ">Multiple choice</option><option value="TRUE_FALSE">True / false</option></select><button className="rounded-xl border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}><RefreshCcw size={15} className="inline mr-2"/>Refresh</button><button className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground" onClick={() => setEditor(blank())}><Plus size={16} className="inline mr-2"/>New question</button></div>
+    <p className="mt-5 text-sm text-muted-foreground">{filtered.length} question{filtered.length === 1 ? '' : 's'}</p><div className="mt-4 space-y-3">{query.isPending ? [1,2,3].map(i => <div key={i} className="h-24 animate-pulse rounded-xl bg-muted"/>) : query.isError ? <div className="py-8 text-center"><p className="text-sm text-destructive">Unable to load questions.</p><button className="mt-3 rounded-lg border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}>Retry</button></div> : visible.length ? visible.map((q, i) => <article key={q.id} className="flex justify-between gap-3 rounded-xl bg-muted p-4"><div className="min-w-0"><p className="text-xs text-primary">Question {(page - 1) * size + i + 1} · {q.options.length === 2 ? 'TRUE / FALSE' : 'MCQ'}</p><p className="mt-1 break-words text-sm font-medium">{q.text}</p><p className="mt-2 break-words text-xs text-muted-foreground">{q.options.join(' · ')}</p></div><div className="flex shrink-0"><button className="p-2 text-muted-foreground" aria-label="Edit question" onClick={() => setEditor({ ...q, type: q.options.length === 2 ? 'TRUE_FALSE' : 'MCQ' })}><Edit3 size={16}/></button><button className="p-2 text-muted-foreground hover:text-destructive" aria-label="Delete question" onClick={() => setDeleting(q.id)}><Trash2 size={16}/></button></div></article>) : <p className="py-10 text-center text-sm text-muted-foreground">No questions match these filters.</p>}</div>
+    {filtered.length > size && <div className="mt-5 flex justify-between border-t border-border pt-4 text-sm"><span className="text-muted-foreground">Page {page} of {pages}</span><div className="flex gap-2"><button disabled={page === 1} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50" onClick={() => setPage(p => p - 1)}>Previous</button><button disabled={page === pages} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50" onClick={() => setPage(p => p + 1)}>Next</button></div></div>}
+  </Card>{editor && <div className="fixed inset-0 z-30 overflow-y-auto bg-background/75 p-4 backdrop-blur-sm"><Card className="mx-auto my-8 max-w-2xl"><div className="flex justify-between"><div><h2 className="font-semibold">{editor.id ? 'Edit question' : 'Create question'}</h2><p className="mt-1 text-sm text-muted-foreground">Set the format and correct answer.</p></div><button className="text-sm text-muted-foreground" onClick={() => setEditor(null)}>Close</button></div><div className="mt-6 grid gap-4"><label className="text-sm font-medium">Question type<select className="field mt-2" value={editor.type} onChange={e => chooseType(e.target.value as 'MCQ' | 'TRUE_FALSE')}><option value="MCQ">Multiple choice</option><option value="TRUE_FALSE">True / false</option></select></label><label className="text-sm font-medium">Question<input className="field mt-2" value={editor.text} onChange={e => update({ text: e.target.value })}/></label>{editor.options.map((option, i) => <label key={i} className="text-sm font-medium">Option {i + 1}<div className="mt-2 flex gap-2"><input disabled={editor.type === 'TRUE_FALSE'} className="field" value={option} onChange={e => update({ options: editor.options.map((o, index) => index === i ? e.target.value : o) })}/><button className={`rounded-xl border px-3 text-xs ${editor.answer === option ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`} onClick={() => update({ answer: option })}>Correct</button></div></label>)}<button disabled={save.isPending || !editor.text.trim() || !editor.answer || editor.options.some(o => !o.trim())} className="w-fit rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground disabled:opacity-50" onClick={() => save.mutate({ ...editor, text: editor.text.trim(), options: editor.options.map(o => o.trim()) })}>{save.isPending ? 'Saving…' : 'Save question'}</button></div></Card></div>}<ConfirmDialog open={Boolean(deleting)} title="Delete question?" description="This cannot be undone." confirmLabel="Delete question" destructive busy={remove.isPending} onCancel={() => setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting)}/></>
 }

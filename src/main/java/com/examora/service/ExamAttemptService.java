@@ -40,6 +40,7 @@ public class ExamAttemptService {
     private final AnswerRepository answerRepository;
     private final ResultRepository resultRepository;
     private final ExamAttemptRepository attemptRepository;
+    private final ActivityService activityService;
 
     public ExamAttemptService(
             ExamRepository examRepository,
@@ -47,19 +48,23 @@ public class ExamAttemptService {
             QuestionOptionRepository optionRepository,
             AnswerRepository answerRepository,
             ResultRepository resultRepository,
-            ExamAttemptRepository attemptRepository) {
+            ExamAttemptRepository attemptRepository,
+            ActivityService activityService) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
         this.answerRepository = answerRepository;
         this.resultRepository = resultRepository;
         this.attemptRepository = attemptRepository;
+        this.activityService = activityService;
     }
 
     public StartExamResponse start(String examId, User student) {
         requireStudent(student);
         Exam exam = requireAvailableExam(examId);
         ExamAttempt attempt = activeOrCreate(exam, student);
+        activityService.student(student, "EXAM_STARTED", "You started “" + exam.title() + "”.");
+        activityService.admin("EXAM_STARTED", student.name() + " started exam “" + exam.title() + "”.");
         return new StartExamResponse(exam.id(), student.id(), attempt.status(), exam, attempt.id(),
                 attempt.startedAt().toString(), attempt.expiresAt().toString());
     }
@@ -130,6 +135,8 @@ public class ExamAttemptService {
             throw new ApiException(HttpStatus.CONFLICT, "This exam attempt is no longer active.");
         }
         examRepository.updateStats(exam.id());
+        activityService.student(student, "EXAM_SUBMITTED", "You completed “" + exam.title() + "” with " + score + "/" + questions.size() + ".");
+        activityService.admin("EXAM_SUBMITTED", student.name() + " submitted “" + exam.title() + "” (" + score + "/" + questions.size() + ").");
 
         return new ExamSubmissionResponse(result, score, questions.size(), percentage(score, questions.size()));
     }

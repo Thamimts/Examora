@@ -1,4 +1,13 @@
 -------------------------------------------------------------------------------
 Test set: com.examora.AuthSecurityIntegrationTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.68 s -- in com.examora.AuthSecurityIntegrationTest
+Tests run: 8, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 27.40 s <<< FAILURE! -- in com.examora.AuthSecurityIntegrationTest
+com.examora.AuthSecurityIntegrationTest.authenticatedStudentConnectsToOwnActivityWebSocketDestination -- Time elapsed: 9.301 s <<< FAILURE!
+java.lang.AssertionError: 
+
+Expecting actual not to be null
+	at com.examora.AuthSecurityIntegrationTest.authenticatedStudentConnectsToOwnActivityWebSocketDestination(AuthSecurityIntegrationTest.java:183)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+

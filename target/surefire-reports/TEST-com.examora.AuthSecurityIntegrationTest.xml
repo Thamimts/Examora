@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.examora.AuthSecurityIntegrationTest" time="13.677" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.examora.AuthSecurityIntegrationTest" time="27.401" tests="8" errors="0" skipped="0" failures="1">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
-    <property name="java.class.path" value="/home/thamim72/online-exam/examrro/Examora/target/test-classes:/home/thamim72/online-exam/examrro/Examora/target/classes:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.5.11/spring-boot-starter-web-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter/3.5.11/spring-boot-starter-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot/3.5.11/spring-boot-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/3.5.11/spring-boot-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-logging/3.5.11/spring-boot-starter-logging-3.5.11.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-classic/1.5.32/logback-classic-1.5.32.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-core/1.5.32/logback-core-1.5.32.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-to-slf4j/2.24.3/log4j-to-slf4j-2.24.3.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-api/2.24.3/log4j-api-2.24.3.jar:/home/thamim72/.m2/repository/org/slf4j/jul-to-slf4j/2.0.17/jul-to-slf4j-2.0.17.jar:/home/thamim72/.m2/repository/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar:/home/thamim72/.m2/repository/org/yaml/snakeyaml/2.4/snakeyaml-2.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-json/3.5.11/spring-boot-starter-json-3.5.11.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.19.4/jackson-databind-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.19.4/jackson-annotations-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.19.4/jackson-core-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.19.4/jackson-datatype-jdk8-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.19.4/jackson-datatype-jsr310-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/module/jackson-module-parameter-names/2.19.4/jackson-module-parameter-names-2.19.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/3.5.11/spring-boot-starter-tomcat-3.5.11.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.52/tomcat-embed-core-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/10.1.52/tomcat-embed-el-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-websocket/10.1.52/tomcat-embed-websocket-10.1.52.jar:/home/thamim72/.m2/repository/org/springframework/spring-web/6.2.16/spring-web-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-beans/6.2.16/spring-beans-6.2.16.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-observation/1.15.9/micrometer-observation-1.15.9.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-commons/1.15.9/micrometer-commons-1.15.9.jar:/home/thamim72/.m2/repository/org/springframework/spring-webmvc/6.2.16/spring-webmvc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-context/6.2.16/spring-context-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-expression/6.2.16/spring-expression-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-jdbc/3.5.11/spring-boot-starter-jdbc-3.5.11.jar:/home/thamim72/.m2/repository/com/zaxxer/HikariCP/6.3.3/HikariCP-6.3.3.jar:/home/thamim72/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/thamim72/.m2/repository/org/springframework/spring-jdbc/6.2.16/spring-jdbc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-tx/6.2.16/spring-tx-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-security/3.5.11/spring-boot-starter-security-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/spring-aop/6.2.16/spring-aop-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-config/6.5.8/spring-security-config-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-core/6.5.8/spring-security-core-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-crypto/6.5.8/spring-security-crypto-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-web/6.5.8/spring-security-web-6.5.8.jar:/home/thamim72/.m2/repository/org/postgresql/postgresql/42.7.10/postgresql-42.7.10.jar:/home/thamim72/.m2/repository/org/checkerframework/checker-qual/3.52.0/checker-qual-3.52.0.jar:/home/thamim72/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-test/3.5.11/spring-boot-starter-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test/3.5.11/spring-boot-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/3.5.11/spring-boot-test-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/com/jayway/jsonpath/json-path/2.9.0/json-path-2.9.0.jar:/home/thamim72/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.4/jakarta.xml.bind-api-4.0.4.jar:/home/thamim72/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.4/jakarta.activation-api-2.1.4.jar:/home/thamim72/.m2/repository/net/minidev/json-smart/2.5.2/json-smart-2.5.2.jar:/home/thamim72/.m2/repository/net/minidev/accessors-smart/2.5.2/accessors-smart-2.5.2.jar:/home/thamim72/.m2/repository/org/ow2/asm/asm/9.7.1/asm-9.7.1.jar:/home/thamim72/.m2/repository/org/assertj/assertj-core/3.27.7/assertj-core-3.27.7.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy/1.17.8/byte-buddy-1.17.8.jar:/home/thamim72/.m2/repository/org/awaitility/awaitility/4.2.2/awaitility-4.2.2.jar:/home/thamim72/.m2/repository/org/hamcrest/hamcrest/3.0/hamcrest-3.0.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter/5.12.2/junit-jupiter-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.12.2/junit-jupiter-api-5.12.2.jar:/home/thamim72/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-commons/1.12.2/junit-platform-commons-1.12.2.jar:/home/thamim72/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.12.2/junit-jupiter-params-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.12.2/junit-jupiter-engine-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-engine/1.12.2/junit-platform-engine-1.12.2.jar:/home/thamim72/.m2/repository/org/mockito/mockito-core/5.17.0/mockito-core-5.17.0.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar:/home/thamim72/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/home/thamim72/.m2/repository/org/mockito/mockito-junit-jupiter/5.17.0/mockito-junit-jupiter-5.17.0.jar:/home/thamim72/.m2/repository/org/skyscreamer/jsonassert/1.5.3/jsonassert-1.5.3.jar:/home/thamim72/.m2/repository/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar:/home/thamim72/.m2/repository/org/springframework/spring-core/6.2.16/spring-core-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-jcl/6.2.16/spring-jcl-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-test/6.2.16/spring-test-6.2.16.jar:/home/thamim72/.m2/repository/org/xmlunit/xmlunit-core/2.10.4/xmlunit-core-2.10.4.jar:"/>
+    <property name="java.class.path" value="/home/thamim72/online-exam/examrro/Examora/target/test-classes:/home/thamim72/online-exam/examrro/Examora/target/classes:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.5.11/spring-boot-starter-web-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter/3.5.11/spring-boot-starter-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot/3.5.11/spring-boot-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/3.5.11/spring-boot-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-logging/3.5.11/spring-boot-starter-logging-3.5.11.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-classic/1.5.32/logback-classic-1.5.32.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-core/1.5.32/logback-core-1.5.32.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-to-slf4j/2.24.3/log4j-to-slf4j-2.24.3.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-api/2.24.3/log4j-api-2.24.3.jar:/home/thamim72/.m2/repository/org/slf4j/jul-to-slf4j/2.0.17/jul-to-slf4j-2.0.17.jar:/home/thamim72/.m2/repository/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar:/home/thamim72/.m2/repository/org/yaml/snakeyaml/2.4/snakeyaml-2.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-json/3.5.11/spring-boot-starter-json-3.5.11.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.19.4/jackson-databind-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.19.4/jackson-annotations-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.19.4/jackson-core-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.19.4/jackson-datatype-jdk8-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.19.4/jackson-datatype-jsr310-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/module/jackson-module-parameter-names/2.19.4/jackson-module-parameter-names-2.19.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/3.5.11/spring-boot-starter-tomcat-3.5.11.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.52/tomcat-embed-core-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/10.1.52/tomcat-embed-el-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-websocket/10.1.52/tomcat-embed-websocket-10.1.52.jar:/home/thamim72/.m2/repository/org/springframework/spring-web/6.2.16/spring-web-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-beans/6.2.16/spring-beans-6.2.16.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-observation/1.15.9/micrometer-observation-1.15.9.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-commons/1.15.9/micrometer-commons-1.15.9.jar:/home/thamim72/.m2/repository/org/springframework/spring-webmvc/6.2.16/spring-webmvc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-context/6.2.16/spring-context-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-expression/6.2.16/spring-expression-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-jdbc/3.5.11/spring-boot-starter-jdbc-3.5.11.jar:/home/thamim72/.m2/repository/com/zaxxer/HikariCP/6.3.3/HikariCP-6.3.3.jar:/home/thamim72/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/thamim72/.m2/repository/org/springframework/spring-jdbc/6.2.16/spring-jdbc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-tx/6.2.16/spring-tx-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-security/3.5.11/spring-boot-starter-security-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/spring-aop/6.2.16/spring-aop-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-config/6.5.8/spring-security-config-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-core/6.5.8/spring-security-core-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-crypto/6.5.8/spring-security-crypto-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-web/6.5.8/spring-security-web-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-websocket/3.5.11/spring-boot-starter-websocket-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/spring-messaging/6.2.16/spring-messaging-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-websocket/6.2.16/spring-websocket-6.2.16.jar:/home/thamim72/.m2/repository/org/postgresql/postgresql/42.7.10/postgresql-42.7.10.jar:/home/thamim72/.m2/repository/org/checkerframework/checker-qual/3.52.0/checker-qual-3.52.0.jar:/home/thamim72/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-test/3.5.11/spring-boot-starter-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test/3.5.11/spring-boot-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/3.5.11/spring-boot-test-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/com/jayway/jsonpath/json-path/2.9.0/json-path-2.9.0.jar:/home/thamim72/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.4/jakarta.xml.bind-api-4.0.4.jar:/home/thamim72/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.4/jakarta.activation-api-2.1.4.jar:/home/thamim72/.m2/repository/net/minidev/json-smart/2.5.2/json-smart-2.5.2.jar:/home/thamim72/.m2/repository/net/minidev/accessors-smart/2.5.2/accessors-smart-2.5.2.jar:/home/thamim72/.m2/repository/org/ow2/asm/asm/9.7.1/asm-9.7.1.jar:/home/thamim72/.m2/repository/org/assertj/assertj-core/3.27.7/assertj-core-3.27.7.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy/1.17.8/byte-buddy-1.17.8.jar:/home/thamim72/.m2/repository/org/awaitility/awaitility/4.2.2/awaitility-4.2.2.jar:/home/thamim72/.m2/repository/org/hamcrest/hamcrest/3.0/hamcrest-3.0.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter/5.12.2/junit-jupiter-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.12.2/junit-jupiter-api-5.12.2.jar:/home/thamim72/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-commons/1.12.2/junit-platform-commons-1.12.2.jar:/home/thamim72/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.12.2/junit-jupiter-params-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.12.2/junit-jupiter-engine-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-engine/1.12.2/junit-platform-engine-1.12.2.jar:/home/thamim72/.m2/repository/org/mockito/mockito-core/5.17.0/mockito-core-5.17.0.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar:/home/thamim72/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/home/thamim72/.m2/repository/org/mockito/mockito-junit-jupiter/5.17.0/mockito-junit-jupiter-5.17.0.jar:/home/thamim72/.m2/repository/org/skyscreamer/jsonassert/1.5.3/jsonassert-1.5.3.jar:/home/thamim72/.m2/repository/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar:/home/thamim72/.m2/repository/org/springframework/spring-core/6.2.16/spring-core-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-jcl/6.2.16/spring-jcl-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-test/6.2.16/spring-test-6.2.16.jar:/home/thamim72/.m2/repository/org/xmlunit/xmlunit-core/2.10.4/xmlunit-core-2.10.4.jar:"/>
     <property name="java.vm.vendor" value="Arch Linux"/>
     <property name="sun.arch.data.model" value="64"/>
+    <property name="catalina.useNaming" value="false"/>
     <property name="java.vendor.url" value="https://openjdk.org/"/>
     <property name="user.timezone" value="Asia/Kolkata"/>
     <property name="os.name" value="Linux"/>
@@ -13,9 +14,10 @@
     <property name="APPLICATION_NAME" value="Examora"/>
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="sun.boot.library.path" value="/usr/lib/jvm/java-21-openjdk/lib"/>
-    <property name="sun.java.command" value="/home/thamim72/online-exam/examrro/Examora/target/surefire/surefirebooter-20260826234828613_3.jar /home/thamim72/online-exam/examrro/Examora/target/surefire 2026-08-26T23-48-28_498-jvmRun1 surefire-20260826234828613_1tmp surefire_0-20260826234828613_2tmp"/>
+    <property name="sun.java.command" value="/home/thamim72/online-exam/examrro/Examora/target/surefire/surefirebooter-20260829094550674_3.jar /home/thamim72/online-exam/examrro/Examora/target/surefire 2026-08-29T09-45-50_410-jvmRun1 surefire-20260829094550674_1tmp surefire_0-20260829094550674_2tmp"/>
     <property name="jdk.debug" value="release"/>
-    <property name="surefire.test.class.path" value="/home/thamim72/online-exam/examrro/Examora/target/test-classes:/home/thamim72/online-exam/examrro/Examora/target/classes:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.5.11/spring-boot-starter-web-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter/3.5.11/spring-boot-starter-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot/3.5.11/spring-boot-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/3.5.11/spring-boot-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-logging/3.5.11/spring-boot-starter-logging-3.5.11.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-classic/1.5.32/logback-classic-1.5.32.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-core/1.5.32/logback-core-1.5.32.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-to-slf4j/2.24.3/log4j-to-slf4j-2.24.3.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-api/2.24.3/log4j-api-2.24.3.jar:/home/thamim72/.m2/repository/org/slf4j/jul-to-slf4j/2.0.17/jul-to-slf4j-2.0.17.jar:/home/thamim72/.m2/repository/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar:/home/thamim72/.m2/repository/org/yaml/snakeyaml/2.4/snakeyaml-2.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-json/3.5.11/spring-boot-starter-json-3.5.11.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.19.4/jackson-databind-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.19.4/jackson-annotations-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.19.4/jackson-core-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.19.4/jackson-datatype-jdk8-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.19.4/jackson-datatype-jsr310-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/module/jackson-module-parameter-names/2.19.4/jackson-module-parameter-names-2.19.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/3.5.11/spring-boot-starter-tomcat-3.5.11.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.52/tomcat-embed-core-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/10.1.52/tomcat-embed-el-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-websocket/10.1.52/tomcat-embed-websocket-10.1.52.jar:/home/thamim72/.m2/repository/org/springframework/spring-web/6.2.16/spring-web-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-beans/6.2.16/spring-beans-6.2.16.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-observation/1.15.9/micrometer-observation-1.15.9.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-commons/1.15.9/micrometer-commons-1.15.9.jar:/home/thamim72/.m2/repository/org/springframework/spring-webmvc/6.2.16/spring-webmvc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-context/6.2.16/spring-context-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-expression/6.2.16/spring-expression-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-jdbc/3.5.11/spring-boot-starter-jdbc-3.5.11.jar:/home/thamim72/.m2/repository/com/zaxxer/HikariCP/6.3.3/HikariCP-6.3.3.jar:/home/thamim72/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/thamim72/.m2/repository/org/springframework/spring-jdbc/6.2.16/spring-jdbc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-tx/6.2.16/spring-tx-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-security/3.5.11/spring-boot-starter-security-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/spring-aop/6.2.16/spring-aop-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-config/6.5.8/spring-security-config-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-core/6.5.8/spring-security-core-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-crypto/6.5.8/spring-security-crypto-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-web/6.5.8/spring-security-web-6.5.8.jar:/home/thamim72/.m2/repository/org/postgresql/postgresql/42.7.10/postgresql-42.7.10.jar:/home/thamim72/.m2/repository/org/checkerframework/checker-qual/3.52.0/checker-qual-3.52.0.jar:/home/thamim72/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-test/3.5.11/spring-boot-starter-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test/3.5.11/spring-boot-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/3.5.11/spring-boot-test-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/com/jayway/jsonpath/json-path/2.9.0/json-path-2.9.0.jar:/home/thamim72/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.4/jakarta.xml.bind-api-4.0.4.jar:/home/thamim72/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.4/jakarta.activation-api-2.1.4.jar:/home/thamim72/.m2/repository/net/minidev/json-smart/2.5.2/json-smart-2.5.2.jar:/home/thamim72/.m2/repository/net/minidev/accessors-smart/2.5.2/accessors-smart-2.5.2.jar:/home/thamim72/.m2/repository/org/ow2/asm/asm/9.7.1/asm-9.7.1.jar:/home/thamim72/.m2/repository/org/assertj/assertj-core/3.27.7/assertj-core-3.27.7.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy/1.17.8/byte-buddy-1.17.8.jar:/home/thamim72/.m2/repository/org/awaitility/awaitility/4.2.2/awaitility-4.2.2.jar:/home/thamim72/.m2/repository/org/hamcrest/hamcrest/3.0/hamcrest-3.0.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter/5.12.2/junit-jupiter-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.12.2/junit-jupiter-api-5.12.2.jar:/home/thamim72/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-commons/1.12.2/junit-platform-commons-1.12.2.jar:/home/thamim72/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.12.2/junit-jupiter-params-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.12.2/junit-jupiter-engine-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-engine/1.12.2/junit-platform-engine-1.12.2.jar:/home/thamim72/.m2/repository/org/mockito/mockito-core/5.17.0/mockito-core-5.17.0.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar:/home/thamim72/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/home/thamim72/.m2/repository/org/mockito/mockito-junit-jupiter/5.17.0/mockito-junit-jupiter-5.17.0.jar:/home/thamim72/.m2/repository/org/skyscreamer/jsonassert/1.5.3/jsonassert-1.5.3.jar:/home/thamim72/.m2/repository/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar:/home/thamim72/.m2/repository/org/springframework/spring-core/6.2.16/spring-core-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-jcl/6.2.16/spring-jcl-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-test/6.2.16/spring-test-6.2.16.jar:/home/thamim72/.m2/repository/org/xmlunit/xmlunit-core/2.10.4/xmlunit-core-2.10.4.jar:"/>
+    <property name="surefire.test.class.path" value="/home/thamim72/online-exam/examrro/Examora/target/test-classes:/home/thamim72/online-exam/examrro/Examora/target/classes:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-web/3.5.11/spring-boot-starter-web-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter/3.5.11/spring-boot-starter-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot/3.5.11/spring-boot-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-autoconfigure/3.5.11/spring-boot-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-logging/3.5.11/spring-boot-starter-logging-3.5.11.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-classic/1.5.32/logback-classic-1.5.32.jar:/home/thamim72/.m2/repository/ch/qos/logback/logback-core/1.5.32/logback-core-1.5.32.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-to-slf4j/2.24.3/log4j-to-slf4j-2.24.3.jar:/home/thamim72/.m2/repository/org/apache/logging/log4j/log4j-api/2.24.3/log4j-api-2.24.3.jar:/home/thamim72/.m2/repository/org/slf4j/jul-to-slf4j/2.0.17/jul-to-slf4j-2.0.17.jar:/home/thamim72/.m2/repository/jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar:/home/thamim72/.m2/repository/org/yaml/snakeyaml/2.4/snakeyaml-2.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-json/3.5.11/spring-boot-starter-json-3.5.11.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.19.4/jackson-databind-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.19.4/jackson-annotations-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.19.4/jackson-core-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.19.4/jackson-datatype-jdk8-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.19.4/jackson-datatype-jsr310-2.19.4.jar:/home/thamim72/.m2/repository/com/fasterxml/jackson/module/jackson-module-parameter-names/2.19.4/jackson-module-parameter-names-2.19.4.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-tomcat/3.5.11/spring-boot-starter-tomcat-3.5.11.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-core/10.1.52/tomcat-embed-core-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-el/10.1.52/tomcat-embed-el-10.1.52.jar:/home/thamim72/.m2/repository/org/apache/tomcat/embed/tomcat-embed-websocket/10.1.52/tomcat-embed-websocket-10.1.52.jar:/home/thamim72/.m2/repository/org/springframework/spring-web/6.2.16/spring-web-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-beans/6.2.16/spring-beans-6.2.16.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-observation/1.15.9/micrometer-observation-1.15.9.jar:/home/thamim72/.m2/repository/io/micrometer/micrometer-commons/1.15.9/micrometer-commons-1.15.9.jar:/home/thamim72/.m2/repository/org/springframework/spring-webmvc/6.2.16/spring-webmvc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-context/6.2.16/spring-context-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-expression/6.2.16/spring-expression-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-jdbc/3.5.11/spring-boot-starter-jdbc-3.5.11.jar:/home/thamim72/.m2/repository/com/zaxxer/HikariCP/6.3.3/HikariCP-6.3.3.jar:/home/thamim72/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar:/home/thamim72/.m2/repository/org/springframework/spring-jdbc/6.2.16/spring-jdbc-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-tx/6.2.16/spring-tx-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-security/3.5.11/spring-boot-starter-security-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/spring-aop/6.2.16/spring-aop-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-config/6.5.8/spring-security-config-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-core/6.5.8/spring-security-core-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-crypto/6.5.8/spring-security-crypto-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/security/spring-security-web/6.5.8/spring-security-web-6.5.8.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-websocket/3.5.11/spring-boot-starter-websocket-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/spring-messaging/6.2.16/spring-messaging-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-websocket/6.2.16/spring-websocket-6.2.16.jar:/home/thamim72/.m2/repository/org/postgresql/postgresql/42.7.10/postgresql-42.7.10.jar:/home/thamim72/.m2/repository/org/checkerframework/checker-qual/3.52.0/checker-qual-3.52.0.jar:/home/thamim72/.m2/repository/com/h2database/h2/2.3.232/h2-2.3.232.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-starter-test/3.5.11/spring-boot-starter-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test/3.5.11/spring-boot-test-3.5.11.jar:/home/thamim72/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/3.5.11/spring-boot-test-autoconfigure-3.5.11.jar:/home/thamim72/.m2/repository/com/jayway/jsonpath/json-path/2.9.0/json-path-2.9.0.jar:/home/thamim72/.m2/repository/jakarta/xml/bind/jakarta.xml.bind-api/4.0.4/jakarta.xml.bind-api-4.0.4.jar:/home/thamim72/.m2/repository/jakarta/activation/jakarta.activation-api/2.1.4/jakarta.activation-api-2.1.4.jar:/home/thamim72/.m2/repository/net/minidev/json-smart/2.5.2/json-smart-2.5.2.jar:/home/thamim72/.m2/repository/net/minidev/accessors-smart/2.5.2/accessors-smart-2.5.2.jar:/home/thamim72/.m2/repository/org/ow2/asm/asm/9.7.1/asm-9.7.1.jar:/home/thamim72/.m2/repository/org/assertj/assertj-core/3.27.7/assertj-core-3.27.7.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy/1.17.8/byte-buddy-1.17.8.jar:/home/thamim72/.m2/repository/org/awaitility/awaitility/4.2.2/awaitility-4.2.2.jar:/home/thamim72/.m2/repository/org/hamcrest/hamcrest/3.0/hamcrest-3.0.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter/5.12.2/junit-jupiter-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.12.2/junit-jupiter-api-5.12.2.jar:/home/thamim72/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-commons/1.12.2/junit-platform-commons-1.12.2.jar:/home/thamim72/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.12.2/junit-jupiter-params-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.12.2/junit-jupiter-engine-5.12.2.jar:/home/thamim72/.m2/repository/org/junit/platform/junit-platform-engine/1.12.2/junit-platform-engine-1.12.2.jar:/home/thamim72/.m2/repository/org/mockito/mockito-core/5.17.0/mockito-core-5.17.0.jar:/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar:/home/thamim72/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/home/thamim72/.m2/repository/org/mockito/mockito-junit-jupiter/5.17.0/mockito-junit-jupiter-5.17.0.jar:/home/thamim72/.m2/repository/org/skyscreamer/jsonassert/1.5.3/jsonassert-1.5.3.jar:/home/thamim72/.m2/repository/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar:/home/thamim72/.m2/repository/org/springframework/spring-core/6.2.16/spring-core-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-jcl/6.2.16/spring-jcl-6.2.16.jar:/home/thamim72/.m2/repository/org/springframework/spring-test/6.2.16/spring-test-6.2.16.jar:/home/thamim72/.m2/repository/org/xmlunit/xmlunit-core/2.10.4/xmlunit-core-2.10.4.jar:"/>
+    <property name="test" value="AuthSecurityIntegrationTest"/>
     <property name="sun.cpu.endian" value="little"/>
     <property name="user.home" value="/home/thamim72"/>
     <property name="user.language" value="en"/>
@@ -30,7 +32,7 @@
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="FILE_LOG_CHARSET" value="UTF-8"/>
     <property name="java.awt.headless" value="true"/>
-    <property name="surefire.real.class.path" value="/home/thamim72/online-exam/examrro/Examora/target/surefire/surefirebooter-20260826234828613_3.jar"/>
+    <property name="surefire.real.class.path" value="/home/thamim72/online-exam/examrro/Examora/target/surefire/surefirebooter-20260829094550674_3.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="21.0.12.1+1"/>
     <property name="user.name" value="thamim72"/>
@@ -43,13 +45,15 @@
     <property name="localRepository" value="/home/thamim72/.m2/repository"/>
     <property name="java.vendor.url.bug" value="https://bugreport.java.com/bugreport/"/>
     <property name="java.io.tmpdir" value="/tmp"/>
+    <property name="catalina.home" value="/tmp/tomcat.0.6421705707976936814"/>
     <property name="com.zaxxer.hikari.pool_number" value="1"/>
     <property name="java.version" value="21.0.12.1"/>
     <property name="user.dir" value="/home/thamim72/online-exam/examrro/Examora"/>
     <property name="os.arch" value="amd64"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="PID" value="45722"/>
+    <property name="PID" value="54646"/>
     <property name="CONSOLE_LOG_CHARSET" value="UTF-8"/>
+    <property name="catalina.base" value="/tmp/tomcat.0.6421705707976936814"/>
     <property name="native.encoding" value="UTF-8"/>
     <property name="java.library.path" value="/usr/java/packages/lib:/usr/lib64:/lib64:/lib:/usr/lib"/>
     <property name="stderr.encoding" value="UTF-8"/>
@@ -60,9 +64,17 @@
     <property name="java.class.version" value="65.0"/>
     <property name="LOGGED_APPLICATION_NAME" value="[Examora] "/>
   </properties>
-  <testcase name="loginReturnsTokenUserAndRoleForStudent" classname="com.examora.AuthSecurityIntegrationTest" time="3.139">
-    <system-out><![CDATA[23:48:30.506 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.examora.AuthSecurityIntegrationTest]: AuthSecurityIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-23:48:31.114 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.examora.ExamoraApplication for test class com.examora.AuthSecurityIntegrationTest
+  <testcase name="authenticatedStudentConnectsToOwnActivityWebSocketDestination" classname="com.examora.AuthSecurityIntegrationTest" time="9.301">
+    <failure message="&#10;Expecting actual not to be null" type="java.lang.AssertionError"><![CDATA[java.lang.AssertionError: 
+
+Expecting actual not to be null
+	at com.examora.AuthSecurityIntegrationTest.authenticatedStudentConnectsToOwnActivityWebSocketDestination(AuthSecurityIntegrationTest.java:183)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+]]></failure>
+    <system-out><![CDATA[09:45:53.128 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.examora.AuthSecurityIntegrationTest]: AuthSecurityIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:45:53.483 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.examora.ExamoraApplication for test class com.examora.AuthSecurityIntegrationTest
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -73,29 +85,91 @@
 
  :: Spring Boot ::               (v3.5.11)
 
-2026-08-26T23:48:32.783+05:30  INFO 45722 --- [Examora] [           main] c.examora.AuthSecurityIntegrationTest    : Starting AuthSecurityIntegrationTest using Java 21.0.12.1 with PID 45722 (started by thamim72 in /home/thamim72/online-exam/examrro/Examora)
-2026-08-26T23:48:32.792+05:30  INFO 45722 --- [Examora] [           main] c.examora.AuthSecurityIntegrationTest    : No active profile set, falling back to 1 default profile: "default"
-2026-08-26T23:48:32.796+05:30 DEBUG 45722 --- [Examora] [           main] o.s.boot.SpringApplication               : Loading source class com.examora.ExamoraApplication
-2026-08-26T23:48:32.899+05:30 DEBUG 45722 --- [Examora] [           main] o.s.w.c.s.GenericWebApplicationContext   : Refreshing org.springframework.web.context.support.GenericWebApplicationContext@7af707e0
-2026-08-26T23:48:36.024+05:30  INFO 45722 --- [Examora] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-08-26T23:48:36.364+05:30  INFO 45722 --- [Examora] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:examora user=SA
-2026-08-26T23:48:36.367+05:30  INFO 45722 --- [Examora] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-08-26T23:48:36.648+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.a.AutoConfigurationPackages        : @EnableAutoConfiguration was declared on a class in the package 'com.examora'. Automatic @Repository and @Entity scanning is enabled.
-2026-08-26T23:48:37.287+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : 49 mappings in 'requestMappingHandlerMapping'
-2026-08-26T23:48:37.364+05:30 DEBUG 45722 --- [Examora] [           main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**] in 'resourceHandlerMapping'
-2026-08-26T23:48:37.412+05:30  INFO 45722 --- [Examora] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsService
-2026-08-26T23:48:37.935+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
-2026-08-26T23:48:38.025+05:30 DEBUG 45722 --- [Examora] [           main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 1 @ExceptionHandler, 1 ResponseBodyAdvice
-2026-08-26T23:48:38.212+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.w.s.ServletContextInitializerBeans : Mapping filters: springSecurityFilterChain urls=[/*] order=-100, characterEncodingFilter urls=[/*] order=-2147483648, formContentFilter urls=[/*] order=-9900, requestContextFilter urls=[/*] order=-105, jwtAuthenticationFilter urls=[/*] order=2147483647
-2026-08-26T23:48:38.213+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.w.s.ServletContextInitializerBeans : Mapping servlets: 
-2026-08-26T23:48:38.230+05:30 DEBUG 45722 --- [Examora] [           main] s.b.w.s.f.OrderedCharacterEncodingFilter : Filter 'characterEncodingFilter' configured for use
-2026-08-26T23:48:38.230+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.w.s.f.OrderedFormContentFilter     : Filter 'formContentFilter' configured for use
-2026-08-26T23:48:38.231+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.w.s.f.OrderedRequestContextFilter  : Filter 'requestContextFilter' configured for use
-2026-08-26T23:48:38.231+05:30 DEBUG 45722 --- [Examora] [           main] .DelegatingFilterProxyRegistrationBean$1 : Filter 'springSecurityFilterChain' configured for use
-2026-08-26T23:48:38.233+05:30  INFO 45722 --- [Examora] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
-2026-08-26T23:48:38.233+05:30  INFO 45722 --- [Examora] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
-2026-08-26T23:48:38.236+05:30  INFO 45722 --- [Examora] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 2 ms
-2026-08-26T23:48:38.303+05:30 DEBUG 45722 --- [Examora] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+2026-08-29T09:45:55.591+05:30  INFO 54646 --- [Examora] [           main] c.examora.AuthSecurityIntegrationTest    : Starting AuthSecurityIntegrationTest using Java 21.0.12.1 with PID 54646 (started by thamim72 in /home/thamim72/online-exam/examrro/Examora)
+2026-08-29T09:45:55.604+05:30  INFO 54646 --- [Examora] [           main] c.examora.AuthSecurityIntegrationTest    : No active profile set, falling back to 1 default profile: "default"
+2026-08-29T09:45:55.607+05:30 DEBUG 54646 --- [Examora] [           main] o.s.boot.SpringApplication               : Loading source class com.examora.ExamoraApplication
+2026-08-29T09:45:55.723+05:30 DEBUG 54646 --- [Examora] [           main] ConfigServletWebServerApplicationContext : Refreshing org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext@a53bb6f
+2026-08-29T09:45:59.758+05:30 DEBUG 54646 --- [Examora] [           main] .s.b.w.e.t.TomcatServletWebServerFactory : Code archive: /home/thamim72/.m2/repository/org/springframework/boot/spring-boot/3.5.11/spring-boot-3.5.11.jar
+2026-08-29T09:45:59.759+05:30 DEBUG 54646 --- [Examora] [           main] .s.b.w.e.t.TomcatServletWebServerFactory : Code archive: /home/thamim72/.m2/repository/org/springframework/boot/spring-boot/3.5.11/spring-boot-3.5.11.jar
+2026-08-29T09:45:59.763+05:30 DEBUG 54646 --- [Examora] [           main] .s.b.w.e.t.TomcatServletWebServerFactory : None of the document roots [src/main/webapp, public, static] point to a directory and will be ignored.
+2026-08-29T09:45:59.860+05:30  INFO 54646 --- [Examora] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-08-29T09:45:59.912+05:30  INFO 54646 --- [Examora] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-08-29T09:45:59.914+05:30  INFO 54646 --- [Examora] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.52]
+2026-08-29T09:46:00.078+05:30  INFO 54646 --- [Examora] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-08-29T09:46:00.079+05:30 DEBUG 54646 --- [Examora] [           main] w.s.c.ServletWebServerApplicationContext : Published root WebApplicationContext as ServletContext attribute with name [org.springframework.web.context.WebApplicationContext.ROOT]
+2026-08-29T09:46:00.082+05:30  INFO 54646 --- [Examora] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 4356 ms
+2026-08-29T09:46:00.173+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.a.AutoConfigurationPackages        : @EnableAutoConfiguration was declared on a class in the package 'com.examora'. Automatic @Repository and @Entity scanning is enabled.
+2026-08-29T09:46:00.527+05:30  INFO 54646 --- [Examora] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-08-29T09:46:00.976+05:30  INFO 54646 --- [Examora] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:examora user=SA
+2026-08-29T09:46:00.979+05:30  INFO 54646 --- [Examora] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-08-29T09:46:01.272+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.ServletContextInitializerBeans : Mapping filters: springSecurityFilterChain urls=[/*] order=-100, characterEncodingFilter urls=[/*] order=-2147483648, formContentFilter urls=[/*] order=-9900, requestContextFilter urls=[/*] order=-105, jwtAuthenticationFilter urls=[/*] order=2147483647
+2026-08-29T09:46:01.273+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.ServletContextInitializerBeans : Mapping servlets: dispatcherServlet urls=[/]
+2026-08-29T09:46:01.333+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.f.OrderedRequestContextFilter  : Filter 'requestContextFilter' configured for use
+2026-08-29T09:46:01.340+05:30 DEBUG 54646 --- [Examora] [           main] s.b.w.s.f.OrderedCharacterEncodingFilter : Filter 'characterEncodingFilter' configured for use
+2026-08-29T09:46:01.341+05:30 DEBUG 54646 --- [Examora] [           main] .DelegatingFilterProxyRegistrationBean$1 : Filter 'springSecurityFilterChain' configured for use
+2026-08-29T09:46:01.342+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.f.OrderedFormContentFilter     : Filter 'formContentFilter' configured for use
+2026-08-29T09:46:02.208+05:30 DEBUG 54646 --- [Examora] [           main] o.s.w.s.s.s.WebSocketHandlerMapping      : Patterns [/ws] in 'stompWebSocketHandlerMapping'
+2026-08-29T09:46:02.530+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : 50 mappings in 'requestMappingHandlerMapping'
+2026-08-29T09:46:02.746+05:30 DEBUG 54646 --- [Examora] [           main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**] in 'resourceHandlerMapping'
+2026-08-29T09:46:02.840+05:30  INFO 54646 --- [Examora] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsService
+2026-08-29T09:46:03.334+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.ActivityController:
+	
+2026-08-29T09:46:03.335+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.AnswerController:
+	
+2026-08-29T09:46:03.336+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.AuthController:
+	
+2026-08-29T09:46:03.337+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.DatabaseController:
+	
+2026-08-29T09:46:03.338+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.ExamController:
+	
+2026-08-29T09:46:03.339+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.ProctorController:
+	
+2026-08-29T09:46:03.340+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.QuestionController:
+	
+2026-08-29T09:46:03.340+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.QuestionOptionController:
+	
+2026-08-29T09:46:03.341+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.ResultController:
+	
+2026-08-29T09:46:03.342+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.StatusController:
+	
+2026-08-29T09:46:03.342+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	c.e.c.UserController:
+	
+2026-08-29T09:46:03.344+05:30 DEBUG 54646 --- [Examora] [           main] .WebSocketAnnotationMethodMessageHandler : 
+	o.s.b.a.w.s.e.BasicErrorController:
+	
+2026-08-29T09:46:03.485+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-08-29T09:46:03.625+05:30 DEBUG 54646 --- [Examora] [           main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 1 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-08-29T09:46:03.855+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.ServletContextInitializerBeans : Mapping filters: springSecurityFilterChain urls=[/*] order=-100, characterEncodingFilter urls=[/*] order=-2147483648, formContentFilter urls=[/*] order=-9900, requestContextFilter urls=[/*] order=-105, jwtAuthenticationFilter urls=[/*] order=2147483647
+2026-08-29T09:46:03.855+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.ServletContextInitializerBeans : Mapping servlets: 
+2026-08-29T09:46:03.872+05:30 DEBUG 54646 --- [Examora] [           main] s.b.w.s.f.OrderedCharacterEncodingFilter : Filter 'characterEncodingFilter' configured for use
+2026-08-29T09:46:03.873+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.f.OrderedFormContentFilter     : Filter 'formContentFilter' configured for use
+2026-08-29T09:46:03.873+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.w.s.f.OrderedRequestContextFilter  : Filter 'requestContextFilter' configured for use
+2026-08-29T09:46:03.874+05:30 DEBUG 54646 --- [Examora] [           main] .DelegatingFilterProxyRegistrationBean$1 : Filter 'springSecurityFilterChain' configured for use
+2026-08-29T09:46:03.877+05:30  INFO 54646 --- [Examora] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring TestDispatcherServlet ''
+2026-08-29T09:46:03.878+05:30  INFO 54646 --- [Examora] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-08-29T09:46:03.882+05:30  INFO 54646 --- [Examora] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 4 ms
+2026-08-29T09:46:04.414+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : clientOutboundChannel added SubProtocolWebSocketHandler[StompSubProtocolHandler[v10.stomp, v11.stomp, v12.stomp]]
+2026-08-29T09:46:04.419+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : clientInboundChannel added WebSocketAnnotationMethodMessageHandler[prefixes=[]]
+2026-08-29T09:46:04.420+05:30  INFO 54646 --- [Examora] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-08-29T09:46:04.422+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : clientInboundChannel added SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@64eeddd8]
+2026-08-29T09:46:04.424+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : brokerChannel added SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@64eeddd8]
+2026-08-29T09:46:04.426+05:30  INFO 54646 --- [Examora] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@64eeddd8]]
+2026-08-29T09:46:04.429+05:30  INFO 54646 --- [Examora] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-08-29T09:46:04.432+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : clientInboundChannel added UserDestinationMessageHandler[DefaultUserDestinationResolver[prefix=/user/]]
+2026-08-29T09:46:04.435+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : brokerChannel added UserDestinationMessageHandler[DefaultUserDestinationResolver[prefix=/user/]]
+2026-08-29T09:46:04.491+05:30  INFO 54646 --- [Examora] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 43431 (http) with context path '/'
+2026-08-29T09:46:04.591+05:30 DEBUG 54646 --- [Examora] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
 
 
 ============================
@@ -162,6 +236,13 @@ Positive matches:
 
    DispatcherServletAutoConfiguration.DispatcherServletRegistrationConfiguration#dispatcherServletRegistration matched:
       - @ConditionalOnBean (names: dispatcherServlet types: org.springframework.web.servlet.DispatcherServlet; SearchStrategy: all) found bean 'dispatcherServlet' (OnBeanCondition)
+
+   EmbeddedWebServerFactoryCustomizerAutoConfiguration matched:
+      - @ConditionalOnWebApplication (required) found 'session' scope (OnWebApplicationCondition)
+      - @ConditionalOnWarDeployment the application is not deployed as a WAR file. (OnWarDeploymentCondition)
+
+   EmbeddedWebServerFactoryCustomizerAutoConfiguration.TomcatWebServerFactoryCustomizerConfiguration matched:
+      - @ConditionalOnClass found required classes 'org.apache.catalina.startup.Tomcat', 'org.apache.coyote.UpgradeProtocol' (OnClassCondition)
 
    ErrorMvcAutoConfiguration matched:
       - @ConditionalOnClass found required classes 'jakarta.servlet.Servlet', 'org.springframework.web.servlet.DispatcherServlet' (OnClassCondition)
@@ -309,7 +390,7 @@ Positive matches:
 
    RestClientAutoConfiguration matched:
       - @ConditionalOnClass found required class 'org.springframework.web.client.RestClient' (OnClassCondition)
-      - AnyNestedCondition 1 matched 1 did not; NestedCondition on NotReactiveWebApplicationOrVirtualThreadsExecutorEnabledCondition.VirtualThreadsExecutorEnabled found non-matching nested conditions @ConditionalOnThreading did not find VIRTUAL; NestedCondition on NotReactiveWebApplicationOrVirtualThreadsExecutorEnabledCondition.NotReactiveWebApplication NoneNestedConditions 0 matched 1 did not; NestedCondition on NotReactiveWebApplicationCondition.ReactiveWebApplication did not find reactive web application classes (NotReactiveWebApplicationOrVirtualThreadsExecutorEnabledCondition)
+      - AnyNestedCondition 1 matched 1 did not; NestedCondition on NotReactiveWebApplicationOrVirtualThreadsExecutorEnabledCondition.VirtualThreadsExecutorEnabled found non-matching nested conditions @ConditionalOnThreading did not find VIRTUAL, @ConditionalOnBean (names: applicationTaskExecutor; SearchStrategy: all) did not find any beans named applicationTaskExecutor; NestedCondition on NotReactiveWebApplicationOrVirtualThreadsExecutorEnabledCondition.NotReactiveWebApplication NoneNestedConditions 0 matched 1 did not; NestedCondition on NotReactiveWebApplicationCondition.ReactiveWebApplication did not find reactive web application classes (NotReactiveWebApplicationOrVirtualThreadsExecutorEnabledCondition)
 
    RestClientAutoConfiguration#httpMessageConvertersRestClientCustomizer matched:
       - @ConditionalOnMissingBean (types: org.springframework.boot.autoconfigure.web.client.HttpMessageConvertersRestClientCustomizer; SearchStrategy: all) did not find any beans (OnBeanCondition)
@@ -370,20 +451,8 @@ Positive matches:
    TaskExecutionAutoConfiguration matched:
       - @ConditionalOnClass found required class 'org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor' (OnClassCondition)
 
-   TaskExecutorConfigurations.AsyncConfigurerConfiguration matched:
-      - @ConditionalOnMissingBean (types: org.springframework.scheduling.annotation.AsyncConfigurer; SearchStrategy: all) did not find any beans (OnBeanCondition)
-
-   TaskExecutorConfigurations.AsyncConfigurerConfiguration#applicationTaskExecutorAsyncConfigurer matched:
-      - @ConditionalOnMissingBean (types: org.springframework.scheduling.annotation.AsyncConfigurer; SearchStrategy: all) did not find any beans (OnBeanCondition)
-
    TaskExecutorConfigurations.SimpleAsyncTaskExecutorBuilderConfiguration#simpleAsyncTaskExecutorBuilder matched:
       - @ConditionalOnMissingBean (types: org.springframework.boot.task.SimpleAsyncTaskExecutorBuilder; SearchStrategy: all) did not find any beans (OnBeanCondition)
-      - @ConditionalOnThreading found PLATFORM (OnThreadingCondition)
-
-   TaskExecutorConfigurations.TaskExecutorConfiguration matched:
-      - AnyNestedCondition 1 matched 1 did not; NestedCondition on TaskExecutorConfigurations.OnExecutorCondition.ModelCondition @ConditionalOnProperty (spring.task.execution.mode=force) did not find property 'spring.task.execution.mode'; NestedCondition on TaskExecutorConfigurations.OnExecutorCondition.ExecutorBeanCondition @ConditionalOnMissingBean (types: java.util.concurrent.Executor; SearchStrategy: all) did not find any beans (TaskExecutorConfigurations.OnExecutorCondition)
-
-   TaskExecutorConfigurations.TaskExecutorConfiguration#applicationTaskExecutor matched:
       - @ConditionalOnThreading found PLATFORM (OnThreadingCondition)
 
    TaskExecutorConfigurations.ThreadPoolTaskExecutorBuilderConfiguration#threadPoolTaskExecutorBuilder matched:
@@ -449,6 +518,14 @@ Positive matches:
 
    WebMvcAutoConfiguration.WebMvcAutoConfigurationAdapter#viewResolver matched:
       - @ConditionalOnBean (types: org.springframework.web.servlet.ViewResolver; SearchStrategy: all) found beans 'defaultViewResolver', 'beanNameViewResolver', 'mvcViewResolver'; @ConditionalOnMissingBean (names: viewResolver types: org.springframework.web.servlet.view.ContentNegotiatingViewResolver; SearchStrategy: all) did not find any beans (OnBeanCondition)
+
+   WebSocketMessagingAutoConfiguration matched:
+      - @ConditionalOnClass found required class 'org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer' (OnClassCondition)
+      - found 'session' scope (OnWebApplicationCondition)
+
+   WebSocketMessagingAutoConfiguration.WebSocketMessageConverterConfiguration matched:
+      - @ConditionalOnClass found required classes 'com.fasterxml.jackson.databind.ObjectMapper', 'org.springframework.messaging.simp.config.AbstractMessageBrokerConfiguration' (OnClassCondition)
+      - @ConditionalOnBean (types: org.springframework.web.socket.config.annotation.DelegatingWebSocketMessageBrokerConfiguration,com.fasterxml.jackson.databind.ObjectMapper; SearchStrategy: all) found beans 'jacksonObjectMapper', 'org.springframework.web.socket.config.annotation.DelegatingWebSocketMessageBrokerConfiguration' (OnBeanCondition)
 
    WebSocketServletAutoConfiguration matched:
       - @ConditionalOnClass found required classes 'jakarta.servlet.Servlet', 'jakarta.websocket.server.ServerContainer' (OnClassCondition)
@@ -619,11 +696,21 @@ Negative matches:
       Did not match:
          - @ConditionalOnClass did not find required class 'com.unboundid.ldap.listener.InMemoryDirectoryServer' (OnClassCondition)
 
-   EmbeddedWebServerFactoryCustomizerAutoConfiguration:
+   EmbeddedWebServerFactoryCustomizerAutoConfiguration.JettyWebServerFactoryCustomizerConfiguration:
       Did not match:
-         - Application is deployed as a WAR file. (OnWarDeploymentCondition)
-      Matched:
-         - @ConditionalOnWebApplication (required) found 'session' scope (OnWebApplicationCondition)
+         - @ConditionalOnClass did not find required classes 'org.eclipse.jetty.server.Server', 'org.eclipse.jetty.util.Loader', 'org.eclipse.jetty.ee10.webapp.WebAppContext' (OnClassCondition)
+
+   EmbeddedWebServerFactoryCustomizerAutoConfiguration.NettyWebServerFactoryCustomizerConfiguration:
+      Did not match:
+         - @ConditionalOnClass did not find required class 'reactor.netty.http.server.HttpServer' (OnClassCondition)
+
+   EmbeddedWebServerFactoryCustomizerAutoConfiguration.TomcatWebServerFactoryCustomizerConfiguration#tomcatVirtualThreadsProtocolHandlerCustomizer:
+      Did not match:
+         - @ConditionalOnThreading did not find VIRTUAL (OnThreadingCondition)
+
+   EmbeddedWebServerFactoryCustomizerAutoConfiguration.UndertowWebServerFactoryCustomizerConfiguration:
+      Did not match:
+         - @ConditionalOnClass did not find required classes 'io.undertow.Undertow', 'org.xnio.SslClientAuthMode' (OnClassCondition)
 
    ErrorWebFluxAutoConfiguration:
       Did not match:
@@ -1093,9 +1180,9 @@ Negative matches:
       Did not match:
          - @ConditionalOnMissingBean (types: org.springframework.boot.task.SimpleAsyncTaskExecutorBuilder; SearchStrategy: all) found beans of type 'org.springframework.boot.task.SimpleAsyncTaskExecutorBuilder' simpleAsyncTaskExecutorBuilder (OnBeanCondition)
 
-   TaskExecutorConfigurations.TaskExecutorConfiguration#applicationTaskExecutorVirtualThreads:
+   TaskExecutorConfigurations.TaskExecutorConfiguration:
       Did not match:
-         - @ConditionalOnThreading did not find VIRTUAL (OnThreadingCondition)
+         - AnyNestedCondition 0 matched 2 did not; NestedCondition on TaskExecutorConfigurations.OnExecutorCondition.ModelCondition @ConditionalOnProperty (spring.task.execution.mode=force) did not find property 'spring.task.execution.mode'; NestedCondition on TaskExecutorConfigurations.OnExecutorCondition.ExecutorBeanCondition @ConditionalOnMissingBean (types: java.util.concurrent.Executor; SearchStrategy: all) found beans of type 'java.util.concurrent.Executor' clientInboundChannelExecutor, clientOutboundChannelExecutor, brokerChannelExecutor (TaskExecutorConfigurations.OnExecutorCondition)
 
    TaskSchedulingAutoConfiguration#scheduledBeanLazyInitializationExcludeFilter:
       Did not match:
@@ -1174,10 +1261,6 @@ Negative matches:
       Did not match:
          - @ConditionalOnClass did not find required class 'reactor.core.publisher.Mono' (OnClassCondition)
 
-   WebSocketMessagingAutoConfiguration:
-      Did not match:
-         - @ConditionalOnClass did not find required class 'org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer' (OnClassCondition)
-
    WebSocketReactiveAutoConfiguration:
       Did not match:
          - @ConditionalOnWebApplication did not find reactive web application classes (OnWebApplicationCondition)
@@ -1222,28 +1305,48 @@ Unconditional classes:
 
 
 
-2026-08-26T23:48:38.334+05:30  INFO 45722 --- [Examora] [           main] c.examora.AuthSecurityIntegrationTest    : Started AuthSecurityIntegrationTest in 6.817 seconds (process running for 9.634)
-2026-08-26T23:48:38.344+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.a.ApplicationAvailabilityBean      : Application availability state LivenessState changed to CORRECT
-2026-08-26T23:48:38.349+05:30 DEBUG 45722 --- [Examora] [           main] o.s.b.a.ApplicationAvailabilityBean      : Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
-2026-08-26T23:48:39.825+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
-2026-08-26T23:48:39.832+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
-2026-08-26T23:48:39.833+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
-2026-08-26T23:48:39.834+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
-2026-08-26T23:48:39.835+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
-2026-08-26T23:48:39.835+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
-2026-08-26T23:48:39.836+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
-2026-08-26T23:48:40.046+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:40.047+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:40.502+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:40.506+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:40.717+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:40.718+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:40.930+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
-2026-08-26T23:48:41.196+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=student@example.com, password=student123]]
-2026-08-26T23:48:41.216+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:41.216+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
-2026-08-26T23:48:41.391+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:41.405+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
+2026-08-29T09:46:04.709+05:30  INFO 54646 --- [Examora] [           main] c.examora.AuthSecurityIntegrationTest    : Started AuthSecurityIntegrationTest in 10.687 seconds (process running for 13.804)
+2026-08-29T09:46:04.718+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.a.ApplicationAvailabilityBean      : Application availability state LivenessState changed to CORRECT
+2026-08-29T09:46:04.745+05:30 DEBUG 54646 --- [Examora] [           main] o.s.b.a.ApplicationAvailabilityBean      : Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+2026-08-29T09:46:06.931+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:06.940+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:06.941+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:06.942+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:06.943+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:06.944+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:06.946+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:06.946+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:07.276+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:07.280+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:07.539+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:07.540+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:07.721+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:07.721+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:07.945+05:30 DEBUG 54646 --- [Examora] [           main] o.s.w.s.c.s.StandardWebSocketClient      : Connecting to ws://localhost:43431/ws?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzdHVkZW50QGV4YW1wbGUuY29tIiwidXNlcklkIjoic3R1ZGVudC0xIiwicm9sZSI6IlNUVURFTlQiLCJuYW1lIjoiU3R1ZGVudCBPbmUiLCJpYXQiOjE3ODc5NzY5NjcsImV4cCI6MTc4ODA2MzM2N30.ASznvPrtFLmujqtkP0neuHPO1Tweu4xl6xVbH68o8Uw
+2026-08-29T09:46:08.157+05:30  INFO 54646 --- [Examora] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-29T09:46:08.158+05:30  INFO 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-08-29T09:46:08.158+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
+2026-08-29T09:46:08.158+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Detected AcceptHeaderLocaleResolver
+2026-08-29T09:46:08.159+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Detected FixedThemeResolver
+2026-08-29T09:46:08.161+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@3ccefe1b
+2026-08-29T09:46:08.162+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@4eacb6d1
+2026-08-29T09:46:08.163+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-08-29T09:46:08.163+05:30  INFO 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 5 ms
+2026-08-29T09:46:08.228+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/ws?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzdHVkZW50QGV4YW1wbGUuY29tIiwidXNlcklkIjoic3R1ZGVudC0xIiwicm9sZSI6IlNUVURFTlQiLCJuYW1lIjoiU3R1ZGVudCBPbmUiLCJpYXQiOjE3ODc5NzY5NjcsImV4cCI6MTc4ODA2MzM2N30.ASznvPrtFLmujqtkP0neuHPO1Tweu4xl6xVbH68o8Uw", parameters={masked}
+2026-08-29T09:46:08.235+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.w.s.s.s.WebSocketHandlerMapping      : Mapped to org.springframework.web.socket.server.support.WebSocketHttpRequestHandler@5cc3e49b
+2026-08-29T09:46:08.257+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.w.s.s.s.WebSocketHttpRequestHandler  : GET /ws
+2026-08-29T09:46:08.357+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:08.359+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:08.427+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 101 SWITCHING_PROTOCOLS
+2026-08-29T09:46:08.470+05:30 DEBUG 54646 --- [Examora] [cTaskExecutor-1] s.w.s.h.LoggingWebSocketHandlerDecorator : New StandardWebSocketSession[id=5c85c54b-af30-85a1-be3c-36d403fa64a4, uri=null]
+2026-08-29T09:46:08.470+05:30 DEBUG 54646 --- [Examora] [cTaskExecutor-1] org.springframework.web.SimpLogging      : Connection established in session id=50ce538e-e172-93ce-cb86-04cb92059b11
+2026-08-29T09:46:08.469+05:30 DEBUG 54646 --- [Examora] [o-auto-1-exec-1] s.w.s.h.LoggingWebSocketHandlerDecorator : New StandardWebSocketSession[id=169879b6-b9ba-f355-7f3f-b9fbc6072980, uri=ws://localhost:43431/ws?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzdHVkZW50QGV4YW1wbGUuY29tIiwidXNlcklkIjoic3R1ZGVudC0xIiwicm9sZSI6IlNUVURFTlQiLCJuYW1lIjoiU3R1ZGVudCBPbmUiLCJpYXQiOjE3ODc5NzY5NjcsImV4cCI6MTc4ODA2MzM2N30.ASznvPrtFLmujqtkP0neuHPO1Tweu4xl6xVbH68o8Uw]
+2026-08-29T09:46:08.639+05:30 DEBUG 54646 --- [Examora] [nboundChannel-2] org.springframework.web.SimpLogging      : Processing CONNECT user=student-1 session=169879b6-b9ba-f355-7f3f-b9fbc6072980
+2026-08-29T09:46:08.691+05:30 DEBUG 54646 --- [Examora] [nboundChannel-4] .WebSocketAnnotationMethodMessageHandler : Searching methods to handle SUBSCRIBE /user/queue/activity id=0 session=169879b6-b9ba-f355-7f3f-b9fbc6072980, lookupDestination='/user/queue/activity'
+2026-08-29T09:46:08.692+05:30 DEBUG 54646 --- [Examora] [nboundChannel-4] .WebSocketAnnotationMethodMessageHandler : No matching message handler methods.
+2026-08-29T09:46:08.700+05:30 DEBUG 54646 --- [Examora] [nboundChannel-6] org.springframework.web.SimpLogging      : Processing SUBSCRIBE destination=/queue/activity-user169879b6-b9ba-f355-7f3f-b9fbc6072980 subscriptionId=0 session=169879b6-b9ba-f355-7f3f-b9fbc6072980 user=student-1 attributes[2] payload=byte[0]
+2026-08-29T09:46:08.931+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : Processing MESSAGE destination=/queue/activity-user169879b6-b9ba-f355-7f3f-b9fbc6072980 session=null payload={"id":"live-1","type":"EXAM_STARTED","message":"Live activity","createdAt":"2026...(truncated)
+2026-08-29T09:46:08.934+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : Broadcasting to 1 sessions.
 ]]></system-out>
     <system-err><![CDATA[Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
 WARNING: A Java agent has been loaded dynamically (/home/thamim72/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar)
@@ -1252,116 +1355,209 @@ WARNING: If a serviceability tool is not in use, please run with -Djdk.instrumen
 WARNING: Dynamic loading of agents will be disallowed by default in a future release
 ]]></system-err>
   </testcase>
-  <testcase name="incorrectCredentialsReturnUnauthorized" classname="com.examora.AuthSecurityIntegrationTest" time="0.482">
-    <system-out><![CDATA[2026-08-26T23:48:41.529+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
-2026-08-26T23:48:41.529+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
-2026-08-26T23:48:41.530+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
-2026-08-26T23:48:41.531+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
-2026-08-26T23:48:41.531+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
-2026-08-26T23:48:41.532+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
-2026-08-26T23:48:41.533+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
-2026-08-26T23:48:41.651+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:41.651+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:41.758+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:41.758+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:41.865+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:41.865+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:41.869+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
-2026-08-26T23:48:41.870+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=student@example.com, password=wrong-password]]
-2026-08-26T23:48:41.871+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:41.872+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
-2026-08-26T23:48:41.991+05:30 DEBUG 45722 --- [Examora] [           main] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.examora.exception.GlobalExceptionHandler#handleApiException(ApiException)
-2026-08-26T23:48:41.996+05:30 DEBUG 45722 --- [Examora] [           main] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:41.997+05:30 DEBUG 45722 --- [Examora] [           main] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ApiResponse[success=false, message=Invalid email or password., data=null]]
-2026-08-26T23:48:41.999+05:30 DEBUG 45722 --- [Examora] [           main] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.examora.exception.ApiException: Invalid email or password.]
+  <testcase name="adminLoginReturnsTheDatabaseAdminRole" classname="com.examora.AuthSecurityIntegrationTest" time="1.051">
+    <system-out><![CDATA[2026-08-29T09:46:14.098+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:14.099+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:14.100+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:14.101+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:14.102+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:14.103+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:14.103+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:14.104+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:14.282+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:14.283+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:14.459+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:14.459+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:14.645+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:14.645+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:14.677+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
+2026-08-29T09:46:14.752+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=admin@example.com, password=admin123]]
+2026-08-29T09:46:14.774+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:14.774+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
+2026-08-29T09:46:15.012+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:15.028+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
 ]]></system-out>
   </testcase>
-  <testcase name="adminCanAccessUserManagement" classname="com.examora.AuthSecurityIntegrationTest" time="0.782">
-    <system-out><![CDATA[2026-08-26T23:48:42.015+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
-2026-08-26T23:48:42.016+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
-2026-08-26T23:48:42.016+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
-2026-08-26T23:48:42.017+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
-2026-08-26T23:48:42.018+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
-2026-08-26T23:48:42.018+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
-2026-08-26T23:48:42.019+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
-2026-08-26T23:48:42.182+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:42.183+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:42.288+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:42.288+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:42.391+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:42.391+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:42.394+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
-2026-08-26T23:48:42.395+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=admin@example.com, password=admin123]]
-2026-08-26T23:48:42.396+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:42.396+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
-2026-08-26T23:48:42.566+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:42.569+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
-2026-08-26T23:48:42.767+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:42.768+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
-2026-08-26T23:48:42.772+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.UserController#list()
-2026-08-26T23:48:42.775+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL query [select id, name, email, role, avatar from users order by name]
-2026-08-26T23:48:42.777+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:42.778+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=[User[id=admin-1, name=Admin One, email=admin@exampl (truncated)...]
+  <testcase name="loginReturnsTokenUserAndRoleForStudent" classname="com.examora.AuthSecurityIntegrationTest" time="0.756">
+    <system-out><![CDATA[2026-08-29T09:46:15.156+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:15.157+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:15.159+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:15.160+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:15.161+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:15.162+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:15.163+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:15.164+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:15.359+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:15.360+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:15.530+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:15.530+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:15.704+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:15.707+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:15.712+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
+2026-08-29T09:46:15.713+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=student@example.com, password=student123]]
+2026-08-29T09:46:15.714+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:15.714+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
+2026-08-29T09:46:15.890+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:15.890+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
 ]]></system-out>
   </testcase>
-  <testcase name="teacherCanManageExamsButCannotManageUsers" classname="com.examora.AuthSecurityIntegrationTest" time="0.53">
-    <system-out><![CDATA[2026-08-26T23:48:42.799+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
-2026-08-26T23:48:42.800+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
-2026-08-26T23:48:42.801+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
-2026-08-26T23:48:42.801+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
-2026-08-26T23:48:42.810+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
-2026-08-26T23:48:42.811+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
-2026-08-26T23:48:42.811+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
-2026-08-26T23:48:42.924+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:42.924+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.026+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:43.027+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.132+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:43.132+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.135+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
-2026-08-26T23:48:43.136+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=teacher@example.com, password=teacher123]]
-2026-08-26T23:48:43.137+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.137+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
-2026-08-26T23:48:43.246+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:43.247+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
-2026-08-26T23:48:43.251+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.251+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
-2026-08-26T23:48:43.254+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.ExamController#create(Exam, String)
-2026-08-26T23:48:43.279+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [Exam[id=null, title=Physics Test, subject=Physics, date=null, duration=45, status=null, participants (truncated)...]
-2026-08-26T23:48:43.282+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.282+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
-2026-08-26T23:48:43.283+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:43.284+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into exams (id, title, subject, date, duration, status, participants, average_score, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.301+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:43.301+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Created, data=Exam[id=29f9a67f-3a49-4236-a69a-4bd4c81d1636, title= (truncated)...]
-2026-08-26T23:48:43.314+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.315+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+  <testcase name="incorrectCredentialsReturnUnauthorized" classname="com.examora.AuthSecurityIntegrationTest" time="0.738">
+    <system-out><![CDATA[2026-08-29T09:46:15.917+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:15.918+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:15.919+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:15.921+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:15.923+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:15.926+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:15.927+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:15.928+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:16.105+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:16.106+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:16.277+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:16.278+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:16.446+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:16.447+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:16.451+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
+2026-08-29T09:46:16.452+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=student@example.com, password=wrong-password]]
+2026-08-29T09:46:16.453+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:16.453+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
+2026-08-29T09:46:16.632+05:30 DEBUG 54646 --- [Examora] [           main] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.examora.exception.GlobalExceptionHandler#handleApiException(ApiException)
+2026-08-29T09:46:16.635+05:30 DEBUG 54646 --- [Examora] [           main] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:16.636+05:30 DEBUG 54646 --- [Examora] [           main] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [ApiResponse[success=false, message=Invalid email or password., data=null]]
+2026-08-29T09:46:16.639+05:30 DEBUG 54646 --- [Examora] [           main] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [com.examora.exception.ApiException: Invalid email or password.]
 ]]></system-out>
   </testcase>
-  <testcase name="studentCannotUseTeacherOrAdminEndpoints" classname="com.examora.AuthSecurityIntegrationTest" time="0.476">
-    <system-out><![CDATA[2026-08-26T23:48:43.330+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
-2026-08-26T23:48:43.331+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
-2026-08-26T23:48:43.332+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
-2026-08-26T23:48:43.333+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
-2026-08-26T23:48:43.334+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
-2026-08-26T23:48:43.334+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
-2026-08-26T23:48:43.336+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
-2026-08-26T23:48:43.454+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:43.455+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.568+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:43.568+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.678+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
-2026-08-26T23:48:43.678+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
-2026-08-26T23:48:43.681+05:30 DEBUG 45722 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
-2026-08-26T23:48:43.681+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=student@example.com, password=student123]]
-2026-08-26T23:48:43.682+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.682+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
-2026-08-26T23:48:43.786+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
-2026-08-26T23:48:43.786+05:30 DEBUG 45722 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
-2026-08-26T23:48:43.791+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.791+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
-2026-08-26T23:48:43.795+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
-2026-08-26T23:48:43.795+05:30 DEBUG 45722 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+  <testcase name="adminCanAccessUserManagement" classname="com.examora.AuthSecurityIntegrationTest" time="0.811">
+    <system-out><![CDATA[2026-08-29T09:46:16.664+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:16.665+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:16.666+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:16.667+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:16.668+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:16.669+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:16.670+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:16.671+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:16.857+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:16.858+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:17.049+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:17.049+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:17.228+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:17.228+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:17.232+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
+2026-08-29T09:46:17.234+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=admin@example.com, password=admin123]]
+2026-08-29T09:46:17.234+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:17.234+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
+2026-08-29T09:46:17.409+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:17.410+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
+2026-08-29T09:46:17.431+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:17.432+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:17.436+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.UserController#list()
+2026-08-29T09:46:17.440+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL query [select id, name, email, role, avatar from users order by name]
+2026-08-29T09:46:17.444+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:17.445+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=[User[id=admin-1, name=Admin One, email=admin@exampl (truncated)...]
+]]></system-out>
+  </testcase>
+  <testcase name="teacherCanManageExamsButCannotManageUsers" classname="com.examora.AuthSecurityIntegrationTest" time="0.944">
+    <system-out><![CDATA[2026-08-29T09:46:17.480+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:17.480+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:17.481+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:17.481+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:17.482+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:17.482+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:17.483+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:17.483+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:17.679+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:17.680+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:17.850+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:17.850+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:18.019+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:18.020+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:18.025+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
+2026-08-29T09:46:18.027+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=teacher@example.com, password=teacher123]]
+2026-08-29T09:46:18.027+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:18.027+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
+2026-08-29T09:46:18.237+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:18.238+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
+2026-08-29T09:46:18.257+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:18.257+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:18.265+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.ExamController#create(Exam, String)
+2026-08-29T09:46:18.308+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [Exam[id=null, title=Physics Test, subject=Physics, date=null, duration=45, status=null, participants (truncated)...]
+2026-08-29T09:46:18.313+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:18.313+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:18.316+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:18.316+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into exams (id, title, subject, date, duration, status, participants, average_score, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?)]
+2026-08-29T09:46:18.345+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:18.348+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into activity_events (id, actor_id, audience, type, message) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:18.352+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : Processing MESSAGE destination=/topic/admin/activity session=null payload={"id":"ad643795-4949-48f4-81cd-306a073b9ac5","type":"EXAM_CREATED","message":"Te...(truncated)
+2026-08-29T09:46:18.355+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:18.356+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Created, data=Exam[id=9c5a624a-83c4-408f-aed1-b30a75fe91c6, title= (truncated)...]
+2026-08-29T09:46:18.392+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:18.394+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+]]></system-out>
+  </testcase>
+  <testcase name="studentCannotUseTeacherOrAdminEndpoints" classname="com.examora.AuthSecurityIntegrationTest" time="0.835">
+    <system-out><![CDATA[2026-08-29T09:46:18.431+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:18.432+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:18.433+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:18.434+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:18.435+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:18.438+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:18.439+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:18.441+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:18.640+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:18.641+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:18.826+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:18.827+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:19.010+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:19.010+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:19.014+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#login(LoginRequest)
+2026-08-29T09:46:19.015+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [LoginRequest[email=student@example.com, password=student123]]
+2026-08-29T09:46:19.015+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.015+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar, password_hash from users where email = ?]
+2026-08-29T09:46:19.198+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:19.199+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1N (truncated)...]
+2026-08-29T09:46:19.210+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.211+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:19.215+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [insert into activity_events (id, audience, type, message) values ('admin-activity', 'ADMIN', 'EXAM_CREATED', 'Private administrator activity')]
+2026-08-29T09:46:19.219+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.219+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:19.222+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.ActivityController#recent(String)
+2026-08-29T09:46:19.226+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.226+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:19.228+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.228+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, type, message, created_at from activity_events where audience = 'STUDENT' and actor_id = ? order by created_at desc limit 20]
+2026-08-29T09:46:19.232+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:19.232+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Success, data=[]]]
+2026-08-29T09:46:19.240+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.240+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+2026-08-29T09:46:19.248+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL query
+2026-08-29T09:46:19.248+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [select id, name, email, role, avatar from users where email = ?]
+]]></system-out>
+  </testcase>
+  <testcase name="registrationOnlyCreatesStudentAccounts" classname="com.examora.AuthSecurityIntegrationTest" time="0.886">
+    <system-out><![CDATA[2026-08-29T09:46:19.267+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from activity_events]
+2026-08-29T09:46:19.270+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from proctor_events]
+2026-08-29T09:46:19.271+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from answers]
+2026-08-29T09:46:19.272+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from results]
+2026-08-29T09:46:19.273+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from question_options]
+2026-08-29T09:46:19.274+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from questions]
+2026-08-29T09:46:19.275+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from exams]
+2026-08-29T09:46:19.276+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing SQL update [delete from users]
+2026-08-29T09:46:19.504+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:19.504+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:19.708+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:19.708+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:19.917+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:19.918+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:19.922+05:30 DEBUG 54646 --- [Examora] [           main] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.examora.controller.AuthController#register(RegisterRequest)
+2026-08-29T09:46:19.929+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Read "application/json;charset=UTF-8" to [RegisterRequest[name=New User, email=new.user@example.com, password=password123]]
+2026-08-29T09:46:20.116+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:20.116+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into users (id, name, email, password_hash, role) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:20.120+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:20.120+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into activity_events (id, actor_id, audience, type, message) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:20.125+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL update
+2026-08-29T09:46:20.126+05:30 DEBUG 54646 --- [Examora] [           main] o.s.jdbc.core.JdbcTemplate               : Executing prepared SQL statement [insert into activity_events (id, actor_id, audience, type, message) values (?, ?, ?, ?, ?)]
+2026-08-29T09:46:20.128+05:30 DEBUG 54646 --- [Examora] [           main] org.springframework.web.SimpLogging      : Processing MESSAGE destination=/topic/admin/activity session=null payload={"id":"876179cb-1451-425d-b3ce-dd92e80b24cc","type":"STUDENT_REGISTERED","messag...(truncated)
+2026-08-29T09:46:20.134+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Using 'application/json', given [*/*] and supported [application/json, application/*+json]
+2026-08-29T09:46:20.136+05:30 DEBUG 54646 --- [Examora] [           main] m.m.a.RequestResponseBodyMethodProcessor : Writing [ApiResponse[success=true, message=Registered, data=AuthResponse[token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUz (truncated)...]
 ]]></system-out>
   </testcase>
 </testsuite>

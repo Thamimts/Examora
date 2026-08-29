@@ -1,6 +1,9 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/ExamoraApplication.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/config/CorsConfig.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/config/InitialAdminProvisioner.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/config/SecurityConfig.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/config/WebSocketConfig.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/ActivityController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/AnswerController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/AuthController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/DatabaseController.java
@@ -17,6 +20,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/ProctorDtos.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/exception/ApiException.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/exception/GlobalExceptionHandler.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/ActivityEvent.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Answer.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Exam.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/ExamAttempt.java
@@ -26,6 +30,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Result.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Role.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/User.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ActivityRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/AnswerRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ExamAttemptRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ExamRepository.java
@@ -36,6 +41,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/UserRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/security/JwtAuthenticationFilter.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/security/JwtService.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/ActivityService.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/AnswerService.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/AuthService.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/DatabaseService.java

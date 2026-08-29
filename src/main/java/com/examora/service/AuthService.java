@@ -27,11 +27,13 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final ActivityService activityService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, ActivityService activityService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.activityService = activityService;
     }
 
     public AuthResponse login(String email, String password) {
@@ -64,6 +66,8 @@ public class AuthService {
                     normalizeEmail(email),
                     passwordEncoder.encode(password),
                     Role.STUDENT);
+            activityService.student(user, "REGISTERED", "Your student account was created.");
+            activityService.admin("STUDENT_REGISTERED", user.name() + " registered as a student.");
             return new AuthResponse(jwtService.generateToken(user), user);
         } catch (DuplicateKeyException exception) {
             throw new ApiException(HttpStatus.CONFLICT, "Email is already registered.");
