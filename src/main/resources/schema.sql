@@ -29,3 +29,9 @@ create table if not exists proctor_events (
  id varchar(36) primary key, attempt_id varchar(36) not null, event_id varchar(100), type varchar(80) not null, occurred_at varchar(40) not null, metadata text, created_at timestamp default current_timestamp,
  constraint uq_proctor_event unique (attempt_id, event_id), constraint fk_proctor_attempt foreign key (attempt_id) references exam_attempts(id)
 );
+create table if not exists activity_events (
+ id varchar(36) primary key, actor_id varchar(36), audience varchar(20) not null,
+ type varchar(60) not null, message varchar(300) not null, created_at timestamp not null default current_timestamp,
+ constraint fk_activity_actor foreign key (actor_id) references users(id) on delete set null
+);
+create index if not exists idx_activity_audience_created on activity_events (audience, actor_id, created_at desc);

@@ -16,6 +16,11 @@ Current stack:
 - Database in current code: MySQL-oriented SQL/scripts
 - Target database for production (your requirement): PostgreSQL
 
+Initial admin provisioning: set `EXAMORA_INITIAL_ADMIN_EMAIL` and
+`EXAMORA_INITIAL_ADMIN_PASSWORD` (at least 12 characters) before first startup.
+The application creates the account once with a BCrypt password hash; admin
+credentials are never seeded or publicly registered.
+
 ## 2. Current implementation status
 
 ### Already fixed in current codebase

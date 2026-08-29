@@ -14,9 +14,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class ExamService {
     private final ExamRepository examRepository;
+    private final ActivityService activityService;
 
-    public ExamService(ExamRepository examRepository) {
+    public ExamService(ExamRepository examRepository, ActivityService activityService) {
         this.examRepository = examRepository;
+        this.activityService = activityService;
     }
 
     public List<Exam> findAll() {
@@ -46,7 +48,9 @@ public class ExamService {
     public Exam create(Exam exam, User actor) {
         requireTeacher(actor);
         Exam normalized = normalize(exam.id(), exam);
-        return examRepository.create(normalized, actor.id());
+        Exam created = examRepository.create(normalized, actor.id());
+        activityService.admin(actor, "EXAM_CREATED", actor.name() + " created exam “" + created.title() + "”.");
+        return created;
     }
 
     public Exam update(String id, Exam exam, User actor) {
@@ -68,7 +72,9 @@ public class ExamService {
         if (examRepository.publish(id) == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Exam not found.");
         }
-        return findById(id);
+        Exam published = findById(id);
+        activityService.admin(actor, "EXAM_PUBLISHED", actor.name() + " published exam “" + published.title() + "”.");
+        return published;
     }
 
     public void requireOwner(String examId, User actor) {
