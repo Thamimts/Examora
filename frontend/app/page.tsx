@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { BookOpen, Check, ChevronLeft, ChevronRight, Clock3, FileText, LogOut, Plus, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
 import type { ActivityEvent, LoginRole, Role, Result } from '@/types'
 import { z } from 'zod'
@@ -112,6 +113,31 @@ function Dashboard() {
     </>
   )
 }
+function DashboardV2() {
+  const user = useAuthStore((state) => state.user)
+  const token = useAuthStore((state) => state.token)
+  const navigate = useNavigate()
+  const examsQuery = useQuery({ queryKey: ['dashboard-exams', user?.role], queryFn: async () => (await examApi.list()).data.data, enabled: Boolean(user), retry: 1 })
+  const resultsQuery = useQuery({ queryKey: ['dashboard-results', user?.id], queryFn: async () => (await resultApi.mine()).data.data, enabled: user?.role === 'STUDENT', retry: 1 })
+  const activityQuery = useQuery({ queryKey: ['dashboard-activity', user?.role, user?.id], queryFn: async () => (await activityApi.recent()).data.data, enabled: user?.role === 'STUDENT' || user?.role === 'ADMIN', retry: 1 })
+  const activityClient = useQueryClient()
+  const addActivity = useCallback((event: ActivityEvent) => activityClient.setQueryData<ActivityEvent[]>(['dashboard-activity', user?.role, user?.id], current => [event, ...(current ?? []).filter(item => item.id !== event.id)].slice(0, 20)), [activityClient, user?.id, user?.role])
+  useActivityFeed(user?.role, token, addActivity, () => { void activityQuery.refetch() })
+  const exams = examsQuery.data ?? []
+  const results = resultsQuery.data ?? []
+  const average = results.length ? Math.round(results.reduce((sum, result) => sum + (result.total ? result.score * 100 / result.total : 0), 0) / results.length) : 0
+  const trend = [...results].reverse().map((result, index) => ({ name: result.date || `Attempt ${index + 1}`, score: result.total ? Math.round(result.score * 100 / result.total) : 0 }))
+  const available = exams.filter(exam => exam.status === 'UPCOMING')
+  const activity = [...(activityQuery.data ?? [])].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+  const loading = examsQuery.isPending || (user?.role === 'STUDENT' && resultsQuery.isPending)
+  return <>
+    <Header title={user?.role === 'STUDENT' ? `Good morning, ${user.name}` : user?.role === 'TEACHER' ? 'Teacher dashboard' : 'System overview'} description="Live numbers pulled from the backend database." />
+    {loading ? <div className="grid gap-4 sm:grid-cols-3" aria-busy="true" aria-live="polite">{[1, 2, 3].map(item => <Card key={item}><div className="h-14 animate-pulse rounded-xl bg-muted" /></Card>)}</div> : <div className="grid gap-4 sm:grid-cols-3"><Card><p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Completed exams' : 'Total exams'}</p><p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? results.length : exams.length}</p></Card><Card><p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Average score' : 'Published exams'}</p><p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? `${average}%` : exams.filter(exam => exam.status !== 'DRAFT').length}</p></Card><Card><p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Available exams' : 'Active exams'}</p><p className="mt-2 text-3xl font-semibold">{available.length}</p></Card></div>}
+    {user?.role === 'STUDENT' && <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]"><Card><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Performance trend</h2><p className="mt-1 text-sm text-muted-foreground">Your latest submitted attempts</p></div><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm transition hover:bg-muted active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/history')}>View history</button></div>{trend.length ? <div className="mt-5 h-56" aria-label="Performance trend chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={trend}><CartesianGrid strokeDasharray="3 3" className="stroke-border" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 11 }} /><Tooltip /><Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div> : <p className="py-12 text-center text-sm text-muted-foreground">Complete an exam to see your performance trend.</p>}</Card><Card><h2 className="font-semibold">Quick actions</h2><div className="mt-4 grid gap-3"><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/exams')}><b>Browse exams</b><span className="mt-1 block text-muted-foreground">Find your next assessment</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/ai-analysis')}><b>AI analysis</b><span className="mt-1 block text-muted-foreground">Review learning insights</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/adaptive')}><b>Adaptive practice</b><span className="mt-1 block text-muted-foreground">Practice at your level</span></button></div></Card></div>}
+    <div className="mt-6 grid gap-6 lg:grid-cols-2"><Card><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Upcoming exams</h2><button type="button" className="text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(user?.role === 'STUDENT' ? '/student/exams' : '/teacher/exams')}>View all</button></div>{examsQuery.isError ? <div role="alert" className="mt-4 flex items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load exams.</p><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => void examsQuery.refetch()}>Retry</button></div> : available.length ? <div className="mt-4 divide-y divide-border">{available.slice(0, 4).map(exam => <button type="button" key={exam.id} className="flex w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-muted/60 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}><span><b className="block">{exam.title}</b><span className="text-sm text-muted-foreground">{exam.subject} · {exam.duration} min</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></button>)}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No upcoming exams are available.</p>}</Card><Card><h2 className="font-semibold">Recent activity</h2>{activityQuery.isPending ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-muted" aria-busy="true" /> : activity.length ? <div className="mt-4 divide-y divide-border">{activity.slice(0, 5).map(event => <div key={event.id} className="flex items-center justify-between gap-4 py-3 text-sm"><p>{event.message}</p><time className="shrink-0 text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleDateString()}</time></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No recent activity yet.</p>}</Card></div>
+  </>
+}
+
 function RealAuth({ mode }: { mode: 'login' | 'register' }) {
   const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [loginRole, setLoginRole] = useState<LoginRole>('STUDENT')
   const schema = mode === 'login' ? z.object({ email: z.string().email(), password: z.string().min(1) }) : z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) })
@@ -142,17 +168,17 @@ function App() {
       <Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><FeatureUnavailable title="Adaptive practice" description="This screen needs an adaptive-session API before it can show real data." /></Protected>} />
       <Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER']}><FeatureUnavailable title="Live proctoring monitor" description="This screen needs a real attempt telemetry API before it can show live events." /></Protected>} />
       <Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><FeatureUnavailable title="AI analytics" description="This screen needs backend analytics endpoints before it can render live metrics." /></Protected>} />
-      <Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><Dashboard /></Protected>} />
+      <Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><DashboardV2 /></Protected>} />
       <Route path="/student/exams" element={<Protected roles={['STUDENT']}><StudentExams /></Protected>} />
       <Route path="/student/exams/:id/instructions" element={<Protected roles={['STUDENT']}><Instructions /></Protected>} />
       <Route path="/student/exams/:id" element={<Protected roles={['STUDENT']}><Attempt /></Protected>} />
       <Route path="/student/exams/:id/result" element={<Protected roles={['STUDENT']}><ResultPage /></Protected>} />
       <Route path="/student/history" element={<Protected roles={['STUDENT']}><HistoryEnhanced /></Protected>} />
-      <Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><Dashboard /></Protected>} />
+      <Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><DashboardV2 /></Protected>} />
       <Route path="/teacher/exams" element={<Protected roles={['TEACHER', 'ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/teacher/exams/create" element={<Protected roles={['TEACHER', 'ADMIN']}><CreateExam /></Protected>} />
       <Route path="/teacher/exams/:id/questions" element={<Protected roles={['TEACHER', 'ADMIN']}><QuestionsPage /></Protected>} />
-      <Route path="/admin/dashboard" element={<Protected roles={['ADMIN']}><Dashboard /></Protected>} />
+      <Route path="/admin/dashboard" element={<Protected roles={['ADMIN']}><DashboardV2 /></Protected>} />
       <Route path="/admin/users" element={<Protected roles={['ADMIN']}><AdminUsers /></Protected>} />
       <Route path="/admin/exams" element={<Protected roles={['ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/admin/question-bank" element={<Protected roles={['ADMIN']}><QuestionBank /></Protected>} />
