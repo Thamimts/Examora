@@ -41,6 +41,7 @@ public class ExamAttemptService {
     private final ResultRepository resultRepository;
     private final ExamAttemptRepository attemptRepository;
     private final ActivityService activityService;
+    private final RetestRequestService retestRequestService;
 
     public ExamAttemptService(
             ExamRepository examRepository,
@@ -49,7 +50,8 @@ public class ExamAttemptService {
             AnswerRepository answerRepository,
             ResultRepository resultRepository,
             ExamAttemptRepository attemptRepository,
-            ActivityService activityService) {
+            ActivityService activityService,
+            RetestRequestService retestRequestService) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
         this.optionRepository = optionRepository;
@@ -57,6 +59,7 @@ public class ExamAttemptService {
         this.resultRepository = resultRepository;
         this.attemptRepository = attemptRepository;
         this.activityService = activityService;
+        this.retestRequestService = retestRequestService;
     }
 
     public StartExamResponse start(String examId, User student) {
