@@ -12,6 +12,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/QuestionController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/QuestionOptionController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/ResultController.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/RetestRequestController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/StatusController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/UserController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/ApiResponse.java
@@ -28,6 +29,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Question.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/QuestionOption.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Result.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/RetestRequest.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/Role.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/model/User.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ActivityRepository.java
@@ -38,6 +40,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/QuestionOptionRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/QuestionRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/ResultRepository.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/RetestRequestRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/repository/UserRepository.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/security/JwtAuthenticationFilter.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/security/JwtService.java
@@ -51,4 +54,5 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/QuestionOptionService.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/QuestionService.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/ResultService.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/RetestRequestService.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/service/UserService.java
