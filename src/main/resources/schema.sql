@@ -2,7 +2,7 @@ create table if not exists users (
  id varchar(36) primary key, name varchar(120) not null, email varchar(180) not null unique, password_hash varchar(255), role varchar(30) not null, avatar varchar(255), created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp
 );
 create table if not exists exams (
- id varchar(36) primary key, title varchar(180) not null, subject varchar(120) not null, date varchar(30) not null, duration int not null, status varchar(30) not null, participants int not null default 0, average_score decimal(5,2), created_by varchar(36), created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
+ id varchar(36) primary key, title varchar(180) not null, subject varchar(120) not null, date varchar(30) not null, duration int not null, status varchar(30) not null, participants int not null default 0, average_score decimal(5,2), created_by varchar(36), start_at timestamp, end_at timestamp, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
  constraint fk_exams_created_by foreign key (created_by) references users(id) on delete set null
 );
 create table if not exists questions (

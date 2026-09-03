@@ -1,7 +1,7 @@
 export type Role = 'STUDENT' | 'TEACHER' | 'ADMIN'
 export type LoginRole = 'STUDENT' | 'ADMIN'
 export type User = { id: string; name: string; email: string; role: Role; avatar?: string }
-export type Exam = { id: string; title: string; subject: string; date: string; duration: number; status: 'UPCOMING' | 'COMPLETED' | 'DRAFT'; participants: number; averageScore?: number }
+export type Exam = { id: string; title: string; subject: string; date: string; duration: number; status: 'UPCOMING' | 'PUBLISHED' | 'ACTIVE' | 'ENDED' | 'COMPLETED' | 'DRAFT'; participants: number; averageScore?: number; startAt?: string; endAt?: string }
 export type Question = { id: string; examId?: string; text: string; options: string[]; answer?: string; type?: 'MCQ' | 'TRUE_FALSE' }
 export type Result = { id: string; userId?: string; examId?: string; examTitle: string; subject: string; score: number; date: string; total: number }
 export type ApiResponse<T> = { success: boolean; message?: string; data: T }

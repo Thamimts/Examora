@@ -9,7 +9,7 @@ public final class ExamDtos {
     }
 
     public record StartExamResponse(String examId, String studentId, String status, Exam exam,
-                                    String attemptId, String startedAt, String expiresAt) {
+                                    String attemptId, String startedAt, String expiresAt, String endAt) {
     }
 
     public record ExamSubmissionRequest(List<SubmittedAnswer> answers) {

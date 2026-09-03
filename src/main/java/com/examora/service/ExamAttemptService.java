@@ -30,6 +30,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -62,6 +63,11 @@ public class ExamAttemptService {
         this.retestRequestService = retestRequestService;
     }
 
+    @Scheduled(fixedDelay = 1000)
+    public void expireOverdueAttempts() {
+        attemptRepository.expireOverdue(Instant.now());
+    }
+
     public StartExamResponse start(String examId, User student) {
         requireStudent(student);
         Exam exam = requireAvailableExam(examId);
@@ -69,7 +75,7 @@ public class ExamAttemptService {
         activityService.student(student, "EXAM_STARTED", "You started “" + exam.title() + "”.");
         activityService.admin("EXAM_STARTED", student.name() + " started exam “" + exam.title() + "”.");
         return new StartExamResponse(exam.id(), student.id(), attempt.status(), exam, attempt.id(),
-                attempt.startedAt().toString(), attempt.expiresAt().toString());
+                attempt.startedAt().toString(), attempt.expiresAt().toString(), attempt.expiresAt().toString());
     }
 
     @Transactional
@@ -159,15 +165,23 @@ public class ExamAttemptService {
     }
 
     private ExamAttempt activeOrCreate(Exam exam, User student) {
+        Instant now = Instant.now();
+        if (exam.startAt() != null && now.isBefore(exam.startAt())) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam has not started yet.");
+        }
+        if (exam.endAt() != null && !now.isBefore(exam.endAt())) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam has ended.");
+        }
         ExamAttempt active = attemptRepository.findActive(exam.id(), student.id()).orElse(null);
         if (active != null) {
             if (Instant.now().isBefore(active.expiresAt())) return active;
             attemptRepository.markExpired(active.id());
             throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
         }
-        Instant now = Instant.now();
+        Instant startedAt = Instant.now();
+        Instant authoritativeEnd = exam.endAt() != null ? exam.endAt() : startedAt.plusSeconds(exam.duration() * 60L);
         return attemptRepository.create(new ExamAttempt(UUID.randomUUID().toString(), exam.id(), student.id(),
-                1, "STARTED", now, now.plusSeconds(exam.duration() * 60L), null, 0));
+                1, "STARTED", startedAt, authoritativeEnd, null, 0));
     }
 
     private AnswerEvaluation evaluate(Question question, SubmittedAnswer submittedAnswer) {

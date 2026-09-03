@@ -18,13 +18,13 @@ public class ExamRepository {
 
     public List<Exam> findAll() {
         return jdbcTemplate.query(
-                "select id, title, subject, date, duration, status, participants, average_score from exams order by date",
+                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams order by date",
                 this::mapExam);
     }
 
     public Optional<Exam> findById(String id) {
         return jdbcTemplate.query(
-                        "select id, title, subject, date, duration, status, participants, average_score from exams where id = ?",
+                        "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams where id = ?",
                         this::mapExam,
                         id)
                 .stream()
@@ -33,7 +33,7 @@ public class ExamRepository {
 
     public List<Exam> findAvailable() {
         return jdbcTemplate.query(
-                "select id, title, subject, date, duration, status, participants, average_score from exams where status <> 'DRAFT' order by date",
+                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams where status <> 'DRAFT' order by date",
                 this::mapExam);
     }
 
@@ -43,7 +43,7 @@ public class ExamRepository {
 
     public Exam create(Exam exam, String createdBy) {
         jdbcTemplate.update(
-                "insert into exams (id, title, subject, date, duration, status, participants, average_score, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "insert into exams (id, title, subject, date, duration, status, participants, average_score, created_by, start_at, end_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 exam.id(),
                 exam.title(),
                 exam.subject(),
@@ -52,7 +52,9 @@ public class ExamRepository {
                 exam.status(),
                 exam.participants(),
                 exam.averageScore(),
-                createdBy);
+                createdBy,
+                exam.startAt() == null ? null : java.sql.Timestamp.from(exam.startAt()),
+                exam.endAt() == null ? null : java.sql.Timestamp.from(exam.endAt()));
         return exam;
     }
 
@@ -62,7 +64,7 @@ public class ExamRepository {
 
     public int update(String id, Exam exam) {
         return jdbcTemplate.update(
-                "update exams set title = ?, subject = ?, date = ?, duration = ?, status = ?, participants = ?, average_score = ? where id = ?",
+                "update exams set title = ?, subject = ?, date = ?, duration = ?, status = ?, participants = ?, average_score = ?, start_at = ?, end_at = ? where id = ?",
                 exam.title(),
                 exam.subject(),
                 exam.date(),
@@ -70,6 +72,8 @@ public class ExamRepository {
                 exam.status(),
                 exam.participants(),
                 exam.averageScore(),
+                exam.startAt() == null ? null : java.sql.Timestamp.from(exam.startAt()),
+                exam.endAt() == null ? null : java.sql.Timestamp.from(exam.endAt()),
                 id);
     }
 
@@ -100,6 +104,8 @@ public class ExamRepository {
                 rs.getInt("duration"),
                 rs.getString("status"),
                 rs.getInt("participants"),
-                averageScore);
+                averageScore,
+                rs.getTimestamp("start_at") == null ? null : rs.getTimestamp("start_at").toInstant(),
+                rs.getTimestamp("end_at") == null ? null : rs.getTimestamp("end_at").toInstant());
     }
 }
