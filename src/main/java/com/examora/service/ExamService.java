@@ -1,5 +1,6 @@
 package com.examora.service;
 
+import com.examora.dto.CreateExamRequest;
 import com.examora.exception.ApiException;
 import com.examora.model.Exam;
 import com.examora.model.Role;
@@ -46,9 +47,10 @@ public class ExamService {
         return exam;
     }
 
-    public Exam create(Exam exam, User actor) {
+    public Exam create(CreateExamRequest request, User actor) {
         requireTeacher(actor);
-        Exam normalized = normalize(exam.id(), exam);
+        Exam exam = new Exam(null, request.title(), request.subject(), request.date(), request.duration(), "DRAFT", 0, null, null, null);
+        Exam normalized = normalize(null, exam);
         Exam created = examRepository.create(normalized, actor.id());
         activityService.admin(actor, "EXAM_CREATED", actor.name() + " created exam “" + created.title() + "”.");
         return created;

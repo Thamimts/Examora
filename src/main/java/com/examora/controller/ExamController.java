@@ -1,6 +1,7 @@
 package com.examora.controller;
 
 import com.examora.dto.ApiResponse;
+import com.examora.dto.CreateExamRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
 import com.examora.dto.ExamDtos.StartExamResponse;
@@ -46,8 +47,9 @@ public class ExamController {
     }
 
     @PostMapping
-    public ApiResponse<Exam> create(@RequestBody Exam exam, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        return ApiResponse.ok("Created", examService.create(exam, authService.requireUser(authorizationHeader)));
+    public ApiResponse<Exam> create(@jakarta.validation.Valid @RequestBody CreateExamRequest request,
+                                    @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.ok("Created", examService.create(request, authService.requireUser(authorizationHeader)));
     }
 
     @PutMapping("/{id}")
