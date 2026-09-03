@@ -23,6 +23,10 @@ public class ExamAttemptRepository {
     }
     public int markSubmitted(String id, Instant at) { return jdbc.update("update exam_attempts set status = 'SUBMITTED', submitted_at = ?, version = version + 1 where id = ? and status = 'STARTED'", Timestamp.from(at), id); }
     public int markExpired(String id) { return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where id = ? and status = 'STARTED'", id); }
+    public int expireOverdue(Instant now) {
+        return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where status = 'STARTED' and expires_at <= ?", Timestamp.from(now));
+    }
+
     private ExamAttempt map(ResultSet rs, int ignored) throws SQLException {
         Timestamp submitted = rs.getTimestamp("submitted_at");
         return new ExamAttempt(rs.getString("id"), rs.getString("exam_id"), rs.getString("student_id"), rs.getInt("attempt_number"), rs.getString("status"), rs.getTimestamp("started_at").toInstant(), rs.getTimestamp("expires_at").toInstant(), submitted == null ? null : submitted.toInstant(), rs.getInt("version"));

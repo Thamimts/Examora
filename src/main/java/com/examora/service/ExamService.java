@@ -6,6 +6,7 @@ import com.examora.model.Role;
 import com.examora.model.User;
 import com.examora.repository.ExamRepository;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -106,7 +107,9 @@ public class ExamService {
                 exam.duration() <= 0 ? 60 : exam.duration(),
                 exam.status() == null || exam.status().isBlank() ? "DRAFT" : exam.status().trim().toUpperCase(),
                 Math.max(exam.participants(), 0),
-                exam.averageScore());
+                exam.averageScore(),
+                exam.startAt(),
+                exam.endAt());
     }
 
     private String required(String value, String field) {

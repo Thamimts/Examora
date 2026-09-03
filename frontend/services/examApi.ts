@@ -1,7 +1,7 @@
 import api from './api'; import type { ApiResponse, Exam, Result } from '@/types'
 
 type SubmittedAnswer = { questionId: string; optionId?: string; value?: string }
-type StartExamResponse = { examId: string; studentId: string; status: string; exam: Exam }
+type StartExamResponse = { examId: string; studentId: string; status: string; exam: Exam; attemptId: string; startedAt: string; expiresAt: string; endAt?: string }
 type ExamSubmissionResponse = { result: Result; score: number; total: number; percentage: number }
 
 export const examApi = {
