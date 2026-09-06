@@ -53,7 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/status", "/api/db/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers("/api/users/me", "/api/student/**").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/exams/*/start", "/api/exams/*/submit").hasRole("STUDENT")
                         .requestMatchers(HttpMethod.GET, "/api/exams/*/questions", "/api/exams/**").hasAnyRole("STUDENT", "TEACHER", "ADMIN")
