@@ -10,6 +10,8 @@ export interface TopicPerformance { topic: string; score: number; questions: num
 export interface DifficultyAnalysis { level: string; score: number; attempts: number }
 export interface RecentExamPerformance { exam: string; score: number; date: string }
 export interface StudentAnalytics { readiness: number; strongestArea: string; nextFocus: string; recommendations: string[]; strengths: string[]; weakAreas: string[]; performanceTrend: AnalyticsPoint[]; topicPerformance: TopicPerformance[]; difficultyAnalysis: DifficultyAnalysis[]; recentExams: RecentExamPerformance[] }
+export type StudyPriority = { topic: string; reason: string; priority: 'HIGH' | 'MEDIUM' | 'LOW' }
+export interface StudentAiAnalysis { summary: string; strengths: string[]; weaknesses: string[]; recommendations: string[]; priorityTopics: string[]; studyPriorities: StudyPriority[] }
 export interface AnalyticsOverview { completionRate: number; averageScore: number; flaggedAttempts: number; activeSessions: number; scoreTrend: AnalyticsPoint[]; difficultyTrend: AnalyticsPoint[]; riskDistribution: AnalyticsPoint[] }
 export interface ExamGenerationRequest { topic: string; difficulty: number; questionCount: number; questionTypes: Array<'MCQ' | 'DESCRIPTIVE'>; duration: number }
 export interface GeneratedExam { title: string; subject: string; questions: AdaptiveQuestion[]; estimatedDifficulty: number }
