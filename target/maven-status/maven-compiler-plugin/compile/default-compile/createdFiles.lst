@@ -64,6 +64,7 @@ com/examora/repository/ResultRepository.class
 com/examora/controller/StatusController.class
 com/examora/dto/AuthDtos.class
 com/examora/security/JwtService$JwtClaims.class
+com/examora/dto/CreateExamRequest.class
 com/examora/security/JwtService$1.class
 com/examora/model/Role.class
 com/examora/security/JwtService.class

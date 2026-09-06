@@ -17,6 +17,7 @@
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/controller/UserController.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/ApiResponse.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/AuthDtos.java
+/home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/CreateExamRequest.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/ExamDtos.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/dto/ProctorDtos.java
 /home/thamim72/online-exam/examrro/Examora/src/main/java/com/examora/exception/ApiException.java
