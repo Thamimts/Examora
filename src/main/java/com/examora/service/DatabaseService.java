@@ -1,5 +1,6 @@
 package com.examora.service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,12 @@ public class DatabaseService {
 
     public DatabaseService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @PostConstruct
+    public void upgradeExamLifecycleColumns() {
+        jdbcTemplate.execute("ALTER TABLE exams ADD COLUMN IF NOT EXISTS start_at TIMESTAMPTZ");
+        jdbcTemplate.execute("ALTER TABLE exams ADD COLUMN IF NOT EXISTS end_at TIMESTAMPTZ");
     }
 
     public Map<String, Object> health() {
