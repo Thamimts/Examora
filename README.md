@@ -23,20 +23,45 @@ credentials are never seeded or publicly registered.
 
 ## 2. Current implementation status
 
-### Already fixed in current codebase
+### Already implemented
 
-From current fixes:
-- Duplicate submission protection added for exam submit (same student + exam re-submit returns existing result).
-- Question validation improved (minimum 2 options, correct answer must match options).
-- Demo teacher and student seed users added for local demonstration.
+- JWT authentication with role-based access for students, teachers, and admins.
+- Server-authoritative exam timing with persisted `start_at`/`end_at`, attempt restore, expiry checks, and scheduled expiry handling.
+- Retry-safe exam submission and result creation protections.
+- PostgreSQL JDBC support and safe startup schema upgrades for existing exam timing columns.
+- Authenticated student performance analytics at `GET /api/student/performance`.
+- Server-side AI analysis at `GET /api/student/ai-analysis`, using structured output and cached results.
+- Frontend loading, empty, retry, and unavailable-data states instead of fabricated production values.
+- STOMP activity-feed cleanup that avoids duplicate connections and invalid disconnect payloads.
 
-### Current production blockers
+### Remaining production work
 
-1. Database configuration and schema are MySQL-specific, not PostgreSQL-ready.
-2. Several frontend flows still use mock/local state for exam lifecycle.
-3. No migration/versioning tool in place (Flyway/Liquibase) for safe production schema evolution.
-4. CORS and environment setup are development oriented.
-5. No explicit production runbook for monitoring, backup, and operational maintenance.
+The items below are the production checklist. Complete them in order; do not deploy with unresolved P0/P1 items.
+
+| Priority | Area | Required work | Exit criteria |
+| --- | --- | --- | --- |
+| P0 | Database | Add Flyway or Liquibase, baseline the current PostgreSQL schema, and test forward-only migrations on a restored production backup. | Migrations run automatically in staging and rollback/recovery is documented. |
+| P0 | Secrets | Move JWT, database, AI Gateway, and admin bootstrap values to the deployment secret store; rotate all development credentials. | No secrets in source, logs, images, or seed scripts. |
+| P0 | Security | Restrict CORS to the deployed frontend, disable demo users/seeding in production, enforce ownership checks, and add rate limits to login and critical writes. | Auth/role/ownership tests pass and unauthenticated access is rejected. |
+| P0 | Exam lifecycle | Finish end-to-end tests for start, restore, autosave, expiry, submit retry, and concurrent submission. | Refresh never extends time and each attempt produces at most one result. |
+| P1 | Contracts | Standardize validation and error responses across controllers; document request/response DTOs. | Frontend handles every documented 4xx/5xx state without mock fallback. |
+| P1 | AI and analytics | Persist topic/category data and question-level correctness before adding topic analytics; invalidate analysis after a new result. | Metrics are derived only from stored data and AI receives no invented statistics. |
+| P1 | Proctoring | Bind events to the authenticated user/attempt, deduplicate retries, and add audit/risk records. | Replay and cross-user event tests fail safely. |
+| P1 | Observability | Add structured JSON logs, correlation/request IDs, metrics, dashboards, and alerts for auth, DB, AI, WebSocket, and submit failures. | On-call can trace one request from frontend to database. |
+| P1 | Reliability | Add WebSocket reconnect/heartbeat tests, connection limits, timeout policies, and graceful shutdown behavior. | Connect/subscribe/disconnect/reconnect works under network interruption. |
+| P2 | Delivery | Add OpenAPI documentation, CI checks, dependency/CVE scanning, staging smoke tests, and a deployment rollback runbook. | Every release passes CI and has a verified rollback path. |
+| P2 | Operations | Configure backups, retention, restore drills, capacity limits, slow-query review, and dependency upgrade cadence. | Backup restoration and operational ownership are tested and recorded. |
+
+## 3. Recommended production rollout
+
+1. Create a staging environment that matches production PostgreSQL, secrets, CORS, and deployment settings.
+2. Baseline the existing database with a versioned migration and rehearse it against a backup copy.
+3. Disable demo accounts and require deployment-managed secrets.
+4. Run authentication, ownership, exam lifecycle, AI, WebSocket, and API contract integration tests.
+5. Load test concurrent starts, autosaves, submissions, analytics requests, and reconnecting clients.
+6. Enable structured logs, alerts, backups, and rollback before the first production release.
+7. Deploy with a canary or staged rollout, verify smoke tests, then monitor submit/error rates.
+8. Review the release checklist and rollback procedure after every deployment.
 
 ## 3. Backend architecture standard (modular layered monolith)
 
