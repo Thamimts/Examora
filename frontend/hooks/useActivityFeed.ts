@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ActivityEvent, Role } from '@/types'
 import api from '@/services/api'
 
@@ -17,16 +17,31 @@ const frame = (command: string, headers: Record<string, string> = {}) => {
 const disconnectFrame = 'DISCONNECT\n\n\0'
 
 export function useActivityFeed(role: Role | undefined, token: string | null, onEvent: (event: ActivityEvent) => void, refresh: () => void) {
+  const onEventRef = useRef(onEvent)
+  const refreshRef = useRef(refresh)
+  onEventRef.current = onEvent
+  refreshRef.current = refresh
+
   useEffect(() => {
     if (!token || (role !== 'STUDENT' && role !== 'ADMIN')) return
-    let socket: WebSocket | undefined; let reconnect: number | undefined; let fallback: number | undefined; let closed = false; let retry = 0
+    let socket: WebSocket | undefined
+    let reconnect: number | undefined
+    let fallback: number | undefined
+    let closed = false
+    let retry = 0
+    let disconnected = false
     const connect = () => {
       if (closed) return
       const currentSocket = new WebSocket(wsUrl(token))
       socket = currentSocket
-      socket.onmessage = ({ data }) => String(data).split('\0').forEach(raw => {
-        const [head, body = ''] = raw.split('\n\n'); if (!head.startsWith('CONNECTED')) { if (!head.startsWith('MESSAGE')) return; try { onEvent(JSON.parse(body)) } catch {} ; return }
-        if (currentSocket.readyState === WebSocket.OPEN) currentSocket.send(frame('SUBSCRIBE', { id: 'activity', destination: role === 'ADMIN' ? '/topic/admin/activity' : '/user/queue/activity', ack: 'auto' }))
+      currentSocket.onmessage = ({ data }) => String(data).split('\\0').forEach(raw => {
+        const [head, body = ''] = raw.split('\\n\\n')
+        if (head.startsWith('CONNECTED')) {
+          if (currentSocket.readyState === WebSocket.OPEN) currentSocket.send(frame('SUBSCRIBE', { id: 'activity', destination: role === 'ADMIN' ? '/topic/admin/activity' : '/user/queue/activity', ack: 'auto' }))
+          return
+        }
+        if (!head.startsWith('MESSAGE')) return
+        try { onEventRef.current(JSON.parse(body)) } catch { /* Ignore malformed activity events. */ }
       })
       currentSocket.onopen = () => { retry = 0; currentSocket.send(frame('CONNECT', { 'accept-version': '1.2', 'heart-beat': '10000,10000' })) }
       currentSocket.onclose = () => {
@@ -38,19 +53,18 @@ export function useActivityFeed(role: Role | undefined, token: string | null, on
       currentSocket.onerror = () => { if (currentSocket.readyState !== WebSocket.CLOSED) currentSocket.close() }
     }
     connect()
-    fallback = window.setInterval(refresh, 30000)
+    fallback = window.setInterval(() => refreshRef.current(), 30000)
     return () => {
       closed = true
       if (reconnect) window.clearTimeout(reconnect)
       if (fallback) window.clearInterval(fallback)
       const currentSocket = socket
       socket = undefined
-      if (currentSocket?.readyState === WebSocket.OPEN) {
+      if (currentSocket?.readyState === WebSocket.OPEN && !disconnected) {
+        disconnected = true
         currentSocket.send(disconnectFrame)
-        window.setTimeout(() => currentSocket.close(), 50)
-      } else {
-        currentSocket?.close()
       }
+      currentSocket?.close()
     }
-  }, [role, token, onEvent, refresh])
+  }, [role, token])
 }
