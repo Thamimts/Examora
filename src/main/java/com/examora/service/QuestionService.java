@@ -69,7 +69,7 @@ public class QuestionService {
     @Transactional
     public Question create(String examId, Question question, User actor) {
         requireAuthoring(examId, actor);
-        Question normalized = normalize(question.id(), examId, question);
+        Question normalized = normalize(question.id(), examId, question, 2);
         questionRepository.create(normalized);
         replaceOptions(normalized.id(), normalized.options(), normalized.answer());
         return findById(normalized.id());
@@ -85,7 +85,7 @@ public class QuestionService {
         Question existing = findById(id);
         requireAuthoring(existing.examId(), actor);
         String targetExamId = question.examId() == null || question.examId().isBlank() ? existing.examId() : question.examId();
-        Question normalized = normalize(id, targetExamId, question);
+        Question normalized = normalize(id, targetExamId, question, existing.difficulty());
         questionRepository.update(id, normalized);
         replaceOptions(id, normalized.options(), normalized.answer());
         return findById(id);
@@ -110,7 +110,7 @@ public class QuestionService {
         }
     }
 
-    private Question normalize(String id, String examId, Question question) {
+    private Question normalize(String id, String examId, Question question, int fallbackDifficulty) {
         requireExam(examId);
         List<String> options = question.options() == null ? List.of() : question.options().stream()
                 .filter(option -> option != null && !option.isBlank())
@@ -123,12 +123,21 @@ public class QuestionService {
         if (answer == null || options.stream().noneMatch(option -> option.equalsIgnoreCase(answer))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "The correct answer must match one of the options.");
         }
+        int difficulty = normalizeDifficulty(question.difficulty(), fallbackDifficulty);
         return new Question(
                 id == null || id.isBlank() ? UUID.randomUUID().toString() : id,
                 examId.trim(),
                 required(question.text()),
                 options,
-                answer);
+                answer,
+                difficulty);
+    }
+
+    private int normalizeDifficulty(int difficulty, int fallbackDifficulty) {
+        if (difficulty <= 0) {
+            return fallbackDifficulty;
+        }
+        return Math.max(1, Math.min(5, difficulty));
     }
 
     private void replaceOptions(String questionId, List<String> options, String answer) {
@@ -156,7 +165,7 @@ public class QuestionService {
     }
 
     private Question stripAnswer(Question question) {
-        return new Question(question.id(), question.examId(), question.text(), question.options(), null);
+        return new Question(question.id(), question.examId(), question.text(), question.options(), null, question.difficulty());
     }
 
     private String required(String value) {

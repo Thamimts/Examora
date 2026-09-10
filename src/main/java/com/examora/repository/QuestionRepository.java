@@ -20,19 +20,19 @@ public class QuestionRepository {
     }
 
     public List<Question> findAll() {
-        return jdbcTemplate.query("select id, exam_id, text, answer from questions order by id", this::mapQuestion);
+        return jdbcTemplate.query("select id, exam_id, text, answer, difficulty from questions order by id", this::mapQuestion);
     }
 
     public List<Question> findByExamId(String examId) {
         return jdbcTemplate.query(
-                "select id, exam_id, text, answer from questions where exam_id = ? order by id",
+                "select id, exam_id, text, answer, difficulty from questions where exam_id = ? order by id",
                 this::mapQuestion,
                 examId);
     }
 
     public Optional<Question> findById(String id) {
         return jdbcTemplate.query(
-                        "select id, exam_id, text, answer from questions where id = ?",
+                        "select id, exam_id, text, answer, difficulty from questions where id = ?",
                         this::mapQuestion,
                         id)
                 .stream()
@@ -41,20 +41,22 @@ public class QuestionRepository {
 
     public Question create(Question question) {
         jdbcTemplate.update(
-                "insert into questions (id, exam_id, text, answer) values (?, ?, ?, ?)",
+                "insert into questions (id, exam_id, text, answer, difficulty) values (?, ?, ?, ?, ?)",
                 question.id(),
                 question.examId(),
                 question.text(),
-                question.answer());
+                question.answer(),
+                question.difficulty());
         return question;
     }
 
     public int update(String id, Question question) {
         return jdbcTemplate.update(
-                "update questions set exam_id = ?, text = ?, answer = ? where id = ?",
+                "update questions set exam_id = ?, text = ?, answer = ?, difficulty = ? where id = ?",
                 question.examId(),
                 question.text(),
                 question.answer(),
+                question.difficulty(),
                 id);
     }
 
@@ -72,6 +74,7 @@ public class QuestionRepository {
                 rs.getString("exam_id"),
                 rs.getString("text"),
                 options,
-                rs.getString("answer"));
+                rs.getString("answer"),
+                rs.getInt("difficulty"));
     }
 }

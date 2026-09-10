@@ -6,9 +6,10 @@ create table if not exists exams (
  constraint fk_exams_created_by foreign key (created_by) references users(id) on delete set null
 );
 create table if not exists questions (
- id varchar(36) primary key, exam_id varchar(36) not null, text text not null, answer text, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
+ id varchar(36) primary key, exam_id varchar(36) not null, text text not null, answer text, difficulty int not null default 2, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
  constraint fk_questions_exam foreign key (exam_id) references exams(id) on delete cascade
 );
+alter table questions add column if not exists difficulty int not null default 2;
 create table if not exists question_options (
  id varchar(36) primary key, question_id varchar(36) not null, text text not null, display_order int not null default 0, correct_answer boolean not null default false, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
  constraint fk_question_options_question foreign key (question_id) references questions(id) on delete cascade
@@ -41,3 +42,13 @@ create table if not exists activity_events (
  constraint fk_activity_actor foreign key (actor_id) references users(id) on delete set null
 );
 create index if not exists idx_activity_audience_created on activity_events (audience, actor_id, created_at desc);
+create table if not exists practice_sessions (
+ id varchar(36) primary key, student_id varchar(36) not null, exam_id varchar(36) not null, status varchar(20) not null, target_question_count int not null default 10, working_difficulty decimal(4,1) not null default 3.0, in_progress_question_id varchar(36), answered_count int not null default 0, correct_count int not null default 0, started_at timestamp not null, last_activity_at timestamp not null, completed_at timestamp,
+ constraint fk_practice_session_student foreign key (student_id) references users(id) on delete cascade, constraint fk_practice_session_exam foreign key (exam_id) references exams(id) on delete cascade, constraint fk_practice_session_question foreign key (in_progress_question_id) references questions(id)
+);
+create index if not exists idx_practice_sessions_active on practice_sessions (student_id, status, started_at desc);
+create table if not exists practice_answers (
+ id varchar(36) primary key, session_id varchar(36) not null, question_id varchar(36) not null, option_id varchar(36), answer_value text, correct boolean not null, difficulty int not null, sequence_index int not null, answered_at timestamp not null,
+ constraint fk_practice_answer_session foreign key (session_id) references practice_sessions(id) on delete cascade, constraint fk_practice_answer_question foreign key (question_id) references questions(id) on delete cascade, constraint fk_practice_answer_option foreign key (option_id) references question_options(id) on delete set null, constraint uq_practice_session_question unique (session_id, question_id)
+);
+create index if not exists idx_practice_answers_session on practice_answers (session_id, sequence_index);
