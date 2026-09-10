@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -26,9 +27,24 @@ public class ExamAttemptRepository {
     public int expireOverdue(Instant now) {
         return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where status = 'STARTED' and expires_at <= ?", Timestamp.from(now));
     }
+    public List<AttemptWithStudent> findByExamWithStudent(String examId) {
+        return jdbc.query(
+                "select ea.*, u.name as student_name, u.email as student_email "
+                        + "from exam_attempts ea join users u on u.id = ea.student_id "
+                        + "where ea.exam_id = ? order by ea.started_at desc, ea.id desc",
+                (rs, row) -> new AttemptWithStudent(mapAttempt(rs), rs.getString("student_name"), rs.getString("student_email")),
+                examId);
+    }
 
     private ExamAttempt map(ResultSet rs, int ignored) throws SQLException {
+        return mapAttempt(rs);
+    }
+
+    private ExamAttempt mapAttempt(ResultSet rs) throws SQLException {
         Timestamp submitted = rs.getTimestamp("submitted_at");
         return new ExamAttempt(rs.getString("id"), rs.getString("exam_id"), rs.getString("student_id"), rs.getInt("attempt_number"), rs.getString("status"), rs.getTimestamp("started_at").toInstant(), rs.getTimestamp("expires_at").toInstant(), submitted == null ? null : submitted.toInstant(), rs.getInt("version"));
+    }
+
+    public record AttemptWithStudent(ExamAttempt attempt, String studentName, String studentEmail) {
     }
 }
