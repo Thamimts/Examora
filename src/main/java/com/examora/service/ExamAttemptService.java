@@ -169,6 +169,26 @@ public class ExamAttemptService {
         return attemptRepository.findById(attemptId);
     }
 
+    public ExamAttempt requireProctorAccess(String attemptId, User actor) {
+        if (isBlank(attemptId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Attempt id is required.");
+        }
+        ExamAttempt attempt = attemptRepository.findById(attemptId.trim())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Exam attempt not found."));
+        if (actor == null || actor.role() == Role.STUDENT) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or administrator access is required.");
+        }
+        if (actor.role() == Role.TEACHER) {
+            boolean ownsExam = examRepository.findOwnerId(attempt.examId())
+                    .map(ownerId -> ownerId.equals(actor.id()))
+                    .orElse(false);
+            if (!ownsExam) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "You do not have access to this exam's proctoring.");
+            }
+        }
+        return attempt;
+    }
+
     private ExamAttempt activeOrCreate(Exam exam, User student) {
         Instant now = Instant.now();
         if (exam.startAt() != null && now.isBefore(exam.startAt())) {

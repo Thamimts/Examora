@@ -6,7 +6,6 @@ import com.examora.service.ProctorService;
 import com.examora.service.AuthService;
 import com.examora.service.ExamAttemptService;
 import com.examora.model.User;
-import com.examora.model.Role;
 import java.util.Map;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,25 +38,14 @@ public class ProctorController {
     @PostMapping("/attempts/{attemptId}/start")
     public ApiResponse<Map<String, String>> start(@PathVariable String attemptId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User user = authService.requireUser(authorizationHeader);
-        requireProctorAccess(attemptId, user);
+        examAttemptService.requireProctorAccess(attemptId, user);
         return ApiResponse.ok(Map.of("attemptId", attemptId, "status", "started"));
     }
 
     @PostMapping("/attempts/{attemptId}/stop")
     public ApiResponse<Map<String, String>> stop(@PathVariable String attemptId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User user = authService.requireUser(authorizationHeader);
-        requireProctorAccess(attemptId, user);
+        examAttemptService.requireProctorAccess(attemptId, user);
         return ApiResponse.ok(Map.of("attemptId", attemptId, "status", "stopped"));
-    }
-
-    private void requireProctorAccess(String attemptId, User user) {
-        if (attemptId == null || attemptId.isBlank()) {
-            throw new com.examora.exception.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST, "Attempt id is required.");
-        }
-        if (user.role() == Role.STUDENT) {
-            examAttemptService.requireOwnedAttempt(attemptId, user);
-        } else if (examAttemptService.findAttemptById(attemptId).isEmpty()) {
-            throw new com.examora.exception.ApiException(org.springframework.http.HttpStatus.NOT_FOUND, "Exam attempt not found.");
-        }
     }
 }

@@ -31,7 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "examora.jwt.expiration-hours=24",
         "examora.login.max-per-ip-email=3",
         "examora.login.max-per-ip=4",
-        "examora.login.window-seconds=60"
+        "examora.login.window-seconds=60",
+        "examora.proxy-trusted=true"
 })
 class RateLimitingIntegrationTest {
     @Autowired
@@ -105,6 +106,26 @@ class RateLimitingIntegrationTest {
         mockMvc.perform(login("student@example.com", "wrong-password", "203.0.113.13"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid email or password."));
+    }
+
+    @Test
+    void forwardedForIsHonoredInTrustedModeEvenWhenRemoteAddressesDiffer() throws Exception {
+        String ip = "203.0.113.30";
+        for (int attempt = 0; attempt < 4; attempt++) {
+            mockMvc.perform(login("account-" + attempt + "@example.com", "wrong-password", ip)
+                            .with(remoteAddr("198.51.100." + attempt)))
+                    .andExpect(status().isUnauthorized());
+        }
+        mockMvc.perform(login("account-4@example.com", "wrong-password", ip).with(remoteAddr("198.51.100.99")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many login attempts. Please try again later."));
+    }
+
+    private org.springframework.test.web.servlet.request.RequestPostProcessor remoteAddr(String ip) {
+        return request -> {
+            request.setRemoteAddr(ip);
+            return request;
+        };
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder login(String email, String password, String ip) {

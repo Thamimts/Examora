@@ -25,7 +25,7 @@ public class ProctorService {
         if (events == null || events.isEmpty()) return 0;
         if (events.size() > 100) throw new com.examora.exception.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST, "A proctor batch may contain at most 100 events.");
         String attemptId = events.getFirst() == null ? null : events.getFirst().attemptId();
-        ExamAttempt attempt = examAttemptService.requireOwnedAttempt(attemptId, actor);
+        ExamAttempt attempt = examAttemptService.requireProctorAccess(attemptId, actor);
         for (ProctorEvent event : events) {
             if (event == null || !attempt.id().equals(event.attemptId()) || event.type() == null || event.type().isBlank() || event.type().length() > 80) {
                 throw new com.examora.exception.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST, "Each proctor event needs a valid attempt and type.");

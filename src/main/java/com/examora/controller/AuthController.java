@@ -6,6 +6,7 @@ import com.examora.dto.AuthDtos.LoginRequest;
 import com.examora.dto.AuthDtos.RegisterRequest;
 import com.examora.exception.ApiException;
 import com.examora.exception.TooManyRequestsException;
+import com.examora.security.ClientIpResolver;
 import com.examora.service.AuthService;
 import com.examora.service.LoginRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,16 +21,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthService authService;
     private final LoginRateLimiter loginRateLimiter;
+    private final ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthService authService, LoginRateLimiter loginRateLimiter) {
+    public AuthController(AuthService authService, LoginRateLimiter loginRateLimiter, ClientIpResolver clientIpResolver) {
         this.authService = authService;
         this.loginRateLimiter = loginRateLimiter;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@RequestBody LoginRequest request, HttpServletRequest http) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase();
-        String ip = clientIp(http);
+        String ip = clientIpResolver.resolve(http);
         if (!loginRateLimiter.isAllowed(ip, email)) {
             int retryAfter = loginRateLimiter.retryAfterSeconds(ip, email).orElse(1);
             throw new TooManyRequestsException("Too many login attempts. Please try again later.", retryAfter);
@@ -54,18 +57,5 @@ public class AuthController {
     public ApiResponse<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         authService.logout(authorizationHeader);
         return ApiResponse.ok("Logged out", null);
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int comma = forwarded.indexOf(',');
-            String first = comma > 0 ? forwarded.substring(0, comma) : forwarded;
-            if (!first.isBlank()) {
-                return first.trim();
-            }
-        }
-        String remote = request.getRemoteAddr();
-        return remote == null ? "unknown" : remote;
     }
 }

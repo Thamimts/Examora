@@ -9,6 +9,9 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -17,10 +20,12 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import org.springframework.web.socket.server.HandshakeInterceptor;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -42,7 +47,31 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(allowedOrigins);
+                .setAllowedOrigins(allowedOrigins)
+                .addInterceptors(new OriginGuard(allowedOrigins));
+    }
+
+    private static final class OriginGuard implements HandshakeInterceptor {
+        private final List<String> allowedOrigins;
+
+        OriginGuard(String[] allowedOrigins) {
+            this.allowedOrigins = List.of(allowedOrigins);
+        }
+
+        @Override
+        public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                                       WebSocketHandler wsHandler, Map<String, Object> attributes) {
+            if (allowedOrigins.isEmpty()) {
+                return true;
+            }
+            String origin = request.getHeaders().getFirst(HttpHeaders.ORIGIN);
+            return origin == null || allowedOrigins.contains(origin);
+        }
+
+        @Override
+        public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                                   WebSocketHandler wsHandler, Exception exception) {
+        }
     }
 
     @Override
