@@ -1,5 +1,7 @@
-import { generateObject } from 'ai'
+import { APICallError, AISDKError, JSONParseError, NoObjectGeneratedError, NoSuchModelError, TypeValidationError, generateObject } from 'ai'
 import { z } from 'zod'
+import { createBoundedCache, createStudentCacheKey } from '@/lib/ai-analysis-cache'
+import type { StudentPerformanceAnalytics } from '@/types/analytics'
 
 const analyticsSchema = z.object({
   completedExamCount: z.number().int().nonnegative(),
@@ -23,8 +25,7 @@ export const studentAiAnalysisSchema = z.object({
 
 export type StudentAiAnalysis = z.infer<typeof studentAiAnalysisSchema>
 
-type CachedAnalysis = { fingerprint: string; analysis: StudentAiAnalysis }
-const cache = new Map<string, CachedAnalysis>()
+const cache = createBoundedCache<StudentAiAnalysis>({ maxEntries: 200, ttlMs: 30 * 60 * 1000 })
 
 function backendUrl() {
   return process.env.EXAMORA_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api'
@@ -41,29 +42,64 @@ async function getAnalytics(request: Request) {
   return { analytics: parsed.data, authorization }
 }
 
+function buildPrompt(analytics: StudentPerformanceAnalytics): string {
+  return 'You are generating a Student AI Performance Analysis for an online exam platform. Use ONLY the supplied analytics JSON. Never invent scores, counts, subjects, topics, exams, dates, or statistics that are not present in the input. Do not repeat a numeric claim unless it literally appears in the input. If topicPerformance is empty, state that topic-level data is not available. Produce concise, actionable guidance grounded in the data. Analytics: ' + JSON.stringify(analytics)
+}
+
+function aiErrorResponse(error: unknown): Response {
+  if (!process.env.OPENAI_API_KEY) {
+    return Response.json({ error: 'AI analysis is not configured. Set the OPENAI_API_KEY environment variable to enable it.' }, { status: 503 })
+  }
+  if (error instanceof APICallError) {
+    const status = error.statusCode
+    if (status === 401 || status === 403) {
+      return Response.json({ error: 'The AI provider rejected the request. Check the configured API key.' }, { status: 503 })
+    }
+    if (typeof status === 'number' && status >= 429) {
+      return Response.json({ error: 'The AI provider is rate limited or temporarily unavailable. Try again shortly.' }, { status: 503 })
+    }
+    return Response.json({ error: 'The AI provider could not complete the request.' }, { status: 503 })
+  }
+  if (error instanceof NoSuchModelError) {
+    return Response.json({ error: 'The configured AI model is not available.' }, { status: 502 })
+  }
+  if (error instanceof NoObjectGeneratedError || error instanceof JSONParseError || error instanceof TypeValidationError || error instanceof AISDKError) {
+    return Response.json({ error: 'The AI provider returned an unexpected response shape.' }, { status: 502 })
+  }
+  return Response.json({ error: 'AI analysis is temporarily unavailable. Please try again.' }, { status: 503 })
+}
+
 export async function GET(request: Request) {
   const source = await getAnalytics(request)
   if ('response' in source) return source.response
-  if (source.analytics.completedExamCount === 0) return Response.json({ error: 'Complete an exam to generate analysis.' }, { status: 422 })
+  if (source.analytics.completedExamCount === 0) {
+    return Response.json({ error: 'Complete at least one exam to generate an analysis.' }, { status: 422 })
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    return Response.json({ error: 'AI analysis is not configured. Set the OPENAI_API_KEY environment variable to enable it.' }, { status: 503 })
+  }
+  const authorization = request.headers.get('authorization') ?? ''
+  const key = createStudentCacheKey(authorization)
   const fingerprint = JSON.stringify(source.analytics)
-  const cached = cache.get(source.authorization)
-  if (cached?.fingerprint === fingerprint) return Response.json(cached.analysis)
+  const cached = cache.get(key, fingerprint)
+  if (cached) return Response.json(cached)
   try {
     const { object } = await generateObject({
       model: 'openai/o4-mini',
       schema: studentAiAnalysisSchema,
-      prompt: `Use only the supplied analytics. Never invent scores, counts, subjects, topics, or statistics. Do not repeat numeric claims unless they are present in the input. Produce concise, actionable guidance. If topicPerformance is empty, say that topic-level data is unavailable. Analytics: ${fingerprint}`,
+      prompt: buildPrompt(source.analytics),
     })
-    cache.set(source.authorization, { fingerprint, analysis: object })
+    cache.set(key, fingerprint, object)
     return Response.json(object)
-  } catch {
-    return Response.json({ error: 'AI analysis is temporarily unavailable. Please retry.' }, { status: 503 })
+  } catch (error) {
+    return aiErrorResponse(error)
   }
 }
 
 export async function POST(request: Request) {
-  cache.delete(request.headers.get('authorization') ?? '')
+  cache.delete(createStudentCacheKey(request.headers.get('authorization') ?? ''))
   return GET(request)
 }
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'

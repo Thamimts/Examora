@@ -2,7 +2,6 @@ export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 export type ProctorEventType = 'TAB_SWITCH' | 'WINDOW_BLUR' | 'CAMERA_OFF' | 'MULTIPLE_FACES' | 'AUDIO_DETECTED' | 'NETWORK_INTERRUPTION'
 export interface AIAnalysis { id: string; studentId: string; examId: string; score: number; strengths: string[]; weaknesses: string[]; recommendations: string[]; riskLevel: RiskLevel; generatedAt: string }
 export interface AdaptiveQuestion { id: string; text: string; difficulty: number; options?: string[]; type: 'MCQ' | 'DESCRIPTIVE' }
-export interface AdaptiveSession { id: string; examId: string; currentDifficulty: number; questionIndex: number; questions: AdaptiveQuestion[]; completed: boolean }
 export interface ProctorEvent { id?: string; attemptId: string; type: ProctorEventType; timestamp: string; metadata?: Record<string, string | number | boolean> }
 export interface WebcamStatus { supported: boolean; permission: 'granted' | 'denied' | 'prompt' | 'unknown'; active: boolean; stream?: MediaStream }
 export interface AnalyticsPoint { label: string; value: number; secondary?: number }
