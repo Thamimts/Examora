@@ -127,7 +127,8 @@ public class ExamAttemptService {
                     exam.id(),
                     question.id(),
                     evaluation.optionId(),
-                    evaluation.value()));
+                    evaluation.value(),
+                    attempt.id()));
         }
 
         Result result = new Result(
@@ -162,6 +163,10 @@ public class ExamAttemptService {
             throw new ApiException(HttpStatus.CONFLICT, "This exam attempt is not active.");
         }
         return attempt;
+    }
+
+    public java.util.Optional<ExamAttempt> findAttemptById(String attemptId) {
+        return attemptRepository.findById(attemptId);
     }
 
     private ExamAttempt activeOrCreate(Exam exam, User student) {

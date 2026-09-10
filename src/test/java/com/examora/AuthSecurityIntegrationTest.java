@@ -22,13 +22,16 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -79,6 +82,7 @@ class AuthSecurityIntegrationTest {
         jdbcTemplate.update("delete from users");
 
         insertUser("student-1", "Student One", "student@example.com", "student123", "STUDENT");
+        insertUser("student-2", "Student Two", "student2@example.com", "student123", "STUDENT");
         insertUser("teacher-1", "Teacher One", "teacher@example.com", "teacher123", "TEACHER");
         insertUser("admin-1", "Admin One", "admin@example.com", "admin123", "ADMIN");
     }
@@ -150,7 +154,7 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(post("/api/exams")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"Physics Test\",\"subject\":\"Physics\",\"duration\":45}"))
+                        .content("{\"title\":\"Physics Test\",\"subject\":\"Physics\",\"date\":\"2026-09-01\",\"duration\":45}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("Physics Test"));
 
@@ -164,25 +168,107 @@ class AuthSecurityIntegrationTest {
 
         mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(3));
+                .andExpect(jsonPath("$.data.length()").value(4));
     }
 
     @Test
     void authenticatedStudentConnectsToOwnActivityWebSocketDestination() throws Exception {
         User student = new User("student-1", "Student One", "student@example.com", com.examora.model.Role.STUDENT, null);
-        WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
-        client.setMessageConverter(new MappingJackson2MessageConverter());
-        StompSession session = client.connectAsync("ws://localhost:" + port + "/ws?token=" + jwtService.generateToken(student), new StompSessionHandlerAdapter() {}).get(5, TimeUnit.SECONDS);
+        StompSession session = connect(jwtService.generateToken(student));
         LinkedBlockingQueue<ActivityEvent> events = new LinkedBlockingQueue<>();
-        session.subscribe("/user/queue/activity", new StompFrameHandler() {
-            @Override public Type getPayloadType(org.springframework.messaging.simp.stomp.StompHeaders headers) { return ActivityEvent.class; }
-            @Override public void handleFrame(org.springframework.messaging.simp.stomp.StompHeaders headers, Object payload) { events.offer((ActivityEvent) payload); }
-        });
+        session.subscribe("/user/queue/activity", activityHandler(events));
         Thread.sleep(200);
         messagingTemplate.convertAndSendToUser("student-1", "/queue/activity", new ActivityEvent("live-1", "EXAM_STARTED", "Live activity", Instant.now()));
         assertThat(events.poll(5, TimeUnit.SECONDS)).isNotNull();
-        session.disconnect();
-        client.stop();
+        disconnectQuietly(session);
+    }
+
+    @Test
+    void webSocketConnectionWithoutAuthenticationIsRejected() {
+        assertThatThrownBy(() -> client().connectAsync("ws://localhost:" + port + "/ws", new StompSessionHandlerAdapter() {})
+                .get(5, TimeUnit.SECONDS))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void webSocketConnectionWithInvalidTokenIsRejected() {
+        StompHeaders headers = new StompHeaders();
+        headers.add("authorization", "Bearer not.a.valid.token");
+        assertThatThrownBy(() -> client().connectAsync("ws://localhost:" + port + "/ws", (WebSocketHttpHeaders) null, headers, new StompSessionHandlerAdapter() {})
+                .get(5, TimeUnit.SECONDS))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void adminConnectsToAdminActivityTopic() throws Exception {
+        User admin = new User("admin-1", "Admin One", "admin@example.com", com.examora.model.Role.ADMIN, null);
+        StompSession session = connect(jwtService.generateToken(admin));
+        LinkedBlockingQueue<ActivityEvent> events = new LinkedBlockingQueue<>();
+        session.subscribe("/topic/admin/activity", activityHandler(events));
+        Thread.sleep(200);
+        messagingTemplate.convertAndSend("/topic/admin/activity", new ActivityEvent("live-2", "EXAM_CREATED", "Admin activity", Instant.now()));
+        assertThat(events.poll(5, TimeUnit.SECONDS)).isNotNull();
+        disconnectQuietly(session);
+    }
+
+    @Test
+    void studentCannotSubscribeToAdminActivityTopic() throws Exception {
+        User student = new User("student-1", "Student One", "student@example.com", com.examora.model.Role.STUDENT, null);
+        StompSession session = connect(jwtService.generateToken(student));
+        LinkedBlockingQueue<ActivityEvent> events = new LinkedBlockingQueue<>();
+        session.subscribe("/topic/admin/activity", activityHandler(events));
+        Thread.sleep(200);
+        messagingTemplate.convertAndSend("/topic/admin/activity", new ActivityEvent("live-3", "EXAM_CREATED", "Secret admin activity", Instant.now()));
+        assertThat(events.poll(2, TimeUnit.SECONDS)).isNull();
+        disconnectQuietly(session);
+    }
+
+    @Test
+    void studentDoesNotReceiveAnotherStudentsPrivateEvents() throws Exception {
+        User student = new User("student-1", "Student One", "student@example.com", com.examora.model.Role.STUDENT, null);
+        StompSession session = connect(jwtService.generateToken(student));
+        LinkedBlockingQueue<ActivityEvent> events = new LinkedBlockingQueue<>();
+        session.subscribe("/user/queue/activity", activityHandler(events));
+        Thread.sleep(200);
+        messagingTemplate.convertAndSendToUser("student-2", "/queue/activity", new ActivityEvent("live-4", "EXAM_STARTED", "Other student activity", Instant.now()));
+        assertThat(events.poll(2, TimeUnit.SECONDS)).isNull();
+        disconnectQuietly(session);
+    }
+
+    private WebSocketStompClient client() {
+        WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
+        MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+        converter.setObjectMapper(objectMapper);
+        client.setMessageConverter(converter);
+        return client;
+    }
+
+    private void disconnectQuietly(StompSession session) {
+        if (session.isConnected()) {
+            session.disconnect();
+        }
+    }
+
+    private StompSession connect(String token) throws Exception {
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add("authorization", "Bearer " + token);
+        WebSocketStompClient client = client();
+        return client.connectAsync("ws://localhost:" + port + "/ws", (WebSocketHttpHeaders) null, connectHeaders, new StompSessionHandlerAdapter() {})
+                .get(5, TimeUnit.SECONDS);
+    }
+
+    private StompFrameHandler activityHandler(LinkedBlockingQueue<ActivityEvent> events) {
+        return new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return ActivityEvent.class;
+            }
+
+            @Override
+            public void handleFrame(StompHeaders headers, Object payload) {
+                events.offer((ActivityEvent) payload);
+            }
+        };
     }
 
     private String login(String email, String password) throws Exception {

@@ -28,12 +28,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ActivityService activityService;
+    private final String dummyPasswordHash;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, ActivityService activityService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.activityService = activityService;
+        this.dummyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     public AuthResponse login(String email, String password) {
@@ -42,7 +44,10 @@ public class AuthService {
         }
 
         UserRepository.UserWithPassword user = userRepository.findByEmailWithPassword(normalizeEmail(email))
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password."));
+                .orElseThrow(() -> {
+                    verifyPassword(password, dummyPasswordHash);
+                    return new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
+                });
         if (!verifyPassword(password, user.passwordHash())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
         }

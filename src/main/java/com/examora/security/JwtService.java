@@ -29,6 +29,14 @@ public class JwtService {
             @Value("${examora.jwt.secret}") String secret,
             @Value("${examora.jwt.expiration-hours:24}") long expirationHours) {
         this.objectMapper = objectMapper;
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT_SECRET environment variable is required. Generate one with: openssl rand -base64 48");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be at least 32 characters. Current length: " + secret.length());
+        }
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
         this.expirationHours = expirationHours;
     }

@@ -2,6 +2,7 @@ package com.examora.exception;
 
 import com.examora.dto.ApiResponse;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,11 +19,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(exception.status()).body(ApiResponse.error(exception.getMessage()));
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTooManyRequests(TooManyRequestsException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.retryAfterSeconds()))
+                .body(ApiResponse.error(exception.getMessage()));
+    }
+
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataAccess(DataAccessException exception) {
         log.error("Database operation failed", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Database operation failed. Check the MySQL schema and connection settings."));
+                .body(ApiResponse.error("Database operation failed. Check the database schema and connection settings."));
     }
 
     @ExceptionHandler(Exception.class)

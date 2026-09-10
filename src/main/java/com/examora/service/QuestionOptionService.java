@@ -1,7 +1,10 @@
 package com.examora.service;
 
 import com.examora.exception.ApiException;
+import com.examora.model.Question;
 import com.examora.model.QuestionOption;
+import com.examora.model.User;
+import com.examora.repository.ExamRepository;
 import com.examora.repository.QuestionOptionRepository;
 import com.examora.repository.QuestionRepository;
 import java.util.List;
@@ -13,10 +16,13 @@ import org.springframework.stereotype.Service;
 public class QuestionOptionService {
     private final QuestionOptionRepository optionRepository;
     private final QuestionRepository questionRepository;
+    private final ExamService examService;
 
-    public QuestionOptionService(QuestionOptionRepository optionRepository, QuestionRepository questionRepository) {
+    public QuestionOptionService(QuestionOptionRepository optionRepository, QuestionRepository questionRepository,
+                                 ExamService examService) {
         this.optionRepository = optionRepository;
         this.questionRepository = questionRepository;
+        this.examService = examService;
     }
 
     public List<QuestionOption> findAll() {
@@ -33,27 +39,38 @@ public class QuestionOptionService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Question option not found."));
     }
 
-    public QuestionOption create(String questionId, QuestionOption option) {
+    public QuestionOption create(String questionId, QuestionOption option, User actor) {
+        requireAuthoring(questionId, actor);
         QuestionOption normalized = normalize(option.id(), questionId, option);
         return optionRepository.create(normalized);
     }
 
-    public QuestionOption create(QuestionOption option) {
+    public QuestionOption create(QuestionOption option, User actor) {
+        requireAuthoring(option.questionId(), actor);
         QuestionOption normalized = normalize(option.id(), option.questionId(), option);
         return optionRepository.create(normalized);
     }
 
-    public QuestionOption update(String id, QuestionOption option) {
-        findById(id);
-        QuestionOption normalized = normalize(id, option.questionId(), option);
+    public QuestionOption update(String id, QuestionOption option, User actor) {
+        QuestionOption existing = findById(id);
+        requireAuthoring(existing.questionId(), actor);
+        QuestionOption normalized = normalize(id, existing.questionId(), option);
         optionRepository.update(id, normalized);
         return findById(id);
     }
 
-    public void delete(String id) {
+    public void delete(String id, User actor) {
+        QuestionOption existing = findById(id);
+        requireAuthoring(existing.questionId(), actor);
         if (optionRepository.delete(id) == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Question option not found.");
         }
+    }
+
+    private void requireAuthoring(String questionId, User actor) {
+        Question question = questionRepository.findById(questionId.trim())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Question not found."));
+        examService.requireOwner(question.examId(), actor);
     }
 
     private QuestionOption normalize(String id, String questionId, QuestionOption option) {

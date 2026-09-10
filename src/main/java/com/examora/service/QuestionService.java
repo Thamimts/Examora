@@ -104,7 +104,7 @@ public class QuestionService {
         }
         if (actor.role() != Role.ADMIN) {
             String owner = examRepository.findOwnerId(examId).orElse(null);
-            if (owner != null && !owner.equals(actor.id())) {
+            if (owner == null || !owner.equals(actor.id())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "You do not own this exam.");
             }
         }

@@ -56,7 +56,9 @@ class ExamFlowIntegrationTest {
         jdbcTemplate.update("delete from users");
 
         insertUser("student-1", "Student One", "student@example.com", "student123", "STUDENT");
+        insertUser("student-2", "Student Two", "student2@example.com", "student234", "STUDENT");
         insertUser("teacher-1", "Teacher One", "teacher@example.com", "teacher123", "TEACHER");
+        insertUser("teacher-2", "Teacher Two", "teacher2@example.com", "teacher234", "TEACHER");
         insertUser("admin-1", "Admin One", "admin@example.com", "admin123", "ADMIN");
     }
 
@@ -192,11 +194,102 @@ class ExamFlowIntegrationTest {
         String secondExamId = createExam(teacherToken, "Second", "Science", "UPCOMING");
         String otherQuestionId = createQuestion(teacherToken, secondExamId, "Water formula?", "H2O", "CO2", "H2O");
 
+        mockMvc.perform(post("/api/exams/" + firstExamId + "/publish").header("Authorization", bearer(teacherToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/exams/" + secondExamId + "/publish").header("Authorization", bearer(teacherToken)))
+                .andExpect(status().isOk());
+
         mockMvc.perform(post("/api/exams/" + firstExamId + "/submit")
                         .header("Authorization", bearer(studentToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"answers\":[{\"questionId\":\"" + otherQuestionId + "\",\"value\":\"H2O\"}]}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void teacherCannotManageAnotherTeachersExam() throws Exception {
+        String teacherOneToken = login("teacher@example.com", "teacher123");
+        String teacherTwoToken = login("teacher2@example.com", "teacher234");
+
+        String examId = createExam(teacherOneToken, "Owned Exam", "Math", "DRAFT");
+
+        mockMvc.perform(put("/api/exams/" + examId)
+                        .header("Authorization", bearer(teacherTwoToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Hacked\",\"subject\":\"Math\",\"date\":\"2026-09-01\",\"duration\":60}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/exams/" + examId + "/publish").header("Authorization", bearer(teacherTwoToken)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/api/exams/" + examId).header("Authorization", bearer(teacherTwoToken)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/exams/" + examId + "/questions")
+                        .header("Authorization", bearer(teacherTwoToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Unauthorized?\",\"options\":[\"A\",\"B\"],\"answer\":\"A\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void teacherCannotAlterOptionsOnAnotherTeachersExam() throws Exception {
+        String teacherOneToken = login("teacher@example.com", "teacher123");
+        String teacherTwoToken = login("teacher2@example.com", "teacher234");
+
+        String examId = createExam(teacherOneToken, "Owned Exam", "Math", "DRAFT");
+        String questionId = createQuestion(teacherOneToken, examId, "Owned Question", "A", "B", "A");
+
+        String optionId = questionOptionId(teacherOneToken, questionId);
+
+        mockMvc.perform(post("/api/questions/" + questionId + "/options")
+                        .header("Authorization", bearer(teacherTwoToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"questionId\":\"" + questionId + "\",\"text\":\"Injected option\",\"correctAnswer\":true}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/options/" + optionId)
+                        .header("Authorization", bearer(teacherTwoToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"questionId\":\"" + questionId + "\",\"text\":\"Tampered\",\"correctAnswer\":true}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/api/options/" + optionId).header("Authorization", bearer(teacherTwoToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void studentCanOnlySeeOwnResultsViaMeEndpoint() throws Exception {
+        String teacherToken = login("teacher@example.com", "teacher123");
+        String studentOneToken = login("student@example.com", "student123");
+        String studentTwoToken = login("student2@example.com", "student234");
+
+        String examId = createExam(teacherToken, "Results Exam", "Math", "DRAFT");
+        String questionId = createQuestion(teacherToken, examId, "R", "A", "B", "A");
+        mockMvc.perform(post("/api/exams/" + examId + "/publish").header("Authorization", bearer(teacherToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/exams/" + examId + "/start").header("Authorization", bearer(studentOneToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/exams/" + examId + "/submit")
+                        .header("Authorization", bearer(studentOneToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":[{\"questionId\":\"" + questionId + "\",\"value\":\"A\"}]}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/results/me").header("Authorization", bearer(studentOneToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+
+        mockMvc.perform(get("/api/results/me?userId=student-1").header("Authorization", bearer(studentOneToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+
+        mockMvc.perform(get("/api/results").header("Authorization", bearer(studentTwoToken)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/results/me").header("Authorization", bearer(studentTwoToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 
     private String createExam(String token, String title, String subject, String status) throws Exception {
@@ -225,6 +318,16 @@ class ExamFlowIntegrationTest {
         String id = objectMapper.readTree(response).path("data").path("id").asText();
         assertThat(id).isNotBlank();
         return id;
+    }
+
+    private String questionOptionId(String token, String questionId) throws Exception {
+        String response = mockMvc.perform(get("/api/questions/" + questionId + "/options")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).path("data").path(0).path("id").asText();
     }
 
     private String login(String email, String password) throws Exception {

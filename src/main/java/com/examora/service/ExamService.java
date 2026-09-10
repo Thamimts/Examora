@@ -57,9 +57,20 @@ public class ExamService {
     }
 
     public Exam update(String id, Exam exam, User actor) {
-        findById(id);
+        Exam existing = findById(id);
         requireOwner(id, actor);
-        examRepository.update(id, normalize(id, exam));
+        Exam editable = new Exam(
+                existing.id(),
+                required(exam.title(), "Title"),
+                required(exam.subject(), "Subject"),
+                exam.date() == null || exam.date().isBlank() ? existing.date() : exam.date().trim(),
+                exam.duration() <= 0 ? existing.duration() : exam.duration(),
+                existing.status(),
+                existing.participants(),
+                existing.averageScore(),
+                existing.startAt(),
+                existing.endAt());
+        examRepository.update(id, editable);
         return findById(id);
     }
 
@@ -84,8 +95,7 @@ public class ExamService {
         if (actor.role() == Role.ADMIN) return;
         requireTeacher(actor);
         String ownerId = examRepository.findOwnerId(examId).orElse(null);
-        // Legacy rows without an owner remain manageable by teachers during migration.
-        if (ownerId != null && !ownerId.equals(actor.id())) {
+        if (ownerId == null || !ownerId.equals(actor.id())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "You do not own this exam.");
         }
     }

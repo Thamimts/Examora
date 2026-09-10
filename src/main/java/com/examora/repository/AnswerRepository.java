@@ -18,13 +18,13 @@ public class AnswerRepository {
 
     public List<Answer> findAll() {
         return jdbcTemplate.query(
-                "select id, user_id, exam_id, question_id, option_id, answer_value from answers order by updated_at desc",
+                "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers order by updated_at desc",
                 this::mapAnswer);
     }
 
     public Optional<Answer> findById(String id) {
         return jdbcTemplate.query(
-                        "select id, user_id, exam_id, question_id, option_id, answer_value from answers where id = ?",
+                        "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers where id = ?",
                         this::mapAnswer,
                         id)
                 .stream()
@@ -33,38 +33,40 @@ public class AnswerRepository {
 
     public List<Answer> findByExamId(String examId) {
         return jdbcTemplate.query(
-                "select id, user_id, exam_id, question_id, option_id, answer_value from answers where exam_id = ? order by updated_at desc",
+                "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers where exam_id = ? order by updated_at desc",
                 this::mapAnswer,
                 examId);
     }
 
     public List<Answer> findByUserId(String userId) {
         return jdbcTemplate.query(
-                "select id, user_id, exam_id, question_id, option_id, answer_value from answers where user_id = ? order by updated_at desc",
+                "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers where user_id = ? order by updated_at desc",
                 this::mapAnswer,
                 userId);
     }
 
     public Answer create(Answer answer) {
         jdbcTemplate.update(
-                "insert into answers (id, user_id, exam_id, question_id, option_id, answer_value) values (?, ?, ?, ?, ?, ?)",
+                "insert into answers (id, user_id, exam_id, question_id, option_id, answer_value, attempt_id) values (?, ?, ?, ?, ?, ?, ?)",
                 answer.id(),
                 answer.userId(),
                 answer.examId(),
                 answer.questionId(),
                 answer.optionId(),
-                answer.value());
+                answer.value(),
+                answer.attemptId());
         return answer;
     }
 
     public int update(String id, Answer answer) {
         return jdbcTemplate.update(
-                "update answers set user_id = ?, exam_id = ?, question_id = ?, option_id = ?, answer_value = ? where id = ?",
+                "update answers set user_id = ?, exam_id = ?, question_id = ?, option_id = ?, answer_value = ?, attempt_id = ? where id = ?",
                 answer.userId(),
                 answer.examId(),
                 answer.questionId(),
                 answer.optionId(),
                 answer.value(),
+                answer.attemptId(),
                 id);
     }
 
@@ -86,6 +88,7 @@ public class AnswerRepository {
                 rs.getString("exam_id"),
                 rs.getString("question_id"),
                 rs.getString("option_id"),
-                rs.getString("answer_value"));
+                rs.getString("answer_value"),
+                rs.getString("attempt_id"));
     }
 }
