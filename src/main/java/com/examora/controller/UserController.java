@@ -1,6 +1,7 @@
 package com.examora.controller;
 
 import com.examora.dto.ApiResponse;
+import com.examora.dto.UserDtos.CreateUserRequest;
 import com.examora.model.User;
 import com.examora.service.AuthService;
 import com.examora.service.UserService;
@@ -42,8 +43,8 @@ public class UserController {
     }
 
     @PostMapping
-    public ApiResponse<User> create(@RequestBody User user) {
-        return ApiResponse.ok("Created", userService.create(user));
+    public ApiResponse<User> create(@RequestBody CreateUserRequest request) {
+        return ApiResponse.ok("Created", userService.create(request));
     }
 
     @PutMapping("/{id}")

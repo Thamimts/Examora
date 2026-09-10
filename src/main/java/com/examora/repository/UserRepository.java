@@ -57,17 +57,6 @@ public class UserRepository {
         return new User(id, name, email, role, null);
     }
 
-    public User create(User user) {
-        jdbcTemplate.update(
-                "insert into users (id, name, email, role, avatar) values (?, ?, ?, ?, ?)",
-                user.id(),
-                user.name(),
-                user.email(),
-                user.role().name(),
-                user.avatar());
-        return user;
-    }
-
     public int update(String id, User user) {
         return jdbcTemplate.update(
                 "update users set name = ?, email = ?, role = ?, avatar = ? where id = ?",

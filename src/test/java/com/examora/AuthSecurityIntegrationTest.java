@@ -172,6 +172,66 @@ class AuthSecurityIntegrationTest {
     }
 
     @Test
+    void databaseHealthEndpointReportsDatabaseConnectivity() throws Exception {
+        mockMvc.perform(get("/api/db/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.connected").value(true))
+                .andExpect(jsonPath("$.data.database").isString());
+    }
+
+    @Test
+    void adminCreatedUserReceivesBcryptHashAndCanAuthenticate() throws Exception {
+        String adminToken = login("admin@example.com", "admin123");
+
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"provisioned@example.com\",\"name\":\"Provisioned User\",\"password\":\"securepass123\",\"role\":\"STUDENT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value("provisioned@example.com"))
+                .andExpect(jsonPath("$.data.role").value("STUDENT"));
+
+        String storedHash = jdbcTemplate.queryForObject(
+                "select password_hash from users where email = 'provisioned@example.com'", String.class);
+        assertThat(storedHash).isNotBlank().startsWith("$2");
+        assertThat(storedHash).isNotEqualTo("securepass123");
+        assertThat(passwordEncoder.matches("securepass123", storedHash)).isTrue();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"provisioned@example.com\",\"password\":\"securepass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.email").value("provisioned@example.com"));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"provisioned@example.com\",\"password\":\"wrong-password\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminCreatingUserWithoutPasswordIsRejected() throws Exception {
+        String adminToken = login("admin@example.com", "admin123");
+
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nopassword@example.com\",\"name\":\"No Password\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void studentCannotCreateUsers() throws Exception {
+        String token = login("student@example.com", "student123");
+
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"not.allowed@example.com\",\"name\":\"Not Allowed\",\"password\":\"somepass123\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void authenticatedStudentConnectsToOwnActivityWebSocketDestination() throws Exception {
         User student = new User("student-1", "Student One", "student@example.com", com.examora.model.Role.STUDENT, null);
         StompSession session = connect(jwtService.generateToken(student));
