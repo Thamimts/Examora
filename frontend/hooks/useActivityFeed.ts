@@ -2,19 +2,19 @@ import { useEffect } from 'react'
 import type { ActivityEvent, Role } from '@/types'
 import api from '@/services/api'
 
-const wsUrl = () => {
+export const wsUrl = () => {
   const configuredApiUrl = String(api.defaults.baseURL || '/api')
   const base = new URL(configuredApiUrl, window.location.origin)
   const protocol = base.protocol === 'https:' ? 'wss:' : 'ws:'
   const path = base.pathname.replace(/\/api\/?$/, '') || '/'
   return `${protocol}//${base.host}${path.replace(/\/$/, '')}/ws`
 }
-const frame = (command: string, headers: Record<string, string> = {}) => {
+export const frame = (command: string, headers: Record<string, string> = {}) => {
   const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${value}`).join('\n')
   return `${command}${headerLines ? `\n${headerLines}` : ''}\n\n\0`
 }
 
-const disconnectFrame = 'DISCONNECT\n\n\0'
+export const disconnectFrame = 'DISCONNECT\n\n\0'
 
 export function useActivityFeed(role: Role | undefined, token: string | null, onEvent: (event: ActivityEvent) => void, refresh: () => void) {
   useEffect(() => {
