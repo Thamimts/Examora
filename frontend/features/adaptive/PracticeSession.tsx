@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, RotateCcw, X } from 'lucide-react'
 import { Card, Header } from '@/components/shared'
@@ -9,15 +9,23 @@ import { usePracticeStore } from '@/store/practiceStore'
 import { adaptiveApi } from '@/services/adaptiveApi'
 import type { PracticeAnswerResponse, PracticeSummary, PracticeSession } from '@/types/adaptive'
 
+function isForeignPracticeSessionError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const response = (error as { response?: { status?: number; data?: { message?: unknown } } }).response
+  return response?.status === 403 && response.data?.message === 'This session belongs to another student.'
+}
+
 export function PracticeSession() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
+  const queryClient = useQueryClient()
   const session = usePracticeStore((state) => state.sessions[id])
   const submitting = usePracticeStore((state) => state.submitting)
   const setSession = usePracticeStore((state) => state.setSession)
   const applyAnswered = usePracticeStore((state) => state.applyAnswered)
   const setSubmitting = usePracticeStore((state) => state.setSubmitting)
+  const resetSession = usePracticeStore((state) => state.reset)
 
   const [selected, setSelected] = useState('')
   const [feedback, setFeedback] = useState<PracticeAnswerResponse | null>(null)
@@ -29,11 +37,11 @@ export function PracticeSession() {
     retry: 1,
   })
 
-  const working = session ?? sessionQuery.data
+  const working = sessionQuery.data ?? session
 
   useEffect(() => {
-    if (sessionQuery.data && !session) setSession(id, sessionQuery.data)
-  }, [sessionQuery.data, session, id, setSession])
+    if (sessionQuery.data) setSession(id, sessionQuery.data)
+  }, [sessionQuery.data, id, setSession])
 
   const submitAnswer = useMutation({
     mutationFn: ({ questionId, optionId }: { questionId: string; optionId: string }) =>
@@ -44,8 +52,20 @@ export function PracticeSession() {
       applyAnswered(id, result)
       setFeedback(result)
       setSelected('')
+      const refreshed = usePracticeStore.getState().sessions[id]
+      if (refreshed) queryClient.setQueryData<PracticeSession>(['practice-session', id], refreshed)
     },
-    onError: () => toast.error('Unable to submit this answer.'),
+    onError: (error: unknown) => {
+      if (isForeignPracticeSessionError(error)) {
+        setSelected('')
+        setFeedback(null)
+        resetSession(id)
+        sessionQuery.refetch()
+        toast.error('Your session no longer matches your account. Select an answer and submit again.')
+      } else {
+        toast.error('Unable to submit this answer.')
+      }
+    },
     onSettled: () => setSubmitting(false),
   })
 
@@ -56,6 +76,7 @@ export function PracticeSession() {
       setFeedback(null)
       setSelected('')
       setSession(id, response.data.data)
+      queryClient.setQueryData<PracticeSession>(['practice-session', id], response.data.data)
       toast.success('A new practice session has started.')
     },
     onError: () => toast.error('Unable to start a new session.'),

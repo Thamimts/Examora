@@ -1,6 +1,7 @@
 import { APICallError, AISDKError, JSONParseError, NoObjectGeneratedError, NoSuchModelError, TypeValidationError, generateObject } from 'ai'
 import { z } from 'zod'
 import { createBoundedCache, createStudentCacheKey } from '@/lib/ai-analysis-cache'
+import type { StudentAiAnalysis } from '@/types/ai'
 import type { StudentPerformanceAnalytics } from '@/types/analytics'
 
 const analyticsSchema = z.object({
@@ -14,7 +15,7 @@ const analyticsSchema = z.object({
   topicPerformance: z.array(z.object({ topic: z.string(), completedExamCount: z.number().int().nonnegative(), averageScore: z.number().min(0).max(100), accuracy: z.number().min(0).max(100) })),
 })
 
-export const studentAiAnalysisSchema = z.object({
+const studentAiAnalysisSchema = z.object({
   summary: z.string(),
   strengths: z.array(z.string()).max(5),
   weaknesses: z.array(z.string()).max(5),
@@ -22,8 +23,6 @@ export const studentAiAnalysisSchema = z.object({
   priorityTopics: z.array(z.string()).max(5),
   studyPriorities: z.array(z.object({ topic: z.string(), reason: z.string(), priority: z.enum(['HIGH', 'MEDIUM', 'LOW']) })).max(5),
 })
-
-export type StudentAiAnalysis = z.infer<typeof studentAiAnalysisSchema>
 
 const cache = createBoundedCache<StudentAiAnalysis>({ maxEntries: 200, ttlMs: 30 * 60 * 1000 })
 

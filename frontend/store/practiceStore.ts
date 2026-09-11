@@ -9,6 +9,7 @@ type PracticeState = {
   applyAnswered: (examId: string, response: PracticeAnswerResponse) => void
   setSubmitting: (value: boolean) => void
   reset: (examId: string) => void
+  clear: () => void
 }
 
 export const usePracticeStore = create<PracticeState>()((set) => ({
@@ -40,4 +41,5 @@ export const usePracticeStore = create<PracticeState>()((set) => ({
     delete next[examId]
     return { sessions: next }
   }),
+  clear: () => set({ sessions: {} }),
 }))
