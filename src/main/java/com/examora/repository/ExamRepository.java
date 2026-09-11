@@ -31,6 +31,18 @@ public class ExamRepository {
                 .findFirst();
     }
 
+    public List<Exam> findByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+        return jdbcTemplate.query(
+                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at "
+                        + "from exams where id in (" + placeholders + ")",
+                this::mapExam,
+                ids.toArray());
+    }
+
     public List<Exam> findAvailable() {
         return jdbcTemplate.query(
                 "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams where status <> 'DRAFT' order by date",

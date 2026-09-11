@@ -2,11 +2,13 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Trash2, Users, X } from 'lucide-react'
+import { Activity, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
 import type { ActivityEvent, LoginRole, Role, Result } from '@/types'
+import type { ActiveAttemptInfo } from '@/types/exam'
+import type { StudentAiAnalysis } from '@/types/ai'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -18,6 +20,8 @@ import { questionApi } from '@/services/questionApi'
 import { resultApi } from '@/services/resultApi'
 import { activityApi } from '@/services/activityApi'
 import { retestApi } from '@/services/retestApi'
+import { analyticsApi } from '@/services/analyticsApi'
+import { adaptiveApi } from '@/services/adaptiveApi'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
@@ -345,31 +349,121 @@ function Dashboard() {
     </>
   )
 }
+function formatCountdown(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
+  if (minutes > 0) return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  return `${seconds}s`
+}
+
+function formatStartsIn(target: number) {
+  const minutes = Math.max(1, Math.round((target - Date.now()) / 60000))
+  if (minutes < 60) return `Starts in ${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  if (hours < 24) return remainder ? `Starts in ${hours}h ${remainder}m` : `Starts in ${hours}h`
+  const days = Math.floor(hours / 24)
+  const remHours = hours % 24
+  return remHours ? `Starts in ${days}d ${remHours}h` : `Starts in ${days}d`
+}
+
+function ActiveExamCard({ attempt, onResume, onExpired }: { attempt: ActiveAttemptInfo; onResume: () => void; onExpired: () => void }) {
+  const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, attempt.remainingSeconds))
+  useEffect(() => {
+    setSecondsLeft(Math.max(0, attempt.remainingSeconds))
+    const target = new Date(attempt.expiresAt).getTime()
+    const update = () => setSecondsLeft(Math.max(0, Math.ceil((target - Date.now()) / 1000)))
+    update()
+    const timer = window.setInterval(update, 1000)
+    return () => window.clearInterval(timer)
+  }, [attempt.remainingSeconds, attempt.expiresAt])
+  const expired = secondsLeft <= 0
+  useEffect(() => {
+    if (expired) onExpired()
+  }, [expired, onExpired])
+  const low = !expired && secondsLeft <= 300
+  return (
+    <Card className="border-primary/40 bg-primary/[0.04]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><Timer size={20} /></div>
+          <div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"><Activity size={12} />In progress</span>
+            <h2 className="mt-1.5 text-xl font-semibold">{attempt.examTitle}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{attempt.subject} · {attempt.duration} minutes</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-5">
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Time remaining</p>
+            <p className={`mt-0.5 text-2xl font-semibold tabular-nums ${low ? 'text-amber-600' : 'text-foreground'}`}>{expired ? 'Expired' : formatCountdown(secondsLeft)}</p>
+          </div>
+          <button type="button" className="flex items-center gap-1 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onResume}>Resume exam <ChevronRight size={16} /></button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 function DashboardV2() {
   const user = useAuthStore((state) => state.user)
   const token = useAuthStore((state) => state.token)
   const navigate = useNavigate()
+  const isStudent = user?.role === 'STUDENT'
   const examsQuery = useQuery({ queryKey: ['dashboard-exams', user?.role], queryFn: async () => (await examApi.list()).data.data, enabled: Boolean(user), retry: 1 })
-  const resultsQuery = useQuery({ queryKey: ['dashboard-results', user?.id], queryFn: async () => (await resultApi.mine()).data.data, enabled: user?.role === 'STUDENT', retry: 1 })
-  const activityQuery = useQuery({ queryKey: ['dashboard-activity', user?.role, user?.id], queryFn: async () => (await activityApi.recent()).data.data, enabled: user?.role === 'STUDENT' || user?.role === 'ADMIN', retry: 1 })
+  const analyticsQuery = useQuery({ queryKey: ['dashboard-analytics', user?.id], queryFn: async () => (await analyticsApi.performance()).data.data, enabled: isStudent, retry: 1 })
+  const attemptsQuery = useQuery({ queryKey: ['dashboard-attempts', user?.id], queryFn: async () => (await examApi.activeAttempts()).data.data, enabled: isStudent, retry: 1 })
+  const sessionsQuery = useQuery({ queryKey: ['dashboard-sessions', user?.id], queryFn: async () => (await adaptiveApi.sessions()).data.data, enabled: isStudent, retry: 1 })
+  const activityQuery = useQuery({ queryKey: ['dashboard-activity', user?.role, user?.id], queryFn: async () => (await activityApi.recent()).data.data, enabled: isStudent || user?.role === 'ADMIN', retry: 1 })
+  const aiQuery = useQuery({ queryKey: ['dashboard-ai-analysis', user?.id], queryFn: async () => {
+    const response = await fetch('/api/student/ai-analysis', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    const body = await response.json().catch(() => null)
+    if (!response.ok) {
+      const error = new Error((body as { error?: string } | null)?.error ?? 'Unable to load AI recommendations') as Error & { status?: number }
+      error.status = response.status
+      throw error
+    }
+    return body as StudentAiAnalysis
+  }, enabled: Boolean(token) && isStudent, retry: 1 })
   const activityClient = useQueryClient()
   const addActivity = useCallback((event: ActivityEvent) => activityClient.setQueryData<ActivityEvent[]>(['dashboard-activity', user?.role, user?.id], current => [event, ...(current ?? []).filter(item => item.id !== event.id)].slice(0, 20)), [activityClient, user?.id, user?.role])
   useActivityFeed(user?.role, token, addActivity, () => { void activityQuery.refetch() })
   const exams = examsQuery.data ?? []
-  const results = resultsQuery.data ?? []
-  const average = results.length ? Math.round(results.reduce((sum, result) => sum + (result.total ? result.score * 100 / result.total : 0), 0) / results.length) : 0
-  const trend = [...results].reverse().map((result, index) => ({ name: result.date || `Attempt ${index + 1}`, score: result.total ? Math.round(result.score * 100 / result.total) : 0 }))
+  const analytics = analyticsQuery.data
+  const activeAttempt = (attemptsQuery.data ?? [])[0]
+  const sessions = sessionsQuery.data ?? []
+  const latestSession = sessions[0] ?? null
   const available = exams.filter(exam => exam.status === 'UPCOMING')
+  const upcoming = (isStudent ? exams.filter(exam => (exam.status === 'UPCOMING' || exam.status === 'ACTIVE') && (!exam.endAt || new Date(exam.endAt).getTime() > Date.now())) : available).slice(0, 3)
   const activity = [...(activityQuery.data ?? [])].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-  const loading = examsQuery.isPending || (user?.role === 'STUDENT' && resultsQuery.isPending)
+  const loading = examsQuery.isPending || (isStudent && (analyticsQuery.isPending || attemptsQuery.isPending || sessionsQuery.isPending))
+  const aiStatus = (aiQuery.error as { status?: number } | null)?.status
+  const practiceAccuracy = latestSession && latestSession.answeredCount > 0 ? Math.round((latestSession.correctCount / latestSession.answeredCount) * 100) : null
+  const trend = (analytics?.recentScoreTrend ?? []).map(point => ({ name: point.date || 'Attempt', score: point.score }))
   return <>
-    <Header title={user?.role === 'STUDENT' ? `Good morning, ${user.name}` : user?.role === 'TEACHER' ? 'Teacher dashboard' : 'System overview'} description="Live numbers pulled from the backend database." />
-    {loading ? <div className="grid gap-4 sm:grid-cols-3" aria-busy="true" aria-live="polite">{[1, 2, 3].map(item => <Card key={item}><div className="h-14 animate-pulse rounded-xl bg-muted" /></Card>)}</div> : <div className="grid gap-4 sm:grid-cols-3"><Card><p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Completed exams' : 'Total exams'}</p><p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? results.length : exams.length}</p></Card><Card><p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Average score' : 'Published exams'}</p><p className="mt-2 text-3xl font-semibold">{user?.role === 'STUDENT' ? `${average}%` : exams.filter(exam => exam.status !== 'DRAFT').length}</p></Card><Card><p className="text-sm text-muted-foreground">{user?.role === 'STUDENT' ? 'Available exams' : 'Active exams'}</p><p className="mt-2 text-3xl font-semibold">{available.length}</p></Card></div>}
-    {user?.role === 'STUDENT' && <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]"><Card><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Performance trend</h2><p className="mt-1 text-sm text-muted-foreground">Your latest submitted attempts</p></div><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm transition hover:bg-muted active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/history')}>View history</button></div>{trend.length ? <div className="mt-5 h-56" aria-label="Performance trend chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={trend}><CartesianGrid strokeDasharray="3 3" className="stroke-border" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 11 }} /><Tooltip /><Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div> : <p className="py-12 text-center text-sm text-muted-foreground">Complete an exam to see your performance trend.</p>}</Card><Card><h2 className="font-semibold">Quick actions</h2><div className="mt-4 grid gap-3"><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/exams')}><b>Browse exams</b><span className="mt-1 block text-muted-foreground">Find your next assessment</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/ai-analysis')}><b>AI analysis</b><span className="mt-1 block text-muted-foreground">Review learning insights</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/adaptive')}><b>Adaptive practice</b><span className="mt-1 block text-muted-foreground">Practice at your level</span></button></div></Card></div>}
-    <div className="mt-6 grid gap-6 lg:grid-cols-2"><Card><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Upcoming exams</h2><button type="button" className="text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(user?.role === 'STUDENT' ? '/student/exams' : '/teacher/exams')}>View all</button></div>{examsQuery.isError ? <div role="alert" className="mt-4 flex items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load exams.</p><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => void examsQuery.refetch()}>Retry</button></div> : available.length ? <div className="mt-4 divide-y divide-border">{available.slice(0, 4).map(exam => <button type="button" key={exam.id} className="flex w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-muted/60 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}><span><b className="block">{exam.title}</b><span className="text-sm text-muted-foreground">{exam.subject} · {exam.duration} min</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></button>)}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No upcoming exams are available.</p>}</Card><Card><h2 className="font-semibold">Recent activity</h2>{activityQuery.isPending ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-muted" aria-busy="true" /> : activity.length ? <div className="mt-4 divide-y divide-border">{activity.slice(0, 5).map(event => <div key={event.id} className="flex items-center justify-between gap-4 py-3 text-sm"><p>{event.message}</p><time className="shrink-0 text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleDateString()}</time></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No recent activity yet.</p>}</Card></div>
+    <Header title={isStudent ? `Good morning, ${user.name}` : user?.role === 'TEACHER' ? 'Teacher dashboard' : 'System overview'} description="Live numbers pulled from the backend database." />
+    {loading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true" aria-live="polite">{[1, 2, 3, 4].map(item => <Card key={item}><div className="h-14 animate-pulse rounded-xl bg-muted" /></Card>)}</div> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{isStudent ? <>
+      <Card><div className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Completed exams</p><BookOpen className="size-5 text-primary" /></div><p className="mt-2 text-3xl font-semibold">{analytics?.completedExamCount ?? 0}</p></Card>
+      <Card><div className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Average score</p><TrendingUp className="size-5 text-primary" /></div><p className="mt-2 text-3xl font-semibold">{analytics ? `${Math.round(analytics.averageScore)}%` : '—'}</p></Card>
+      <Card><div className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Accuracy</p><Activity className="size-5 text-primary" /></div><p className="mt-2 text-3xl font-semibold">{analytics ? `${Math.round(analytics.accuracy)}%` : '—'}</p></Card>
+      <Card><div className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Highest score</p><Award className="size-5 text-primary" /></div><p className="mt-2 text-3xl font-semibold">{analytics?.highestScore == null ? '—' : `${Math.round(analytics.highestScore)}%`}</p></Card>
+    </> : <>
+      <Card><p className="text-sm text-muted-foreground">Total exams</p><p className="mt-2 text-3xl font-semibold">{exams.length}</p></Card>
+      <Card><p className="text-sm text-muted-foreground">Published exams</p><p className="mt-2 text-3xl font-semibold">{exams.filter(exam => exam.status !== 'DRAFT').length}</p></Card>
+      <Card><p className="text-sm text-muted-foreground">Active exams</p><p className="mt-2 text-3xl font-semibold">{available.length}</p></Card>
+      <Card><p className="text-sm text-muted-foreground">Exam subjects</p><p className="mt-2 text-3xl font-semibold">{new Set(exams.map(exam => exam.subject)).size}</p></Card>
+    </>}</div>}
+    {isStudent && (attemptsQuery.isPending ? <div className="mt-6 h-24 animate-pulse rounded-2xl bg-muted" aria-busy="true" /> : activeAttempt ? <div className="mt-6"><ActiveExamCard attempt={activeAttempt} onResume={() => navigate(`/student/exams/${activeAttempt.examId}`)} onExpired={() => { void attemptsQuery.refetch() }} /></div> : attemptsQuery.isError ? <p className="mt-6 text-sm text-muted-foreground">Couldn't load your active exam. <button type="button" className="underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { void attemptsQuery.refetch() }}>Retry</button></p> : null)}
+    <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <Card><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Practice progress</h2><p className="mt-1 text-sm text-muted-foreground">Your adaptive practice sessions</p></div><Target className="size-5 text-primary" /></div>{sessionsQuery.isPending ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-muted" aria-busy="true" /> : sessionsQuery.isError ? <div role="alert" className="mt-4 flex items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load practice sessions.</p><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => { void sessionsQuery.refetch() }}>Retry</button></div> : latestSession ? <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-muted-foreground">{latestSession.subject || 'Subject'} · {latestSession.status === 'COMPLETED' ? 'Completed' : latestSession.status === 'EXPIRED' ? 'Expired' : `Level ${latestSession.level}`}</p><b className="mt-1 block">{latestSession.examTitle}</b><div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground"><span>{latestSession.answeredCount} of {latestSession.targetQuestionCount} questions answered</span>{practiceAccuracy != null && <span>{practiceAccuracy}% correct</span>}</div></div><button type="button" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(`/student/adaptive/${latestSession.examId}`)}>Continue practice <ChevronRight size={16} /></button></div> : <div className="mt-4 flex flex-col items-center gap-3 py-6 text-center"><p className="text-sm text-muted-foreground">Start adaptive practice to build your skills.</p><button type="button" className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/practice')}>Start practice</button></div>}</Card>
+      <Card><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">AI recommendations</h2><p className="mt-1 text-sm text-muted-foreground">Personalized study guidance</p></div><Sparkles className="size-5 text-primary" /></div>{aiQuery.isPending ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-muted" aria-busy="true" /> : aiQuery.isError && aiStatus === 422 ? <p className="mt-4 text-sm text-muted-foreground">Complete an exam to unlock personalized AI recommendations.</p> : aiQuery.isError ? <div className="mt-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">AI recommendations are temporarily unavailable.</p><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => { void aiQuery.refetch() }}>Retry</button></div> : aiQuery.data ? <ul className="mt-4 divide-y divide-border">{aiQuery.data.recommendations.slice(0, 3).map((recommendation, index) => <li key={index} className="flex items-start gap-3 py-3 text-sm"><Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />{recommendation}</li>)}</ul> : null}</Card>
+    </div>
+    <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]"><Card><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Performance trend</h2><p className="mt-1 text-sm text-muted-foreground">Score across your completed exams</p></div><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm transition hover:bg-muted active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate('/student/history')}>View history</button></div>{trend.length ? <div className="mt-5 h-56" aria-label="Performance trend chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={trend}><CartesianGrid strokeDasharray="3 3" className="stroke-border" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis domain={[0, 100]} tick={{ fontSize: 11 }} /><Tooltip /><Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div> : analyticsQuery.isError ? <p className="py-12 text-center text-sm text-destructive">Unable to load your performance.</p> : <p className="py-12 text-center text-sm text-muted-foreground">Complete an exam to see your performance trend.</p>}</Card><Card><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Upcoming exams</h2><button type="button" className="text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(isStudent ? '/student/exams' : '/teacher/exams')}>View all</button></div>{examsQuery.isError ? <div role="alert" className="mt-4 flex items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load exams.</p><button type="button" className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => { void examsQuery.refetch() }}>Retry</button></div> : upcoming.length ? <div className="mt-4 divide-y divide-border">{upcoming.map(exam => <button type="button" key={exam.id} className="flex w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-muted/60 active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(isStudent ? `/student/exams/${exam.id}/instructions` : '/teacher/exams')}><span><b className="block">{exam.title}</b><span className="mt-1 block text-sm text-muted-foreground">{exam.startAt ? formatStartsIn(new Date(exam.startAt).getTime()) : `${exam.subject} · ${exam.duration} min`}</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></button>)}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No upcoming exams are available.</p>}</Card></div>
+    <div className="mt-6 grid gap-6 lg:grid-cols-2"><Card><h2 className="font-semibold">Recent activity</h2>{activityQuery.isPending ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-muted" aria-busy="true" /> : activity.length ? <div className="mt-4 divide-y divide-border">{activity.slice(0, 5).map(event => <div key={event.id} className="flex items-center justify-between gap-4 py-3 text-sm"><p>{event.message}</p><time className="shrink-0 text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleDateString()}</time></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No recent activity.</p>}</Card><Card><h2 className="font-semibold">Quick actions</h2><div className="mt-4 grid gap-3"><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(isStudent ? '/student/exams' : '/teacher/exams')}><b>Browse exams</b><span className="mt-1 block text-muted-foreground">Find your next assessment</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(isStudent ? '/student/practice' : '/teacher/exams')}><b>Practice</b><span className="mt-1 block text-muted-foreground">Adaptive questions that match your level</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(isStudent ? '/student/analysis' : '/admin/analytics')}><b>View performance</b><span className="mt-1 block text-muted-foreground">Review your exam results and analytics</span></button><button type="button" className="rounded-xl border border-border p-3 text-left text-sm transition hover:bg-muted active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => navigate(isStudent ? '/student/ai-analysis' : '/admin/analytics')}><b>AI coach</b><span className="mt-1 block text-muted-foreground">Personalized learning insights</span></button></div></Card></div>
   </>
 }
-
 function RealAuth({ mode }: { mode: 'login' | 'register' }) {
   const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [loginRole, setLoginRole] = useState<LoginRole>('STUDENT')
   const schema = mode === 'login' ? z.object({ email: z.string().email(), password: z.string().min(1) }) : z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) })

@@ -3,6 +3,7 @@ import type { ApiResponse } from '@/types'
 import type { PracticeAnswerResponse, PracticeSession } from '@/types/adaptive'
 
 export const adaptiveApi = {
+  sessions: () => api.get<ApiResponse<PracticeSession[]>>('/student/adaptive/sessions'),
   resumeOrCreate: (examId: string) =>
     api.get<ApiResponse<PracticeSession>>(`/student/adaptive/exams/${examId}/session`),
   startNew: (examId: string, targetQuestionCount?: number) =>

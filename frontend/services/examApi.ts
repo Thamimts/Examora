@@ -1,4 +1,5 @@
 import api from './api'; import type { ApiResponse, Exam, Result } from '@/types'
+import type { ActiveAttemptInfo } from '@/types/exam'
 
 type CreateExamPayload = { title: string; subject: string; date: string; duration: number }
 type SubmittedAnswer = { questionId: string; optionId?: string; value?: string }
@@ -12,6 +13,7 @@ export const examApi = {
   update: (id: string, payload: Partial<Exam>) => api.put<ApiResponse<Exam>>(`/exams/${id}`, payload),
   remove: (id: string) => api.delete(`/exams/${id}`),
   publish: (id: string) => api.post<ApiResponse<Exam>>(`/exams/${id}/publish`),
+  activeAttempts: () => api.get<ApiResponse<ActiveAttemptInfo[]>>('/exams/attempts/active'),
   start: (id: string) => api.post<ApiResponse<StartExamResponse>>(`/exams/${id}/start`),
   submit: (id: string, answers: SubmittedAnswer[]) => api.post<ApiResponse<ExamSubmissionResponse>>(`/exams/${id}/submit`, { answers }),
 }

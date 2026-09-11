@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -29,6 +30,11 @@ public class PracticeSessionRepository {
     public Optional<PracticeSession> findActive(String studentId, String examId) {
         return jdbc.query(SELECT + "where student_id = ? and exam_id = ? and status = 'STARTED' order by started_at desc",
                 this::map, studentId, examId).stream().findFirst();
+    }
+
+    public List<PracticeSession> findRecentForStudent(String studentId, int limit) {
+        return jdbc.query(SELECT + "where student_id = ? order by last_activity_at desc limit ?",
+                this::map, studentId, limit);
     }
 
     public PracticeSession create(PracticeSession session) {

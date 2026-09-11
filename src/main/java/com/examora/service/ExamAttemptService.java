@@ -1,5 +1,6 @@
 package com.examora.service;
 
+import com.examora.dto.ExamDtos.ActiveAttemptDto;
 import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
 import com.examora.dto.ExamDtos.StartExamResponse;
@@ -84,6 +85,16 @@ public class ExamAttemptService {
         proctorPublishService.publishLifecycle(exam, attempt, student, "STARTED");
         return new StartExamResponse(exam.id(), student.id(), attempt.status(), exam, attempt.id(),
                 attempt.startedAt().toString(), attempt.expiresAt().toString(), attempt.expiresAt().toString());
+    }
+
+    public List<ActiveAttemptDto> activeForStudent(User student) {
+        requireStudent(student);
+        Instant now = Instant.now();
+        return attemptRepository.findActiveForStudent(student.id(), now).stream()
+                .map(row -> new ActiveAttemptDto(row.attemptId(), row.examId(), row.examTitle(), row.subject(),
+                        row.duration(), row.status(), row.startedAt().toString(), row.expiresAt().toString(),
+                        Math.max(0, row.expiresAt().getEpochSecond() - now.getEpochSecond())))
+                .toList();
     }
 
     @Transactional

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/student/adaptive")
@@ -44,6 +45,12 @@ public class AdaptivePracticeController {
         Integer target = request == null ? null : request.targetQuestionCount();
         PracticeSessionDto dto = service.startNew(examId, student, target);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Practice session created.", dto));
+    }
+
+    @GetMapping("/sessions")
+    public ApiResponse<List<PracticeSessionDto>> sessions(Authentication authentication) {
+        User student = (User) authentication.getPrincipal();
+        return ApiResponse.ok(service.sessionsFor(student));
     }
 
     @GetMapping("/sessions/{sessionId}")

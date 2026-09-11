@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -111,6 +112,25 @@ public class AdaptivePracticeService {
         PracticeSession session = requireOwned(sessionId, student);
         Exam exam = requireAvailableExam(session.examId());
         return toDto(session, exam);
+    }
+
+    public List<PracticeSessionDto> sessionsFor(User student) {
+        requireStudent(student);
+        List<PracticeSession> sessions = sessionRepository.findRecentForStudent(student.id(), 5);
+        if (sessions.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Exam> exams = examRepository
+                .findByIds(sessions.stream().map(PracticeSession::examId).toList())
+                .stream()
+                .collect(Collectors.toMap(Exam::id, java.util.function.Function.identity()));
+        return sessions.stream()
+                .filter(session -> {
+                    Exam exam = exams.get(session.examId());
+                    return exam != null && !"DRAFT".equalsIgnoreCase(exam.status());
+                })
+                .map(session -> toDto(session, exams.get(session.examId())))
+                .toList();
     }
 
     @Transactional

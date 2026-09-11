@@ -20,4 +20,9 @@ public final class ExamDtos {
 
     public record ExamSubmissionResponse(Result result, int score, int total, double percentage) {
     }
+
+    public record ActiveAttemptDto(String attemptId, String examId, String examTitle,
+                                   String subject, int duration, String status,
+                                   String startedAt, String expiresAt, long remainingSeconds) {
+    }
 }

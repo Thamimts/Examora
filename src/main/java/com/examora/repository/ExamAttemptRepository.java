@@ -30,6 +30,19 @@ public class ExamAttemptRepository {
     public List<ExamAttempt> findOverdue(Instant now) {
         return jdbc.query("select * from exam_attempts where status = 'STARTED' and expires_at <= ?", this::map, Timestamp.from(now));
     }
+    public List<ActiveAttemptRow> findActiveForStudent(String studentId, Instant now) {
+        return jdbc.query(
+                "select ea.id as attempt_id, ea.exam_id, ea.status, ea.started_at, ea.expires_at, "
+                        + "e.title as exam_title, e.subject, e.duration "
+                        + "from exam_attempts ea join exams e on e.id = ea.exam_id "
+                        + "where ea.student_id = ? and ea.status = 'STARTED' and ea.expires_at > ? "
+                        + "order by ea.started_at desc",
+                (rs, row) -> new ActiveAttemptRow(rs.getString("attempt_id"), rs.getString("exam_id"),
+                        rs.getString("status"), rs.getTimestamp("started_at").toInstant(),
+                        rs.getTimestamp("expires_at").toInstant(), rs.getString("exam_title"),
+                        rs.getString("subject"), rs.getInt("duration")),
+                studentId, Timestamp.from(now));
+    }
     public List<AttemptWithStudent> findByExamWithStudent(String examId) {
         return jdbc.query(
                 "select ea.*, u.name as student_name, u.email as student_email "
@@ -49,5 +62,10 @@ public class ExamAttemptRepository {
     }
 
     public record AttemptWithStudent(ExamAttempt attempt, String studentName, String studentEmail) {
+    }
+
+    public record ActiveAttemptRow(String attemptId, String examId, String status,
+                                   Instant startedAt, Instant expiresAt,
+                                   String examTitle, String subject, int duration) {
     }
 }
