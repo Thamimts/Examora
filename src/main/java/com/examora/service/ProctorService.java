@@ -15,12 +15,14 @@ public class ProctorService {
     private final ProctorRepository proctorRepository;
     private final ExamAttemptService examAttemptService;
     private final ProctorMonitorService proctorMonitorService;
+    private final ProctorPublishService proctorPublishService;
 
     public ProctorService(ProctorRepository proctorRepository, ExamAttemptService examAttemptService,
-                          ProctorMonitorService proctorMonitorService) {
+                          ProctorMonitorService proctorMonitorService, ProctorPublishService proctorPublishService) {
         this.proctorRepository = proctorRepository;
         this.examAttemptService = examAttemptService;
         this.proctorMonitorService = proctorMonitorService;
+        this.proctorPublishService = proctorPublishService;
     }
 
     public int saveBatch(List<ProctorEvent> events, User actor) {
@@ -33,7 +35,11 @@ public class ProctorService {
                 throw new com.examora.exception.ApiException(HttpStatus.BAD_REQUEST, "Each proctor event needs a valid attempt and type.");
             }
         }
-        return proctorRepository.saveBatch(events);
+        int saved = proctorRepository.saveBatch(events);
+        if (saved > 0) {
+            proctorPublishService.publishAfterEventBatch(attempt.id());
+        }
+        return saved;
     }
 
     public ProctorMonitorData monitor(String examId, User actor) {

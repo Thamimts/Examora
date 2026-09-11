@@ -27,6 +27,9 @@ public class ExamAttemptRepository {
     public int expireOverdue(Instant now) {
         return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where status = 'STARTED' and expires_at <= ?", Timestamp.from(now));
     }
+    public List<ExamAttempt> findOverdue(Instant now) {
+        return jdbc.query("select * from exam_attempts where status = 'STARTED' and expires_at <= ?", this::map, Timestamp.from(now));
+    }
     public List<AttemptWithStudent> findByExamWithStudent(String examId) {
         return jdbc.query(
                 "select ea.*, u.name as student_name, u.email as student_email "

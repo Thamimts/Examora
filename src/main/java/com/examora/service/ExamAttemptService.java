@@ -42,6 +42,7 @@ public class ExamAttemptService {
     private final ActivityService activityService;
     private final RetestRequestService retestRequestService;
     private final QuestionGradingService gradingService;
+    private final ProctorPublishService proctorPublishService;
 
     public ExamAttemptService(
             ExamRepository examRepository,
@@ -51,7 +52,8 @@ public class ExamAttemptService {
             ExamAttemptRepository attemptRepository,
             ActivityService activityService,
             RetestRequestService retestRequestService,
-            QuestionGradingService gradingService) {
+            QuestionGradingService gradingService,
+            ProctorPublishService proctorPublishService) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
         this.answerRepository = answerRepository;
@@ -60,11 +62,17 @@ public class ExamAttemptService {
         this.activityService = activityService;
         this.retestRequestService = retestRequestService;
         this.gradingService = gradingService;
+        this.proctorPublishService = proctorPublishService;
     }
 
     @Scheduled(fixedDelay = 1000)
     public void expireOverdueAttempts() {
-        attemptRepository.expireOverdue(Instant.now());
+        Instant now = Instant.now();
+        List<ExamAttempt> aboutToExpire = attemptRepository.findOverdue(now);
+        attemptRepository.expireOverdue(now);
+        for (ExamAttempt attempt : aboutToExpire) {
+            proctorPublishService.publishExpired(attempt);
+        }
     }
 
     public StartExamResponse start(String examId, User student) {
@@ -73,6 +81,7 @@ public class ExamAttemptService {
         ExamAttempt attempt = activeOrCreate(exam, student);
         activityService.student(student, "EXAM_STARTED", "You started “" + exam.title() + "”.");
         activityService.admin("EXAM_STARTED", student.name() + " started exam “" + exam.title() + "”.");
+        proctorPublishService.publishLifecycle(exam, attempt, student, "STARTED");
         return new StartExamResponse(exam.id(), student.id(), attempt.status(), exam, attempt.id(),
                 attempt.startedAt().toString(), attempt.expiresAt().toString(), attempt.expiresAt().toString());
     }
@@ -146,6 +155,8 @@ public class ExamAttemptService {
         examRepository.updateStats(exam.id());
         activityService.student(student, "EXAM_SUBMITTED", "You completed “" + exam.title() + "” with " + score + "/" + questions.size() + ".");
         activityService.admin("EXAM_SUBMITTED", student.name() + " submitted “" + exam.title() + "” (" + score + "/" + questions.size() + ").");
+
+        proctorPublishService.publishLifecycle(exam, attempt, student, "SUBMITTED");
 
         return new ExamSubmissionResponse(result, score, questions.size(), percentage(score, questions.size()));
     }
