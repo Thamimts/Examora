@@ -2,7 +2,8 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { BookOpen, Check, ChevronLeft, ChevronRight, Clock3, FileText, LogOut, Plus, Save, Search, ShieldCheck, Trash2, X } from 'lucide-react'
+import { BarChart3, BookOpen, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Trash2, Users, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
 import type { ActivityEvent, LoginRole, Role, Result } from '@/types'
@@ -25,29 +26,255 @@ import { StudentAIAnalysis } from '@/features/analytics/StudentAIAnalysis'
 import { StudentPerformance } from '@/features/analytics/StudentPerformance'
 import { ConfirmDialog, ToastProvider, useToast } from '@/components/feedback'
 
-const nav: Record<Role, { label: string; href: string }[]> = {
-  STUDENT: [
-    { label: 'Dashboard', href: '/student/dashboard' },
-    { label: 'My exams', href: '/student/exams' },
-    { label: 'History', href: '/student/history' },
-  ],
+type NavItem = { label: string; href: string; icon: LucideIcon }
+type NavSection = { label: string; items: NavItem[] }
+type MobileNavItem = { label: string; icon: LucideIcon; href?: string; more?: boolean }
+
+const studentNavItems: NavItem[] = [
+  { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
+  { label: 'My exams', href: '/student/exams', icon: BookOpen },
+  { label: 'Practice', href: '/student/practice', icon: Target },
+  { label: 'Performance', href: '/student/analysis', icon: BarChart3 },
+  { label: 'AI Coach', href: '/student/ai-analysis', icon: Sparkles },
+  { label: 'History', href: '/student/history', icon: HistoryIcon },
+  { label: 'Retests', href: '/student/retest-requests', icon: RotateCcw },
+]
+const studentNavSections: NavSection[] = [
+  { label: 'Main', items: studentNavItems.slice(0, 2) },
+  { label: 'Learning', items: studentNavItems.slice(2, 5) },
+  { label: 'Activity', items: studentNavItems.slice(5) },
+]
+const nav: Record<Role, NavItem[]> = {
+  STUDENT: studentNavItems,
   TEACHER: [
-    { label: 'Dashboard', href: '/teacher/dashboard' },
-    { label: 'Exams', href: '/teacher/exams' },
-    { label: 'Create exam', href: '/teacher/exams/create' },
+    { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
+    { label: 'Exams', href: '/teacher/exams', icon: BookOpen },
+    { label: 'Create exam', href: '/teacher/exams/create', icon: FileText },
   ],
   ADMIN: [
-    { label: 'Dashboard', href: '/admin/dashboard' },
-    { label: 'Students', href: '/admin/users' },
-    { label: 'Exams', href: '/admin/exams' },
-    { label: 'Question bank', href: '/admin/question-bank' },
-    { label: 'Results', href: '/admin/results' },
+    { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'Students', href: '/admin/users', icon: Users },
+    { label: 'Exams', href: '/admin/exams', icon: BookOpen },
+    { label: 'Question bank', href: '/admin/question-bank', icon: ListChecks },
+    { label: 'Results', href: '/admin/results', icon: BarChart3 },
   ],
 }
-function Shell({ children }: { children: React.ReactNode }) { const { user, logout } = useAuthStore(); const navigate = useNavigate(); const [confirmLogout, setConfirmLogout] = useState(false); const [loggingOut, setLoggingOut] = useState(false); const toast = useToast(); if (!user) return <Navigate to="/login" replace />; const signOut = async () => { setLoggingOut(true); try { await authApi.logout(); toast.success('You have been signed out.'); } catch { toast.error('Signed out locally; the server could not be reached.') } finally { logout(); navigate('/login'); setLoggingOut(false) } }; return <div className="min-h-screen bg-background"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card p-5 lg:flex lg:flex-col"><div className="flex items-center gap-3 px-2 pb-10"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><nav className="space-y-1">{nav[user.role].map(item => <NavLink key={item.href} to={item.href} className={({isActive}) => `block rounded-xl px-3 py-2.5 text-sm ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{item.label}</NavLink>)}</nav><button className="mt-auto flex gap-2 px-3 py-2 text-sm text-muted-foreground" onClick={() => setConfirmLogout(true)}><LogOut size={16}/> Sign out</button></aside><main className="min-h-screen pb-20 lg:pl-64 lg:pb-0"><div className="mx-auto max-w-7xl p-4 sm:p-5 md:p-8">{children}</div></main><nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-border bg-card/95 p-2 backdrop-blur lg:hidden">{nav[user.role].slice(0, 3).map(item => <NavLink key={item.href} to={item.href} className={({isActive}) => `min-w-0 rounded-lg px-1 py-2 text-center text-[11px] ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><span className="block truncate">{item.label}</span></NavLink>)}</nav><ConfirmDialog open={confirmLogout} title="Sign out?" description="Any in-progress work should be submitted before you leave." confirmLabel="Sign out" busy={loggingOut} onCancel={() => setConfirmLogout(false)} onConfirm={signOut}/></div> }
+function navActive(itemHref: string, isActive: boolean, pathname: string): boolean {
+  if (isActive) return true
+  return itemHref === '/student/practice' && pathname.startsWith('/student/adaptive')
+}
+function getMobileItems(role: Role): MobileNavItem[] {
+  if (role === 'STUDENT') {
+    return [
+      { label: studentNavItems[0].label, icon: studentNavItems[0].icon, href: studentNavItems[0].href },
+      { label: studentNavItems[1].label, icon: studentNavItems[1].icon, href: studentNavItems[1].href },
+      { label: studentNavItems[2].label, icon: studentNavItems[2].icon, href: studentNavItems[2].href },
+      { label: studentNavItems[5].label, icon: studentNavItems[5].icon, href: studentNavItems[5].href },
+      { label: 'More', icon: MoreHorizontal, more: true },
+    ]
+  }
+  const primary = nav[role].slice(0, 3)
+  return [...primary.map(item => ({ label: item.label, icon: item.icon, href: item.href })), { label: 'More', icon: MoreHorizontal, more: true }]
+}
+function getDrawerItems(role: Role): NavItem[] {
+  if (role === 'STUDENT') {
+    const bottomHrefs = getMobileItems(role).filter(item => item.href).map(item => item.href)
+    return studentNavItems.filter(item => !bottomHrefs.includes(item.href))
+  }
+  return nav[role].slice(3)
+}
+function NavGroup({ label, items }: { label?: string; items: NavItem[] }) {
+  const { pathname } = useLocation()
+  return (
+    <div>
+      {label ? <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">{label}</p> : null}
+      <div className="space-y-1">
+        {items.map(item => (
+          <NavLink key={item.href} to={item.href} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${navActive(item.href, isActive, pathname) ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
+            <item.icon size={18} />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </div>
+    </div>
+  )
+}
+function SidebarNav({ role }: { role: Role }) {
+  if (role === 'STUDENT') {
+    return (
+      <div className="space-y-6">
+        {studentNavSections.map(section => <NavGroup key={section.label} label={section.label} items={section.items} />)}
+      </div>
+    )
+  }
+  return <NavGroup items={nav[role]} />
+}
+function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
+  const { pathname } = useLocation()
+  return (
+    <NavLink to={item.href} onClick={onNavigate} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${navActive(item.href, isActive, pathname) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
+      <item.icon size={18} />
+      <span>{item.label}</span>
+    </NavLink>
+  )
+}
+function Shell({ children }: { children: React.ReactNode }) { const { user, logout } = useAuthStore(); const navigate = useNavigate(); const location = useLocation(); const [confirmLogout, setConfirmLogout] = useState(false); const [loggingOut, setLoggingOut] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const toast = useToast(); if (!user) return <Navigate to="/login" replace />; const initials = user.name ? user.name.trim().split(/\s+/).map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() : 'S'; const signOut = async () => { setLoggingOut(true); try { await authApi.logout(); toast.success('You have been signed out.'); } catch { toast.error('Signed out locally; the server could not be reached.') } finally { logout(); navigate('/login'); setLoggingOut(false) } }; return <div className="min-h-screen bg-background"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card p-5 lg:flex lg:flex-col"><div className="flex items-center gap-3 px-2 pb-10"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><nav className="mt-2 flex-1 overflow-y-auto px-1"><SidebarNav role={user.role} /></nav><div className="mt-auto border-t border-border pt-3"><div className="flex items-center gap-3 rounded-xl px-2 py-2"><div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-medium">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p></div></div><button className="mt-1 flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground" onClick={() => setConfirmLogout(true)}><LogOut size={16}/> Sign out</button></div></aside><main className="min-h-screen pb-20 lg:pl-64 lg:pb-0"><div className="mx-auto max-w-7xl p-4 sm:p-5 md:p-8">{children}</div></main><nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 p-2 backdrop-blur lg:hidden">{getMobileItems(user.role).map(item => item.more ? <button key={item.label} type="button" onClick={() => setMoreOpen(true)} className="min-w-0 rounded-lg px-1 py-2 text-center text-[11px] text-muted-foreground transition hover:text-foreground active:scale-[.97]"><MoreHorizontal className="mx-auto" size={18}/><span className="mt-1 block truncate">{item.label}</span></button> : <NavLink key={item.href} to={item.href!} className={({isActive}) => `min-w-0 rounded-lg px-1 py-2 text-center text-[11px] ${navActive(item.href!, isActive, location.pathname) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><item.icon className="mx-auto" size={18}/><span className="mt-1 block truncate">{item.label}</span></NavLink>)}</nav>{moreOpen ? <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="More menu"><div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)}/><div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-border bg-card p-4 pb-8"><div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold">Menu</p><button type="button" aria-label="Close menu" className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted" onClick={() => setMoreOpen(false)}><X size={18}/></button></div><div className="mb-4 flex items-center gap-3 rounded-xl bg-muted p-3"><div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-medium">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p></div></div><div className="space-y-1">{getDrawerItems(user.role).map(item => <DrawerLink key={item.href} item={item} onNavigate={() => setMoreOpen(false)} />)}</div><button type="button" onClick={() => { setMoreOpen(false); setConfirmLogout(true) }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"><LogOut size={16}/> Sign out</button></div></div> : null}<ConfirmDialog open={confirmLogout} title="Sign out?" description="Any in-progress work should be submitted before you leave." confirmLabel="Sign out" busy={loggingOut} onCancel={() => setConfirmLogout(false)} onConfirm={signOut}/></div> }
 function Header({ title, description }: { title: string; description: string }) { const role = useAuthStore((state) => state.user?.role); return <header className="mb-8"><p className="text-xs font-semibold uppercase tracking-widest text-primary">{role} workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></header> }
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-border bg-card p-5 ${className}`}>{children}</section> }
-function StudentExams() { const navigate = useNavigate(); const examsQuery = useQuery({ queryKey: ['student-exams'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); return <><Header title="My exams" description="Review assigned assessments and start when you are ready."/>{examsQuery.isPending ? <div className="grid gap-4 md:grid-cols-2" aria-busy="true">{[1,2,3,4].map(item => <Card key={item}><div className="h-24 animate-pulse rounded-xl bg-muted"/></Card>)}</div> : examsQuery.isError ? <Card><div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load available exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div></Card> : examsQuery.data?.length ? <div className="grid gap-4 md:grid-cols-2">{examsQuery.data.map(exam => <Card key={exam.id}><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-primary">{exam.subject}</p><h2 className="mt-2 font-semibold">{exam.title}</h2><p className="mt-2 text-sm text-muted-foreground">{exam.duration} minutes · {exam.status}</p></div><BookOpen className="text-primary"/></div><div className="mt-5 grid gap-2 sm:grid-cols-2"><button className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>View instructions <ChevronRight size={16}/></button><button className="flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium" onClick={() => navigate(`/student/adaptive/${exam.id}`)}>Practice now</button></div></Card>)}</div> : <Card><p className="py-8 text-center text-sm text-muted-foreground">No exams are available right now.</p></Card>}</> }
+function StudentExams() {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'ALL' | 'AVAILABLE' | 'COMPLETED'>('ALL')
+
+  const examsQuery = useQuery({ queryKey: ['student-exams'], queryFn: async () => (await examApi.list()).data.data, retry: 1 })
+  const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 })
+  const retestsQuery = useQuery({ queryKey: ['my-retests'], queryFn: async () => (await retestApi.mine()).data.data, retry: 1 })
+
+  const startMutation = useMutation({
+    mutationFn: (examId: string) => examApi.start(examId),
+    onSuccess: (_res: any, examId: string) => navigate(`/student/exams/${examId}`),
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message
+      if (error?.response?.status === 409) toast.error(msg || 'This exam cannot be started right now.')
+      else toast.error('Unable to start the exam. Please try again.')
+    },
+  })
+
+  const retestMutation = useMutation({
+    mutationFn: (examId: string) => retestApi.request(examId),
+    onSuccess: () => { toast.success('Retest request submitted.'); retestsQuery.refetch() },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message
+      if (error?.response?.status === 409) toast.error(msg || 'A retest request already exists for this exam.')
+      else if (error?.response?.status === 403) toast.error('You do not have permission to request a retest.')
+      else toast.error('Unable to submit retest request. Please try again.')
+    },
+  })
+
+  const completedByExam = useMemo(() => {
+    const map = new Map<string, Result>()
+    for (const r of resultsQuery.data ?? []) if (r.examId) map.set(r.examId, r)
+    return map
+  }, [resultsQuery.data])
+
+  const retestByExam = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const r of retestsQuery.data ?? []) map.set(r.examId, r.status)
+    return map
+  }, [retestsQuery.data])
+
+  const isLoading = examsQuery.isPending || resultsQuery.isPending
+  const isError = examsQuery.isError || resultsQuery.isError
+
+  const exams = useMemo(() => {
+    if (!examsQuery.data) return []
+    return examsQuery.data
+      .map(exam => {
+        const result = completedByExam.get(exam.id)
+        const retestStatus = retestByExam.get(exam.id) ?? null
+        const isCompleted = Boolean(result)
+        const percentage = result && result.total > 0 ? Math.round((result.score * 10000) / result.total) / 100 : null
+        return { ...exam, isCompleted, result, percentage, retestStatus }
+      })
+      .filter(exam => {
+        const matchesSearch = !search || exam.title.toLowerCase().includes(search.toLowerCase()) || exam.subject.toLowerCase().includes(search.toLowerCase())
+        const matchesFilter = filter === 'ALL' || (filter === 'AVAILABLE' && !exam.isCompleted) || (filter === 'COMPLETED' && exam.isCompleted)
+        return matchesSearch && matchesFilter
+      })
+      .sort((a, b) => (a.isCompleted ? 1 : 0) - (b.isCompleted ? 1 : 0))
+  }, [examsQuery.data, completedByExam, retestByExam, search, filter])
+
+  return (
+    <>
+      <Header title="Exam center" description="Review assigned assessments, start when you are ready, and track your progress." />
+      <Card>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <label className="relative flex-1">
+            <Search size={16} className="pointer-events-none absolute left-3 top-3 text-muted-foreground" />
+            <input className="field pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title or subject..." />
+            {search && <button type="button" className="absolute right-3 top-3 text-muted-foreground hover:text-foreground" onClick={() => setSearch('')}><X size={14} /></button>}
+          </label>
+          <div className="flex gap-1" role="tablist" aria-label="Filter exams">
+            {(['ALL', 'AVAILABLE', 'COMPLETED'] as const).map(tab => (
+              <button key={tab} type="button" role="tab" aria-selected={filter === tab}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${filter === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                onClick={() => setFilter(tab)}>
+                {tab === 'ALL' ? 'All' : tab === 'AVAILABLE' ? 'Available' : 'Completed'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {isLoading && <div className="mt-5 grid gap-4 md:grid-cols-2" aria-busy="true">{[1,2,3,4].map(i => <div key={i} className="h-44 animate-pulse rounded-xl bg-muted" />)}</div>}
+        {!isLoading && isError && <div className="py-8 text-center"><p className="text-sm text-destructive">Unable to load exams.</p><button type="button" className="mt-3 rounded-lg border border-border px-3 py-2 text-sm" onClick={() => { examsQuery.refetch(); resultsQuery.refetch() }}>Retry</button></div>}
+        {!isLoading && !isError && exams.length === 0 && (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {filter === 'ALL' && !search ? 'No exams are available right now.' : filter === 'AVAILABLE' ? 'No upcoming exams.' : filter === 'COMPLETED' ? 'No completed exams yet.' : 'No exams match your search.'}
+          </p>
+        )}
+        {!isLoading && !isError && exams.length > 0 && (
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {exams.map(exam => (
+              <Card key={exam.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium text-primary">{exam.subject}</p>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${exam.isCompleted ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'}`}>{exam.isCompleted ? 'Completed' : 'Available'}</span>
+                    </div>
+                    <h2 className="mt-2 truncate font-semibold">{exam.title}</h2>
+                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Clock3 size={14} className="shrink-0" />{exam.duration} min
+                      {exam.startAt && exam.endAt && <> · {new Date(exam.startAt).toLocaleDateString()} – {new Date(exam.endAt).toLocaleDateString()}</>}
+                    </p>
+                  </div>
+                  <BookOpen size={20} className="shrink-0 text-primary" />
+                </div>
+                {exam.isCompleted && exam.result && (
+                  <div className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-sm">
+                    Score: <span className="font-semibold">{exam.result.score}/{exam.result.total}</span>
+                    {exam.percentage !== null && <span className="ml-1.5 text-muted-foreground">({exam.percentage}%)</span>}
+                  </div>
+                )}
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                  {!exam.isCompleted ? (
+                    <>
+                      <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
+                        onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>View Instructions</button>
+                      <button type="button" disabled={startMutation.isPending && startMutation.variables === exam.id}
+                        className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98] disabled:opacity-50"
+                        onClick={() => startMutation.mutate(exam.id)}>
+                        {startMutation.isPending && startMutation.variables === exam.id ? 'Starting...' : 'Start'} <ChevronRight size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
+                        onClick={() => navigate(`/student/exams/${exam.id}/result`)}>View Result</button>
+                      {exam.retestStatus === null || exam.retestStatus === 'REJECTED' ? (
+                        <button type="button" disabled={retestMutation.isPending && retestMutation.variables === exam.id}
+                          className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98] disabled:opacity-50"
+                          onClick={() => retestMutation.mutate(exam.id)}>
+                          <RotateCcw size={14} />{retestMutation.isPending && retestMutation.variables === exam.id ? 'Requesting...' : 'Request Retest'}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">
+                          {exam.retestStatus === 'PENDING' && <><Clock3 size={14} />Retest pending</>}
+                          {exam.retestStatus === 'APPROVED' && <><Check size={14} className="text-emerald-500" />Retest approved</>}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
+  )
+}
+function StudentPractice() { const navigate = useNavigate(); const examsQuery = useQuery({ queryKey: ['student-practice'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); return <><Header title="Adaptive Practice" description="Drill any exam with questions that adjust to your skill as you answer."/>{examsQuery.isPending ? <div className="grid gap-4 md:grid-cols-2" aria-busy="true">{[1,2,3,4].map(item => <Card key={item}><div className="h-24 animate-pulse rounded-xl bg-muted"/></Card>)}</div> : examsQuery.isError ? <Card><div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load available exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div></Card> : examsQuery.data?.length ? <div className="grid gap-4 md:grid-cols-2">{examsQuery.data.map(exam => <Card key={exam.id}><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-primary">{exam.subject}</p><h2 className="mt-2 font-semibold">{exam.title}</h2><p className="mt-2 text-sm text-muted-foreground">{exam.duration} minutes</p></div><Target className="text-primary"/></div><div className="mt-5"><button className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/adaptive/${exam.id}`)}>Start practice <ChevronRight size={16}/></button></div></Card>)}</div> : <Card><p className="py-8 text-center text-sm text-muted-foreground">No exams are available to practice right now.</p></Card>}</> }
 function Instructions() { const { id = '' } = useParams(); const navigate = useNavigate(); const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 }); const startMutation = useMutation({ mutationFn: () => examApi.start(id), onSuccess: () => navigate(`/student/exams/${id}`) }); if (examQuery.isPending) return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="h-40 animate-pulse rounded-xl bg-muted"/></Card></>; if (examQuery.isError || !examQuery.data) return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><p className="text-sm text-destructive">Unable to load this exam.</p></Card></>; const exam = examQuery.data; return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><FileText/></div><div><h2 className="font-semibold">{exam.title}</h2><p className="text-sm text-muted-foreground">{exam.subject} · {exam.duration} minutes</p></div></div><div className="mt-8 grid gap-3 text-sm"><p>• Select one option for each multiple-choice question.</p><p>• Use the navigator to move between questions.</p><p>• Submit the exam when you finish.</p><p>• Your score is calculated and saved after submission.</p></div>{startMutation.isError && <p className="mt-5 text-sm text-destructive">Unable to start the exam. Try again.</p>}<button disabled={startMutation.isPending} className="mt-8 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60" onClick={() => startMutation.mutate()}>{startMutation.isPending ? 'Starting...' : 'Start exam'}</button></Card></> }
 function Attempt() { const { id = '' } = useParams(); const navigate = useNavigate(); const [index, setIndex] = useState(0); const [answers, setAnswers] = useState<Record<string, string>>({}); const [seconds, setSeconds] = useState(0); const [deadline, setDeadline] = useState<number | null>(null); const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 }); const questionsQuery = useQuery({ queryKey: ['exam-questions', id], queryFn: async () => (await questionApi.list(id)).data.data, enabled: Boolean(id), retry: 1 }); const submitMutation = useMutation({ mutationFn: () => { const questions = questionsQuery.data || []; return examApi.submit(id, questions.map(question => ({ questionId: question.id, value: answers[question.id] || '' }))) }, onSuccess: response => navigate(`/student/exams/${id}/result`, { replace: true, state: { submission: response.data.data } }) }); useEffect(() => { if (!examQuery.data || deadline) return; const endAt = examQuery.data.endAt; if (endAt) setDeadline(new Date(endAt).getTime()); }, [deadline, examQuery.data]); useEffect(() => { if (!deadline) return; const update = () => setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))); update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer) }, [deadline]); const questions = questionsQuery.data || []; const q = questions[Math.min(index, Math.max(questions.length - 1, 0))]; const answeredCount = questions.filter(question => answers[question.id]).length; if (examQuery.isPending || questionsQuery.isPending) return <div className="mx-auto max-w-5xl"><div className="h-80 animate-pulse rounded-2xl bg-muted"/></div>; if (examQuery.isError || questionsQuery.isError || !examQuery.data) return <><Header title="Exam attempt" description="Answer the questions and submit your exam."/><Card><p className="text-sm text-destructive">Unable to load this exam attempt.</p></Card></>; if (!q) return <><Header title={examQuery.data.title} description="This exam has no questions yet."/><Card><p className="py-8 text-center text-sm text-muted-foreground">No questions are available for this exam.</p></Card></>; const submit = () => submitMutation.mutate(); return <div className="mx-auto max-w-5xl"><div className="mb-6 flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-widest text-primary">Live attempt</p><h1 className="mt-2 text-2xl font-semibold">{examQuery.data.title}</h1></div><div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700"><Clock3 size={17}/>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</div></div><div className="grid gap-6 lg:grid-cols-[1fr_260px]"><Card><div className="flex items-center justify-between text-sm text-muted-foreground"><span>Question {index + 1} of {questions.length}</span><span>{answeredCount} answered</span></div><div className="mt-3 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary transition-all" style={{width: `${((index + 1) / questions.length) * 100}%`}}/></div><h2 className="mt-10 text-xl font-semibold leading-8">{q.text}</h2><div className="mt-7 space-y-3">{q.options.map(option => <button key={option} onClick={() => setAnswers(current => ({ ...current, [q.id]: option }))} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${answers[q.id] === option ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}><span className={`grid size-6 place-items-center rounded-full border text-xs ${answers[q.id] === option ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>{answers[q.id] === option && <Check size={14}/>}</span>{option}</button>)}</div>{submitMutation.isError && <p className="mt-5 text-sm text-destructive">Unable to submit this exam. Please try again.</p>}<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"><button className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm disabled:opacity-50" disabled={index === 0} onClick={() => setIndex(Math.max(0, index - 1))}><ChevronLeft size={16}/> Previous</button><div className="flex gap-2"><button className="rounded-xl border border-border px-4 py-2 text-sm" onClick={() => setAnswers(current => { const next = { ...current }; delete next[q.id]; return next })}><X size={15} className="mr-2 inline"/>Clear</button><button disabled={submitMutation.isPending} className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-60" onClick={() => index === questions.length - 1 ? submit() : setIndex(index + 1)}>{index === questions.length - 1 ? submitMutation.isPending ? 'Submitting...' : 'Submit exam' : 'Next'} <ChevronRight size={16} className="ml-1 inline"/></button></div></div></Card><Card><h2 className="font-semibold">Question navigator</h2><div className="mt-4 grid grid-cols-5 gap-2">{questions.map((question, i) => <button key={question.id} onClick={() => setIndex(i)} className={`grid size-9 place-items-center rounded-lg text-sm ${i === index ? 'bg-primary text-primary-foreground' : answers[question.id] ? 'bg-emerald-500/20 text-emerald-700' : 'bg-muted'}`}>{i + 1}</button>)}</div><p className="mt-6 text-xs leading-5 text-muted-foreground">Submit once you have selected your answers. The result is saved automatically.</p></Card></div></div> }
 function ResultPage() { const { id = '' } = useParams(); const navigate = useNavigate(); const location = useLocation() as { state?: { submission?: { result: Result; score: number; total: number; percentage: number } } }; const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 }); const submission = location.state?.submission; const savedResult = submission?.result || resultsQuery.data?.find(result => result.examId === id) || resultsQuery.data?.[0]; const score = submission?.score ?? savedResult?.score ?? 0; const total = submission?.total ?? savedResult?.total ?? 0; const percentage = submission?.percentage ?? (total > 0 ? Math.round((score * 10000) / total) / 100 : 0); return <><Header title="Exam result" description="Your submission has been recorded successfully."/><Card className="max-w-2xl">{!savedResult && resultsQuery.isPending ? <div className="h-48 animate-pulse rounded-xl bg-muted"/> : !savedResult ? <p className="py-8 text-center text-sm text-muted-foreground">No result was found for this exam.</p> : <><div className="text-center"><div className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-500/10 text-emerald-600"><Check size={30}/></div><p className="mt-5 text-5xl font-semibold">{percentage}%</p><p className="mt-2 text-sm text-muted-foreground">{savedResult.examTitle} · {score} of {total} correct</p></div><div className="mt-8 grid grid-cols-3 gap-3 text-center"><div className="rounded-xl bg-muted p-3"><b>{score}</b><p className="text-xs text-muted-foreground">Correct</p></div><div className="rounded-xl bg-muted p-3"><b>{Math.max(total - score, 0)}</b><p className="text-xs text-muted-foreground">Incorrect</p></div><div className="rounded-xl bg-muted p-3"><b>{total}</b><p className="text-xs text-muted-foreground">Total</p></div></div></>}<button className="mt-8 w-full rounded-xl border border-border px-4 py-3 text-sm" onClick={() => navigate('/student/history')}>Back to history</button></Card></> }
@@ -177,6 +404,7 @@ function App() {
       <Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAIAnalysis /></Protected>} />
       <Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentPerformance /></Protected>} />
       <Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><PracticeSession /></Protected>} />
+      <Route path="/student/practice" element={<Protected roles={['STUDENT']}><StudentPractice /></Protected>} />
       <Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER', 'ADMIN']}><ProctorMonitor /></Protected>} />
       <Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><FeatureUnavailable title="AI analytics" description="This screen needs backend analytics endpoints before it can render live metrics." /></Protected>} />
       <Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><DashboardV2 /></Protected>} />
