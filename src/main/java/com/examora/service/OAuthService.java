@@ -87,11 +87,29 @@ public class OAuthService {
         otpRateLimiter.recordAttempt(key, ip);
         OAuthStateCodec.State verifiedState = stateCodec.verify(state, provider);
         OAuthUserInfo info = client(provider).exchangeCode(code, config.config(provider).redirectUri());
-        if (info.email() == null || info.email().isBlank()) {
+        try {
+            verifyEmailForSignIn(info);
+        } catch (ApiException exception) {
             otpRateLimiter.recordFailure(key, ip);
-            throw new ApiException(HttpStatus.BAD_REQUEST, "The sign-in service did not provide a valid email address.");
+            throw exception;
         }
         return new OAuthCallbackResult(finalizeOAuth(info.provider(), info.providerUserId(), info.email(), info.name()), verifiedState.returnTo());
+    }
+
+    /**
+     * Sign-in gate for an OAuth exchange. Requires a non-blank email and an
+     * explicitly verified email claim from the identity provider. Providers that
+     * do not assert verification are rejected so an unverified address can never
+     * be used to link to or create an Examora account. Exposed for tests to
+     * exercise the gate against the real account-linking rules.
+     */
+    public static void verifyEmailForSignIn(OAuthUserInfo info) {
+        if (info.email() == null || info.email().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The sign-in service did not provide a valid email address.");
+        }
+        if (!info.emailVerified()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The sign-in service did not provide a verified email address.");
+        }
     }
 
     /**

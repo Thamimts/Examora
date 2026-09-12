@@ -4,6 +4,7 @@ import com.examora.dto.AuthDtos.AuthResponse;
 import com.examora.exception.ApiException;
 import com.examora.security.OAuthProvider;
 import com.examora.security.OAuthStateCodec;
+import com.examora.security.OAuthUserInfo;
 import com.examora.service.OAuthService;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +19,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -156,6 +158,80 @@ class OAuthIntegrationTest {
         assertThatThrownBy(() -> oauthService.finalizeOAuth(OAuthProvider.GITHUB, "github-other", "primary@example.com", "Other Identity"))
                 .isInstanceOfSatisfying(ApiException.class,
                         exception -> assertThat(exception.status()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void verifiedEmailPassesGateAndCreatesStudentAccount() {
+        OAuthUserInfo info = new OAuthUserInfo(OAuthProvider.GOOGLE, "verified-gate-1", "verified-new@example.com", "Verified New", true);
+
+        assertThatNoException().isThrownBy(() -> oauthService.verifyEmailForSignIn(info));
+        AuthResponse response = oauthService.finalizeOAuth(info.provider(), info.providerUserId(), info.email(), info.name());
+
+        assertThat(response.user().role().name()).isEqualTo("STUDENT");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from oauth_accounts where provider = 'GOOGLE' and provider_user_id = 'verified-gate-1'", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from users where email = 'verified-new@example.com'", Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void verifiedEmailLinksToExistingPasswordAccount() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Verified Link\",\"email\":\"verified-link@example.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+
+        String existingId = jdbcTemplate.queryForObject("select id from users where email = 'verified-link@example.com'", String.class);
+        OAuthUserInfo info = new OAuthUserInfo(OAuthProvider.GOOGLE, "verified-gate-2", "verified-link@example.com", "Verified Link", true);
+
+        assertThatNoException().isThrownBy(() -> oauthService.verifyEmailForSignIn(info));
+        AuthResponse response = oauthService.finalizeOAuth(info.provider(), info.providerUserId(), info.email(), info.name());
+
+        assertThat(response.user().id()).isEqualTo(existingId);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from oauth_accounts where provider = 'GOOGLE' and provider_user_id = 'verified-gate-2' and user_id = ?", Integer.class, existingId))
+                .isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from users where email = 'verified-link@example.com'", Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void unverifiedEmailIsRejectedBeforeLinkingExistingAccount() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Unverified Link\",\"email\":\"unverified-link@example.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isOk());
+
+        String existingId = jdbcTemplate.queryForObject("select id from users where email = 'unverified-link@example.com'", String.class);
+        OAuthUserInfo unverified = new OAuthUserInfo(OAuthProvider.GOOGLE, "unverified-gate-3", "unverified-link@example.com", "Unverified Link", false);
+
+        assertThatThrownBy(() -> oauthService.verifyEmailForSignIn(unverified))
+                .isInstanceOfSatisfying(ApiException.class, exception -> {
+                    assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getMessage()).isEqualTo("The sign-in service did not provide a verified email address.");
+                });
+
+        assertThat(jdbcTemplate.queryForObject("select count(*) from oauth_accounts where provider_user_id = 'unverified-gate-3'", Integer.class))
+                .isEqualTo(0);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from oauth_accounts where user_id = ?", Integer.class, existingId))
+                .isEqualTo(0);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from users where email = 'unverified-link@example.com'", Integer.class))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void unverifiedEmailIsRejectedWithoutCreatingAccount() {
+        OAuthUserInfo unverified = new OAuthUserInfo(OAuthProvider.GOOGLE, "unverified-gate-4", "unverified-new@example.com", "Unverified New", false);
+
+        assertThatThrownBy(() -> oauthService.verifyEmailForSignIn(unverified))
+                .isInstanceOfSatisfying(ApiException.class, exception -> {
+                    assertThat(exception.status()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(exception.getMessage()).isEqualTo("The sign-in service did not provide a verified email address.");
+                });
+
+        assertThat(jdbcTemplate.queryForObject("select count(*) from oauth_accounts where provider_user_id = 'unverified-gate-4'", Integer.class))
+                .isEqualTo(0);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from users where email = 'unverified-new@example.com'", Integer.class))
+                .isEqualTo(0);
     }
 
     private String extractState(String location) {

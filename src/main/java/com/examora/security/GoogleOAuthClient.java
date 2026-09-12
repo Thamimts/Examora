@@ -31,9 +31,13 @@ public class GoogleOAuthClient extends AbstractOAuthClient {
     @Override
     public OAuthUserInfo exchangeCode(String code, String redirectUri) {
         String accessToken = acquireAccessToken(code);
-        com.fasterxml.jackson.databind.JsonNode user = getJson(USERINFO_URL, accessToken, "application/json");
+        return parseUserInfo(getJson(USERINFO_URL, accessToken, "application/json"));
+    }
+
+    static OAuthUserInfo parseUserInfo(com.fasterxml.jackson.databind.JsonNode user) {
         String providerUserId = user.path("sub").asText(null);
         String email = user.path("email").asText(null);
+        boolean emailVerified = user.path("email_verified").asBoolean(false);
         if (providerUserId == null || providerUserId.isBlank()) {
             throw new com.examora.exception.ApiException(
                     org.springframework.http.HttpStatus.BAD_GATEWAY, "The sign-in service returned no profile identifier.");
@@ -42,6 +46,6 @@ public class GoogleOAuthClient extends AbstractOAuthClient {
         if (name == null || name.isBlank()) {
             name = user.path("given_name").asText(null);
         }
-        return new OAuthUserInfo(OAuthProvider.GOOGLE, providerUserId, email, name);
+        return new OAuthUserInfo(OAuthProvider.GOOGLE, providerUserId, email, name, emailVerified);
     }
 }

@@ -48,7 +48,7 @@ public class GithubOAuthClient extends AbstractOAuthClient {
         if (email == null || email.isBlank()) {
             email = findPrimaryEmail(accessToken);
         }
-        return new OAuthUserInfo(OAuthProvider.GITHUB, providerUserId, email, name);
+        return new OAuthUserInfo(OAuthProvider.GITHUB, providerUserId, email, name, true);
     }
 
     private String findPrimaryEmail(String accessToken) {
