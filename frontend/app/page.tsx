@@ -1,12 +1,12 @@
 'use client'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X } from 'lucide-react'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X, KeyRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
-import type { ActivityEvent, LoginRole, Role, Result } from '@/types'
+import type { ActivityEvent, LoginRole, OAuthProviderInfo, Result, Role, User } from '@/types'
 import type { ActiveAttemptInfo, ExamResultReview, QuestionReview } from '@/types/exam'
 import type { StudentAiAnalysis } from '@/types/ai'
 import { z } from 'zod'
@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authApi } from '@/services/authApi'
+import { resolveApiBaseUrl } from '@/services/api'
 import { userApi } from '@/services/userApi'
 import { examApi } from '@/services/examApi'
 import { questionApi } from '@/services/questionApi'
@@ -30,6 +31,8 @@ import { StudentAICoach } from '@/features/analytics/StudentAICoach'
 import { StudentAIPractice } from '@/features/ai/StudentAIPractice'
 import { StudentPerformance } from '@/features/analytics/StudentPerformance'
 import { ConfirmDialog, ToastProvider, useToast } from '@/components/feedback'
+import { OAuthCallback } from '@/components/auth/OAuthCallback'
+import SecuritySettings from '@/components/security/SecuritySettings'
 
 type NavItem = { label: string; href: string; icon: LucideIcon }
 type NavSection = { label: string; items: NavItem[] }
@@ -43,6 +46,7 @@ const studentNavItems: NavItem[] = [
   { label: 'AI Coach', href: '/student/ai-analysis', icon: Sparkles },
   { label: 'History', href: '/student/history', icon: HistoryIcon },
   { label: 'Retests', href: '/student/retest-requests', icon: RotateCcw },
+  { label: 'Security', href: '/settings/security', icon: KeyRound },
 ]
 const studentNavSections: NavSection[] = [
   { label: 'Main', items: studentNavItems.slice(0, 2) },
@@ -55,6 +59,7 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
     { label: 'Exams', href: '/teacher/exams', icon: BookOpen },
     { label: 'Create exam', href: '/teacher/exams/create', icon: FileText },
+    { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
   ADMIN: [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -62,6 +67,7 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Exams', href: '/admin/exams', icon: BookOpen },
     { label: 'Question bank', href: '/admin/question-bank', icon: ListChecks },
     { label: 'Results', href: '/admin/results', icon: BarChart3 },
+    { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
 }
 function navActive(itemHref: string, isActive: boolean, pathname: string): boolean {
@@ -581,12 +587,16 @@ function DashboardV2() {
   </>
 }
 function RealAuth({ mode }: { mode: 'login' | 'register' }) {
-  const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [loginRole, setLoginRole] = useState<LoginRole>('STUDENT')
+  const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [loginRole, setLoginRole] = useState<LoginRole>('STUDENT'); const [challengeToken, setChallengeToken] = useState(''); const [code, setCode] = useState(''); const [recoveryMode, setRecoveryMode] = useState(false); const [providers, setProviders] = useState<OAuthProviderInfo[]>([])
+  useEffect(() => { if (mode !== 'login') return; let active = true; authApi.oauthProviders().then(response => { if (active) setProviders(response.data.data) }).catch(() => { if (active) setProviders([]) }); return () => { active = false } }, [mode])
   const schema = mode === 'login' ? z.object({ email: z.string().email(), password: z.string().min(1) }) : z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) })
   const { register, handleSubmit, formState: { errors } } = useForm<any>({ resolver: zodResolver(schema) })
-  const submit = async (values: any) => { setLoading(true); setError(''); try { const response = mode === 'login' ? await authApi.login({ email: values.email, password: values.password }) : await authApi.register(values); const auth = response.data.data; setAuth(auth); navigate(`/${auth.user.role.toLowerCase()}/dashboard`) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'Unable to reach the examination service. Confirm that the backend is running and try again.') } finally { setLoading(false) } }
-  return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your student account'}</h1><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? 'Choose your sign-in area, then use your examination account.' : 'Registration creates a student account. Administrator accounts are provisioned separately.'}</p><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? <>New here? <NavLink className="font-medium text-primary hover:underline" to="/register">Create a student account</NavLink></> : <>Already have an account? <NavLink className="font-medium text-primary hover:underline" to="/login">Sign in</NavLink></>}</p><form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)}>{mode === 'login' && <fieldset><legend className="text-sm font-medium">Sign in as</legend><div className="mt-2 grid grid-cols-2 gap-3"><button type="button" onClick={() => setLoginRole('STUDENT')} aria-pressed={loginRole === 'STUDENT'} className={`rounded-xl border p-3 text-left text-sm ${loginRole === 'STUDENT' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><span className="block font-medium">Student</span><span className="mt-1 block text-xs">Take exams and view results</span></button><button type="button" onClick={() => setLoginRole('ADMIN')} aria-pressed={loginRole === 'ADMIN'} className={`rounded-xl border p-3 text-left text-sm ${loginRole === 'ADMIN' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><span className="block font-medium">Administrator</span><span className="mt-1 block text-xs">Open the admin panel</span></button></div></fieldset>}{mode === 'register' && <label className="block text-sm font-medium">Name<input className="field mt-2" autoComplete="name" {...register('name')} />{errors.name && <span className="text-xs text-destructive">Enter your name</span>}</label>}<label className="block text-sm font-medium">Email<input className="field mt-2" type="email" autoComplete="email" {...register('email')} />{errors.email && <span className="text-xs text-destructive">Enter a valid email</span>}</label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} {...register('password')} />{errors.password && <span className="text-xs text-destructive">Use a valid password</span>}</label>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<button disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60">{loading ? 'Connecting…' : mode === 'login' ? `Sign in as ${loginRole === 'ADMIN' ? 'administrator' : 'student'}` : 'Create student account'}</button></form></Card></div>
+  const submit = async (values: any) => { setLoading(true); setError(''); try { let user: User; let token: string; if (mode === 'login') { const response = await authApi.login({ email: values.email, password: values.password }); const auth = response.data.data; if (auth.requiresTwoFactor || auth.challengeToken) { setChallengeToken(auth.challengeToken || ''); setCode(''); return } if (!auth.token || !auth.user) throw new Error('incomplete login'); token = auth.token; user = auth.user; setAuth({ token, user }) } else { const auth = (await authApi.register(values)).data.data; token = auth.token; user = auth.user; setAuth({ token, user }) } navigate(`/${user.role.toLowerCase()}/dashboard`) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'Unable to reach the examination service. Confirm that the backend is running and try again.') } finally { setLoading(false) } }
+  const verifyTwoFactor = async (event: React.FormEvent) => { event.preventDefault(); setLoading(true); setError(''); try { const response = recoveryMode ? await authApi.recoverTwoFactor({ challengeToken, recoveryCode: code }) : await authApi.verifyTwoFactor({ challengeToken, code }); const auth = response.data.data; setAuth(auth); navigate(`/${auth.user.role.toLowerCase()}/dashboard`) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'That code could not be verified.') } finally { setLoading(false) } }
+  if (challengeToken) return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">Two-factor authentication</h1><p className="mt-2 text-sm text-muted-foreground">{recoveryMode ? 'Enter one of the recovery codes you saved when enabling two-factor authentication.' : 'Enter the 6-digit code from your authenticator app.'}</p><form className="mt-6 space-y-4" onSubmit={verifyTwoFactor}><label className="block text-sm font-medium">{recoveryMode ? 'Recovery code' : 'Authenticator code'}<input className="field mt-2" inputMode={recoveryMode ? 'text' : 'numeric'} autoComplete="one-time-code" value={code} onChange={e => setCode(recoveryMode ? e.target.value.trim().toUpperCase() : e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder={recoveryMode ? 'XXXX-XXXX' : '6-digit code'}/></label><button type="submit" disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] disabled:opacity-60">{loading ? 'Verifying...' : 'Verify'}</button></form><button type="button" className="mt-5 w-full text-center text-sm text-primary hover:underline" onClick={() => { setRecoveryMode(value => !value); setCode(''); setError('') }}>{recoveryMode ? 'Use my authenticator app instead' : 'Use a recovery code instead'}</button>{error && <p className="mt-4 text-sm text-destructive">{error}</p>}</Card></div>
+  return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your student account'}</h1><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? 'Choose your sign-in area, then use your examination account.' : 'Registration creates a student account. Administrator accounts are provisioned separately.'}</p><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? <>New here? <NavLink className="font-medium text-primary hover:underline" to="/register">Create a student account</NavLink></> : <>Already have an account? <NavLink className="font-medium text-primary hover:underline" to="/login">Sign in</NavLink></>}</p>{error && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}<form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)}>{mode === 'login' && <fieldset><legend className="text-sm font-medium">Sign in as</legend><div className="mt-2 grid grid-cols-2 gap-3"><button type="button" onClick={() => setLoginRole('STUDENT')} aria-pressed={loginRole === 'STUDENT'} className={`rounded-xl border p-3 text-left text-sm ${loginRole === 'STUDENT' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><span className="block font-medium">Student</span><span className="mt-1 block text-xs">Take exams and view results</span></button><button type="button" onClick={() => setLoginRole('ADMIN')} aria-pressed={loginRole === 'ADMIN'} className={`rounded-xl border p-3 text-left text-sm ${loginRole === 'ADMIN' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><span className="block font-medium">Administrator</span><span className="mt-1 block text-xs">Open the admin panel</span></button></div></fieldset>}{mode === 'register' && <label className="block text-sm font-medium">Full name<input className="field mt-2" {...register('name')} placeholder="Your name"/>{errors.name && <span className="text-xs text-destructive">Enter your name</span>}</label>}<label className="block text-sm font-medium">Email<input className="field mt-2" type="email" autoComplete="email" {...register('email')} placeholder="you@school.edu"/>{errors.email && <span className="text-xs text-destructive">Enter a valid email</span>}</label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} {...register('password')} placeholder={mode === 'login' ? 'Your password' : 'At least 8 characters'}/>{errors.password && <span className="text-xs text-destructive">{mode === 'login' ? 'Enter your password' : 'Use at least 8 characters'}</span>}</label><button type="submit" disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] disabled:opacity-60">{loading ? 'Signing in...' : mode === 'login' ? 'Sign in' : 'Create account'}</button></form>{mode === 'login' && providers.length > 0 && <div className="mt-6 border-t border-border pt-5"><p className="text-center text-xs uppercase tracking-widest text-muted-foreground">Or continue with</p><div className="mt-3 grid gap-2">{providers.map(provider => <a key={provider.provider} className="block" href={`${resolveApiBaseUrl()}/auth/oauth/${provider.provider}/start`}><button type="button" className="w-full rounded-xl border border-border p-3 text-sm font-medium text-muted-foreground transition hover:bg-muted active:scale-[.98]">{provider.label}</button></a>)}</div></div>}</Card></div>
 }
+
 function RetestRequests({ admin = false }: { admin?: boolean }) {
   const query = useQuery({ queryKey: [admin ? 'admin-retests' : 'my-retests'], queryFn: async () => (await (admin ? retestApi.admin() : retestApi.mine())).data.data, retry: 1 })
   const review = useMutation({ mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' }) => retestApi.review(id, status), onSuccess: () => query.refetch() })
@@ -606,11 +616,22 @@ function FeatureUnavailable({ title, description }: { title: string; description
   )
 }
 
+function AuthGateway() {
+  const [searchParams] = useSearchParams()
+  const user = useAuthStore(state => state.user)
+  if (searchParams.get('token')) return <OAuthCallback />
+  if (user) return <Navigate to={`/${user.role.toLowerCase()}/dashboard`} replace />
+  return <Navigate to="/login" replace />
+}
+
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<AuthGateway />} />
       <Route path="/login" element={<RealAuth mode="login" />} />
       <Route path="/register" element={<RealAuth mode="register" />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
+      <Route path="/settings/security" element={<Protected roles={['STUDENT', 'TEACHER', 'ADMIN']}><SecuritySettings /></Protected>} />
       <Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAICoach /></Protected>} />
       <Route path="/student/ai-practice/:id" element={<Protected roles={['STUDENT']}><StudentAIPractice /></Protected>} />
       <Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentPerformance /></Protected>} />

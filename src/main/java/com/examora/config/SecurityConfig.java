@@ -44,6 +44,14 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
+                .headers(headers -> headers
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(frameOptions -> frameOptions.deny())
+                        .referrerPolicy(referrerPolicy -> referrerPolicy
+                                .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(31536000))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                        .cacheControl(Customizer.withDefaults()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) -> writeError(response, objectMapper, HttpServletResponse.SC_UNAUTHORIZED, "Authentication is required."))
@@ -51,7 +59,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/status", "/api/db/health").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout",
+                                "/api/auth/2fa/verify", "/api/auth/2fa/recover", "/api/auth/oauth/**",
+                                "/api/status", "/api/db/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/student/adaptive/**").hasRole("STUDENT")
                         .requestMatchers("/api/student/ai-practice/**").hasRole("STUDENT")

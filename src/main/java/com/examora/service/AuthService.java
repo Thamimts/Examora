@@ -1,6 +1,7 @@
 package com.examora.service;
 
 import com.examora.dto.AuthDtos.AuthResponse;
+import com.examora.dto.AuthDtos.LoginResult;
 import com.examora.exception.ApiException;
 import com.examora.model.Role;
 import com.examora.model.User;
@@ -28,17 +29,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ActivityService activityService;
+    private final TwoFactorService twoFactorService;
     private final String dummyPasswordHash;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, ActivityService activityService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+                       ActivityService activityService, TwoFactorService twoFactorService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.activityService = activityService;
+        this.twoFactorService = twoFactorService;
         this.dummyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
-    public AuthResponse login(String email, String password) {
+    public LoginResult login(String email, String password) {
         if (isBlank(email) || isBlank(password)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Email and password are required.");
         }
@@ -54,7 +58,55 @@ public class AuthService {
         if (isLegacyHash(user.passwordHash())) {
             userRepository.updatePasswordHash(user.user().id(), passwordEncoder.encode(password));
         }
-        return new AuthResponse(jwtService.generateToken(user.user()), user.user());
+        if (twoFactorService.isEnabled(user.user().id())) {
+            String challengeToken = twoFactorService.issueChallenge(user.user().id());
+            return new LoginResult(null, null, true, challengeToken);
+        }
+        return new LoginResult(issueToken(user.user()), user.user(), false, null);
+    }
+
+    public AuthResponse completeTwoFactor(String challengeToken, String code, String ip) {
+        User user = twoFactorService.completeTwoFactor(challengeToken, code, ip);
+        recordLogin(user, "LOGIN_SUCCESS_TWO_FACTOR");
+        return new AuthResponse(issueToken(user), user);
+    }
+
+    public AuthResponse completeRecovery(String challengeToken, String recoveryCode, String ip) {
+        User user = twoFactorService.completeRecovery(challengeToken, recoveryCode, ip);
+        recordLogin(user, "LOGIN_SUCCESS_RECOVERY");
+        return new AuthResponse(issueToken(user), user);
+    }
+
+    public void changePassword(User user, String currentPassword, String newPassword) {
+        if (isBlank(newPassword) || newPassword.length() < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Password must be at least 8 characters.");
+        }
+        if (newPassword.equals(currentPassword)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The new password must be different from the current password.");
+        }
+        String storedHash = userRepository.findByEmailWithPassword(user.email())
+                .map(UserRepository.UserWithPassword::passwordHash)
+                .orElse(null);
+        if (hasText(storedHash) && !verifyPassword(currentPassword, storedHash)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The current password is incorrect.");
+        }
+        userRepository.updatePasswordHash(user.id(), passwordEncoder.encode(newPassword));
+        activityService.admin(user, "PASSWORD_CHANGED", user.name() + " changed their password.");
+        if (user.role() == Role.STUDENT) {
+            activityService.student(user, "PASSWORD_CHANGED", "Your password was changed.");
+        }
+    }
+
+    private String issueToken(User user) {
+        return jwtService.generateToken(user);
+    }
+
+    private void recordLogin(User user, String type) {
+        if (user.role() == Role.STUDENT) {
+            activityService.student(user, type, "You signed in to your account.");
+        } else {
+            activityService.admin(user, type, user.name() + " signed in.");
+        }
     }
 
     public AuthResponse register(String name, String email, String password) {
@@ -156,5 +208,9 @@ public class AuthService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

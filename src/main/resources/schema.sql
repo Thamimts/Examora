@@ -1,6 +1,9 @@
 create table if not exists users (
  id varchar(36) primary key, name varchar(120) not null, email varchar(180) not null unique, password_hash varchar(255), role varchar(30) not null, avatar varchar(255), created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp
 );
+alter table users add column if not exists two_factor_enabled boolean not null default false;
+alter table users add column if not exists two_factor_secret varchar(64);
+alter table users add column if not exists two_factor_pending_secret varchar(64);
 create table if not exists exams (
  id varchar(36) primary key, title varchar(180) not null, subject varchar(120) not null, date varchar(30) not null, duration int not null, status varchar(30) not null, participants int not null default 0, average_score decimal(5,2), created_by varchar(36), start_at timestamp, end_at timestamp, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
  constraint fk_exams_created_by foreign key (created_by) references users(id) on delete set null
@@ -83,3 +86,20 @@ create table if not exists ai_practice_reviews (
  id varchar(36) primary key, session_id varchar(36) not null, question_id varchar(36) not null, explanation text not null, created_at timestamp default current_timestamp,
  constraint fk_ai_review_session foreign key (session_id) references ai_practice_sessions(id) on delete cascade, constraint fk_ai_review_question foreign key (question_id) references ai_generated_questions(id) on delete cascade, constraint uq_ai_review_session_question unique (session_id, question_id)
 );
+create table if not exists two_factor_challenges (
+ id varchar(36) primary key, user_id varchar(36) not null, token_hash varchar(64) not null, kind varchar(20) not null, expires_at timestamp not null, used boolean not null default false, created_at timestamp not null default current_timestamp,
+ constraint fk_2fa_challenge_user foreign key (user_id) references users(id) on delete cascade
+);
+create unique index if not exists uq_2fa_challenge_hash on two_factor_challenges (token_hash);
+create index if not exists idx_2fa_challenges_user on two_factor_challenges (user_id, used, expires_at);
+create table if not exists two_factor_recovery_codes (
+ id varchar(36) primary key, user_id varchar(36) not null, code_hash varchar(255) not null, used_at timestamp,
+ constraint fk_2fa_recovery_user foreign key (user_id) references users(id) on delete cascade
+);
+create index if not exists idx_2fa_recovery_user on two_factor_recovery_codes (user_id, used_at);
+create table if not exists oauth_accounts (
+ id varchar(36) primary key, provider varchar(20) not null, provider_user_id varchar(120) not null, user_id varchar(36) not null, email varchar(180), created_at timestamp not null default current_timestamp, updated_at timestamp not null default current_timestamp,
+ constraint fk_oauth_account_user foreign key (user_id) references users(id) on delete cascade,
+ constraint uq_oauth_provider_user unique (provider, provider_user_id)
+);
+create index if not exists idx_oauth_account_user on oauth_accounts (user_id);

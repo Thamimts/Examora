@@ -7,7 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    return [{ source: '/login', destination: '/' }, { source: '/register', destination: '/' }, { source: '/forgot-password', destination: '/' }, { source: '/reset-password', destination: '/' }, { source: '/student/:path*', destination: '/' }, { source: '/teacher/:path*', destination: '/' }, { source: '/admin/:path*', destination: '/' }]
+    return [{ source: '/login', destination: '/' }, { source: '/register', destination: '/' }, { source: '/forgot-password', destination: '/' }, { source: '/reset-password', destination: '/' }, { source: '/oauth/callback', destination: '/' }, { source: '/settings/security', destination: '/' }, { source: '/student/:path*', destination: '/' }, { source: '/teacher/:path*', destination: '/' }, { source: '/admin/:path*', destination: '/' }]
   },
 }
 

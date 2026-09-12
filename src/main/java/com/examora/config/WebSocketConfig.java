@@ -5,6 +5,7 @@ import com.examora.model.User;
 import com.examora.repository.ExamRepository;
 import com.examora.repository.UserRepository;
 import com.examora.security.JwtService;
+import com.examora.service.LoginRateLimiter;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,16 +36,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final UserRepository userRepository;
     private final ExamRepository examRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final LoginRateLimiter connectRateLimiter;
     private final String[] allowedOrigins;
 
     public WebSocketConfig(JwtService jwtService, UserRepository userRepository,
                            ExamRepository examRepository,
                            ApplicationEventPublisher eventPublisher,
+                           LoginRateLimiter connectRateLimiter,
                            @Value("${examora.cors.allowed-origins:}") List<String> allowedOrigins) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.examRepository = examRepository;
         this.eventPublisher = eventPublisher;
+        this.connectRateLimiter = connectRateLimiter;
         this.allowedOrigins = allowedOrigins.toArray(new String[0]);
     }
 
@@ -52,14 +56,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(allowedOrigins)
-                .addInterceptors(new OriginGuard(allowedOrigins));
+                .addInterceptors(new OriginGuard(allowedOrigins, connectRateLimiter));
     }
 
     private static final class OriginGuard implements HandshakeInterceptor {
         private final List<String> allowedOrigins;
+        private final LoginRateLimiter connectRateLimiter;
 
-        OriginGuard(String[] allowedOrigins) {
+        OriginGuard(String[] allowedOrigins, LoginRateLimiter connectRateLimiter) {
             this.allowedOrigins = List.of(allowedOrigins);
+            this.connectRateLimiter = connectRateLimiter;
         }
 
         @Override
@@ -69,7 +75,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 return true;
             }
             String origin = request.getHeaders().getFirst(HttpHeaders.ORIGIN);
-            return origin == null || allowedOrigins.contains(origin);
+            if (origin != null && !allowedOrigins.contains(origin)) {
+                return false;
+            }
+            String ip = remoteIp(request);
+            String key = "ws-connect";
+            if (!connectRateLimiter.isAllowed(ip, key)) {
+                return false;
+            }
+            connectRateLimiter.recordAttempt(ip, key);
+            return true;
+        }
+
+        private String remoteIp(ServerHttpRequest request) {
+            if (request.getRemoteAddress() == null || request.getRemoteAddress().getAddress() == null) {
+                return "unknown";
+            }
+            return request.getRemoteAddress().getAddress().getHostAddress();
         }
 
         @Override
