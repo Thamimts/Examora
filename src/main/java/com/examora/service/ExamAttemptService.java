@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -87,7 +88,7 @@ public class ExamAttemptService {
     public StartExamResponse start(String examId, User student) {
         requireStudent(student);
         Exam exam = requireAvailableExam(examId);
-        ExamAttempt attempt = activeOrCreate(exam, student);
+        ExamAttempt attempt = resolveAttempt(exam, student);
         activityService.student(student, "EXAM_STARTED", "You started “" + exam.title() + "”.");
         activityService.admin("EXAM_STARTED", student.name() + " started exam “" + exam.title() + "”.");
         proctorPublishService.publishLifecycle(exam, attempt, student, "STARTED");
@@ -232,7 +233,11 @@ public class ExamAttemptService {
                     existingResult.total(),
                     percentage(existingResult.score(), existingResult.total()));
         }
-        ExamAttempt attempt = activeOrCreate(exam, student);
+        ExamAttempt submitted = attemptRepository.findLatestSubmitted(exam.id(), student.id()).orElse(null);
+        if (submitted != null && attemptRepository.findActive(exam.id(), student.id()).isEmpty()) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam has already been submitted.");
+        }
+        ExamAttempt attempt = resolveAttempt(exam, student);
         if (!Instant.now().isBefore(attempt.expiresAt())) {
             attemptRepository.markExpired(attempt.id());
             throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
@@ -282,7 +287,11 @@ public class ExamAttemptService {
                 score,
                 LocalDate.now().toString(),
                 questions.size());
-        resultRepository.create(result);
+        try {
+            resultRepository.create(result);
+        } catch (DuplicateKeyException e) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam has already been submitted.");
+        }
         if (attemptRepository.markSubmitted(attempt.id(), Instant.now()) != 1) {
             throw new ApiException(HttpStatus.CONFLICT, "This exam attempt is no longer active.");
         }
@@ -343,7 +352,7 @@ public class ExamAttemptService {
         return attempt;
     }
 
-    private ExamAttempt activeOrCreate(Exam exam, User student) {
+    private ExamAttempt resolveAttempt(Exam exam, User student) {
         Instant now = Instant.now();
         if (exam.startAt() != null && now.isBefore(exam.startAt())) {
             throw new ApiException(HttpStatus.CONFLICT, "This exam has not started yet.");
@@ -353,14 +362,34 @@ public class ExamAttemptService {
         }
         ExamAttempt active = attemptRepository.findActive(exam.id(), student.id()).orElse(null);
         if (active != null) {
-            if (Instant.now().isBefore(active.expiresAt())) return active;
+            if (now.isBefore(active.expiresAt())) return active;
             attemptRepository.markExpired(active.id());
             throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
         }
+        return createNextAttempt(exam, student);
+    }
+
+    private ExamAttempt createNextAttempt(Exam exam, User student) {
         Instant startedAt = Instant.now();
         Instant authoritativeEnd = exam.endAt() != null ? exam.endAt() : startedAt.plusSeconds(exam.duration() * 60L);
-        return attemptRepository.create(new ExamAttempt(UUID.randomUUID().toString(), exam.id(), student.id(),
-                1, "STARTED", startedAt, authoritativeEnd, null, 0));
+        String id = UUID.randomUUID().toString();
+        boolean created;
+        try {
+            created = attemptRepository.insertActiveIfAllowed(id, exam.id(), student.id(), startedAt, authoritativeEnd) == 1;
+        } catch (DuplicateKeyException e) {
+            created = false;
+        }
+        if (created) {
+            return attemptRepository.findById(id)
+                    .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "A new attempt could not be created."));
+        }
+        ExamAttempt winner = attemptRepository.findActive(exam.id(), student.id()).orElseThrow(
+                () -> new ApiException(HttpStatus.CONFLICT, "A new attempt cannot be started for this exam."));
+        if (!Instant.now().isBefore(winner.expiresAt())) {
+            attemptRepository.markExpired(winner.id());
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
+        }
+        return winner;
     }
 
     private AnswerEvaluation evaluate(Question question, SubmittedAnswer submittedAnswer) {

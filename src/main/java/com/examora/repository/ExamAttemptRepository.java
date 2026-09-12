@@ -25,6 +25,18 @@ public class ExamAttemptRepository {
         jdbc.update("insert into exam_attempts (id, exam_id, student_id, attempt_number, status, started_at, expires_at, version) values (?, ?, ?, ?, ?, ?, ?, ?)", a.id(), a.examId(), a.studentId(), a.attemptNumber(), a.status(), Timestamp.from(a.startedAt()), Timestamp.from(a.expiresAt()), a.version());
         return a;
     }
+
+    public int insertActiveIfAllowed(String id, String examId, String studentId, Instant startedAt, Instant expiresAt) {
+        return jdbc.update(
+                "insert into exam_attempts (id, exam_id, student_id, attempt_number, status, started_at, expires_at, version) "
+                        + "select ?, ?, ?, coalesce(max(ea.attempt_number), 0) + 1, 'STARTED', ?, ?, 0 "
+                        + "from exam_attempts ea "
+                        + "where ea.exam_id = ? and ea.student_id = ? "
+                        + "  and not exists (select 1 from exam_attempts x where x.exam_id = ? and x.student_id = ? and x.status = 'STARTED') "
+                        + "  and not exists (select 1 from exam_attempts y where y.exam_id = ? and y.student_id = ? and y.status = 'EXPIRED')",
+                id, examId, studentId, Timestamp.from(startedAt), Timestamp.from(expiresAt),
+                examId, studentId, examId, studentId, examId, studentId);
+    }
     public int markSubmitted(String id, Instant at) { return jdbc.update("update exam_attempts set status = 'SUBMITTED', submitted_at = ?, version = version + 1 where id = ? and status = 'STARTED'", Timestamp.from(at), id); }
     public int markExpired(String id) { return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where id = ? and status = 'STARTED'", id); }
     public int expireOverdue(Instant now) {
