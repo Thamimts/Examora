@@ -3,8 +3,11 @@ package com.examora.repository;
 import com.examora.model.Answer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -74,11 +77,45 @@ public class AnswerRepository {
         return jdbcTemplate.update("delete from answers where id = ?", id);
     }
 
-    public Answer createForAttempt(String attemptId, Answer answer, boolean correct) {
-        jdbcTemplate.update(
-                "insert into answers (id, user_id, exam_id, question_id, option_id, answer_value, attempt_id, correct) values (?, ?, ?, ?, ?, ?, ?, ?)",
-                answer.id(), answer.userId(), answer.examId(), answer.questionId(), answer.optionId(), answer.value(), attemptId, correct);
+    public Answer upsertForAttempt(String attemptId, Answer answer, Boolean correct) {
+        String updateSql = "update answers set user_id = ?, exam_id = ?, question_id = ?, option_id = ?, "
+                + "answer_value = ?, attempt_id = ?, correct = ?, updated_at = current_timestamp "
+                + "where attempt_id = ? and question_id = ?";
+        int updated = jdbcTemplate.update(updateSql,
+                answer.userId(), answer.examId(), answer.questionId(), answer.optionId(), answer.value(),
+                attemptId, correct, attemptId, answer.questionId());
+        if (updated == 0) {
+            try {
+                jdbcTemplate.update(
+                        "insert into answers (id, user_id, exam_id, question_id, option_id, answer_value, attempt_id, correct) "
+                                + "values (?, ?, ?, ?, ?, ?, ?, ?)",
+                        answer.id(), answer.userId(), answer.examId(), answer.questionId(), answer.optionId(),
+                        answer.value(), attemptId, correct);
+            } catch (DuplicateKeyException e) {
+                jdbcTemplate.update(updateSql,
+                        answer.userId(), answer.examId(), answer.questionId(), answer.optionId(), answer.value(),
+                        attemptId, correct, attemptId, answer.questionId());
+            }
+        }
         return answer;
+    }
+
+    public int deleteForAttempt(String attemptId, String questionId) {
+        return jdbcTemplate.update("delete from answers where attempt_id = ? and question_id = ?",
+                attemptId, questionId);
+    }
+
+    public Map<String, String> findValuesByAttempt(String attemptId) {
+        return jdbcTemplate.query(
+                "select question_id, answer_value from answers where attempt_id = ? and answer_value is not null",
+                rs -> {
+                    Map<String, String> values = new HashMap<>();
+                    while (rs.next()) {
+                        values.put(rs.getString(1), rs.getString(2));
+                    }
+                    return values;
+                },
+                attemptId);
     }
 
     public List<ReviewRow> findReviewRows(String attemptId, String examId) {

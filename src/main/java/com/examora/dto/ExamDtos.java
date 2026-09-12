@@ -3,6 +3,7 @@ package com.examora.dto;
 import com.examora.model.Exam;
 import com.examora.model.Result;
 import java.util.List;
+import java.util.Map;
 
 public final class ExamDtos {
     private ExamDtos() {
@@ -10,6 +11,13 @@ public final class ExamDtos {
 
     public record StartExamResponse(String examId, String studentId, String status, Exam exam,
                                     String attemptId, String startedAt, String expiresAt, String endAt) {
+    }
+
+    public record SaveAnswerRequest(String value) {
+    }
+
+    public record AttemptProgressDto(String attemptId, String examId, String status, String startedAt,
+                                     String expiresAt, long remainingSeconds, Map<String, String> answers) {
     }
 
     public record ExamSubmissionRequest(List<SubmittedAnswer> answers) {

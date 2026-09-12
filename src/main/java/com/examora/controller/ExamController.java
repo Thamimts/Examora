@@ -3,9 +3,11 @@ package com.examora.controller;
 import com.examora.dto.ApiResponse;
 import com.examora.dto.CreateExamRequest;
 import com.examora.dto.ExamDtos.ActiveAttemptDto;
+import com.examora.dto.ExamDtos.AttemptProgressDto;
 import com.examora.dto.ExamDtos.ExamResultReviewDto;
 import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
+import com.examora.dto.ExamDtos.SaveAnswerRequest;
 import com.examora.dto.ExamDtos.StartExamResponse;
 import com.examora.model.Exam;
 import com.examora.model.User;
@@ -89,6 +91,23 @@ public class ExamController {
             @RequestBody ExamSubmissionRequest request) {
         User student = authService.requireUser(authorizationHeader);
         return ApiResponse.ok("Submitted", examAttemptService.submit(id, student, request));
+    }
+
+    @PutMapping("/{id}/attempt/answers/{questionId}")
+    public ApiResponse<Void> saveAnswer(@PathVariable String id,
+                                        @PathVariable String questionId,
+                                        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+                                        @RequestBody(required = false) SaveAnswerRequest request) {
+        User student = authService.requireUser(authorizationHeader);
+        examAttemptService.saveAnswer(id, questionId, student, request == null ? null : request.value());
+        return ApiResponse.ok("Saved", null);
+    }
+
+    @GetMapping("/{id}/attempt/progress")
+    public ApiResponse<AttemptProgressDto> progress(@PathVariable String id,
+                                                    @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User student = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(examAttemptService.getAttemptProgress(id, student));
     }
 
     @GetMapping("/{id}/result")

@@ -1,44 +1,177 @@
 'use client'
 import { create } from 'zustand'
-import type { AnswerValue, AttemptState } from '@/types/exam'
+import { examApi } from '@/services/examApi'
+import type { AttemptProgress } from '@/types/exam'
 
-type Store = {
-  attempts: Record<string, AttemptState>
-  start: (id: string, startAt: string, endAt: string) => void
-  answer: (questionId: string, value: AnswerValue) => void
-  toggleReview: (questionId: string) => void
-  move: (index: number) => void
-  clear: (questionId: string) => void
-  submit: (id: string) => void
-  get: (id: string) => AttemptState | undefined
+export type SaveState = 'saving' | 'saved' | 'failed'
+
+type ExamAutosaveStore = {
+  examId: string | null
+  attemptId: string | null
+  startedAt: string | null
+  expiresAt: string | null
+  remainingSeconds: number
+  answers: Record<string, string>
+  saved: Record<string, string>
+  saveState: Record<string, SaveState>
+  offline: boolean
+  loaded: boolean
+  expired: boolean
+  resume: (examId: string) => Promise<AttemptProgress>
+  setAnswer: (questionId: string, value: string) => void
+  clearAnswer: (questionId: string) => void
+  flush: () => Promise<void>
+  markExpired: () => void
+  reset: () => void
 }
 
-const questionKey = (examId: string, questionId: string) => `${examId}:${questionId}`
+const omitKey = (record: Record<string, string>, key: string): Record<string, string> => {
+  const next = { ...record }
+  delete next[key]
+  return next
+}
 
-export const useExamStore = create<Store>()((set, get) => ({
-  attempts: {},
-  start: (id, startAt, endAt) => set((state) => ({ attempts: { ...state.attempts, [id]: state.attempts[id] ?? { examId: id, questionIndex: 0, answers: {}, review: {}, startAt, endAt, submitted: false, autosaving: false } } })),
-  answer: (questionId, value) => set((state) => {
-    const current = Object.values(state.attempts)[0]
-    if (!current || current.submitted) return state
-    return { attempts: { ...state.attempts, [current.examId]: { ...current, answers: { ...current.answers, [questionKey(current.examId, questionId)]: value }, autosaving: true } } }
-  }),
-  toggleReview: (questionId) => set((state) => {
-    const current = Object.values(state.attempts)[0]
-    if (!current || current.submitted) return state
-    const key = questionKey(current.examId, questionId)
-    return { attempts: { ...state.attempts, [current.examId]: { ...current, review: { ...current.review, [key]: !current.review[key] } } } }
-  }),
-  move: (index) => set((state) => { const current = Object.values(state.attempts)[0]; return current && !current.submitted ? { attempts: { ...state.attempts, [current.examId]: { ...current, questionIndex: Math.max(0, index) } } } : state }),
-  clear: (questionId) => set((state) => {
-    const current = Object.values(state.attempts)[0]
-    if (!current || current.submitted) return state
-    const key = questionKey(current.examId, questionId)
-    const answers = { ...current.answers }; delete answers[key]
-    return { attempts: { ...state.attempts, [current.examId]: { ...current, answers, autosaving: true } } }
-  }),
-  submit: (id) => set((state) => { const current = state.attempts[id]; return current && !current.submitted ? { attempts: { ...state.attempts, [id]: { ...current, submitted: true, autosaving: false } } } : state }),
-  get: (id) => get().attempts[id],
-}))
+const DEBOUNCE_MS = 800
+const MAX_RETRIES = 5
 
-export { questionKey }
+export const useExamStore = create<ExamAutosaveStore>((set, get) => {
+  let debounceTimer: number | null = null
+  let inFlight = new Set<string>()
+  let retries: Record<string, number> = {}
+
+  const statusOf = (error: unknown): number | null => {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    return typeof status === 'number' ? status : null
+  }
+
+  const saveOne = async (questionId: string, value: string): Promise<void> => {
+    const { examId, expired } = get()
+    if (!examId || expired || inFlight.has(questionId)) return
+    inFlight.add(questionId)
+    set((state) => ({ saveState: { ...state.saveState, [questionId]: 'saving' } }))
+    try {
+      await examApi.saveAnswer(examId, questionId, value)
+      set((state) => ({
+        saved: value === '' ? omitKey(state.saved, questionId) : { ...state.saved, [questionId]: value },
+        saveState: { ...state.saveState, [questionId]: 'saved' },
+        offline: false,
+      }))
+      delete retries[questionId]
+    } catch (error) {
+      const status = statusOf(error)
+      if (status === 409) {
+        get().markExpired()
+        return
+      }
+      if (status === 401 || status === 403 || status === 400) {
+        set((state) => ({ saveState: { ...state.saveState, [questionId]: 'failed' }, offline: false }))
+        return
+      }
+      set((state) => ({ saveState: { ...state.saveState, [questionId]: 'failed' }, offline: true }))
+      const attempt = (retries[questionId] ?? 0) + 1
+      retries[questionId] = attempt
+      if (attempt <= MAX_RETRIES) {
+        window.setTimeout(() => {
+          if (!get().expired) void get().flush()
+        }, Math.min(30000, 1500 * attempt))
+      }
+    } finally {
+      inFlight.delete(questionId)
+    }
+  }
+
+  return {
+    examId: null,
+    attemptId: null,
+    startedAt: null,
+    expiresAt: null,
+    remainingSeconds: 0,
+    answers: {},
+    saved: {},
+    saveState: {},
+    offline: false,
+    loaded: false,
+    expired: false,
+
+    resume: async (examId) => {
+      const response = await examApi.attemptProgress(examId)
+      const progress = response.data.data
+      set({
+        examId: progress.examId,
+        attemptId: progress.attemptId,
+        startedAt: progress.startedAt,
+        expiresAt: progress.expiresAt,
+        remainingSeconds: progress.remainingSeconds,
+        answers: { ...progress.answers },
+        saved: { ...progress.answers },
+        saveState: {},
+        offline: false,
+        loaded: true,
+        expired: false,
+      })
+      return progress
+    },
+
+    setAnswer: (questionId, value) => {
+      const { expired } = get()
+      if (expired) return
+      const retryKeys: Record<string, number> = {}
+      retries = retryKeys
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer)
+      set((state) => ({
+        answers: { ...state.answers, [questionId]: value },
+        saveState: { ...state.saveState, [questionId]: 'saving' },
+        offline: false,
+      }))
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null
+        void get().flush()
+      }, DEBOUNCE_MS)
+    },
+
+    clearAnswer: (questionId) => {
+      const { expired } = get()
+      if (expired) return
+      retries = {}
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer)
+      set((state) => {
+        const answers = { ...state.answers }
+        delete answers[questionId]
+        return { answers, saveState: { ...state.saveState, [questionId]: 'saving' } }
+      })
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null
+        void get().flush()
+      }, DEBOUNCE_MS)
+    },
+
+    flush: async () => {
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer)
+        debounceTimer = null
+      }
+      const { examId, expired, answers, saved } = get()
+      if (!examId || expired) return
+      const qids = new Set<string>()
+      for (const qid of Object.keys(answers)) if (answers[qid] !== saved[qid]) qids.add(qid)
+      for (const qid of Object.keys(saved)) if (!(qid in answers)) qids.add(qid)
+      for (const qid of qids) await saveOne(qid, answers[qid] ?? '')
+    },
+
+    markExpired: () => set({ expired: true }),
+    reset: () =>
+      set({
+        examId: null,
+        attemptId: null,
+        startedAt: null,
+        expiresAt: null,
+        remainingSeconds: 0,
+        answers: {},
+        saved: {},
+        saveState: {},
+        offline: false,
+        loaded: false,
+        expired: false,
+      }),
+  }
+})

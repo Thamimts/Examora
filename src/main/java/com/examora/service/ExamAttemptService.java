@@ -1,6 +1,7 @@
 package com.examora.service;
 
 import com.examora.dto.ExamDtos.ActiveAttemptDto;
+import com.examora.dto.ExamDtos.AttemptProgressDto;
 import com.examora.dto.ExamDtos.ExamResultReviewDto;
 import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
@@ -102,6 +103,52 @@ public class ExamAttemptService {
                         row.duration(), row.status(), row.startedAt().toString(), row.expiresAt().toString(),
                         Math.max(0, row.expiresAt().getEpochSecond() - now.getEpochSecond())))
                 .toList();
+    }
+
+    public void saveAnswer(String examId, String questionId, User student, String value) {
+        requireStudent(student);
+        if (isBlank(examId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam id is required.");
+        }
+        if (isBlank(questionId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Question id is required.");
+        }
+        String examIdTrimmed = examId.trim();
+        String questionIdTrimmed = questionId.trim();
+        Exam exam = requireAvailableExam(examIdTrimmed);
+        ExamAttempt attempt = requireActiveAttempt(exam, student);
+        Question question = questionRepository.findById(questionIdTrimmed)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Question not found."));
+        if (!exam.id().equals(question.examId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Question does not belong to this exam.");
+        }
+        String valueTrimmed = value == null ? null : value.trim();
+        if (valueTrimmed == null || valueTrimmed.isEmpty()) {
+            answerRepository.deleteForAttempt(attempt.id(), question.id());
+            return;
+        }
+        List<QuestionOption> options = optionRepository.findByQuestionId(question.id());
+        boolean validValue = options.isEmpty() || options.stream()
+                .anyMatch(option -> option.text() != null && option.text().trim().equalsIgnoreCase(valueTrimmed));
+        if (!validValue) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Submitted value does not belong to this question.");
+        }
+        answerRepository.upsertForAttempt(attempt.id(), new Answer(
+                UUID.randomUUID().toString(), student.id(), exam.id(), question.id(), null, valueTrimmed,
+                attempt.id()), null);
+    }
+
+    public AttemptProgressDto getAttemptProgress(String examId, User student) {
+        requireStudent(student);
+        if (isBlank(examId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam id is required.");
+        }
+        String examIdTrimmed = examId.trim();
+        Exam exam = requireAvailableExam(examIdTrimmed);
+        ExamAttempt attempt = requireActiveAttempt(exam, student);
+        long remainingSeconds = Math.max(0, attempt.expiresAt().getEpochSecond() - Instant.now().getEpochSecond());
+        return new AttemptProgressDto(attempt.id(), exam.id(), attempt.status(), attempt.startedAt().toString(),
+                attempt.expiresAt().toString(), remainingSeconds, answerRepository.findValuesByAttempt(attempt.id()));
     }
 
     public ExamResultReviewDto getStudentResultReview(String examId, User student) {
@@ -216,7 +263,7 @@ public class ExamAttemptService {
             if (evaluation.correct()) {
                 score++;
             }
-            answerRepository.createForAttempt(attempt.id(), new Answer(
+            answerRepository.upsertForAttempt(attempt.id(), new Answer(
                     UUID.randomUUID().toString(),
                     student.id(),
                     exam.id(),
@@ -246,6 +293,16 @@ public class ExamAttemptService {
         proctorPublishService.publishLifecycle(exam, attempt, student, "SUBMITTED");
 
         return new ExamSubmissionResponse(result, score, questions.size(), percentage(score, questions.size()));
+    }
+
+    private ExamAttempt requireActiveAttempt(Exam exam, User student) {
+        ExamAttempt attempt = attemptRepository.findActive(exam.id(), student.id())
+                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "This exam attempt is not active."));
+        if (!Instant.now().isBefore(attempt.expiresAt())) {
+            attemptRepository.markExpired(attempt.id());
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
+        }
+        return attempt;
     }
 
     public ExamAttempt requireOwnedAttempt(String attemptId, User student) {
