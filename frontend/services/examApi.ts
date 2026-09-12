@@ -1,5 +1,5 @@
 import api from './api'; import type { ApiResponse, Exam, Result } from '@/types'
-import type { ActiveAttemptInfo } from '@/types/exam'
+import type { ActiveAttemptInfo, ExamResultReview } from '@/types/exam'
 
 type CreateExamPayload = { title: string; subject: string; date: string; duration: number }
 type SubmittedAnswer = { questionId: string; optionId?: string; value?: string }
@@ -16,4 +16,5 @@ export const examApi = {
   activeAttempts: () => api.get<ApiResponse<ActiveAttemptInfo[]>>('/exams/attempts/active'),
   start: (id: string) => api.post<ApiResponse<StartExamResponse>>(`/exams/${id}/start`),
   submit: (id: string, answers: SubmittedAnswer[]) => api.post<ApiResponse<ExamSubmissionResponse>>(`/exams/${id}/submit`, { answers }),
+  resultReview: (id: string) => api.get<ApiResponse<ExamResultReview>>(`/exams/${id}/result`),
 }

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
-import { Card, Header } from '@/components/shared'
+import { Card } from '@/components/shared'
 import type { StudentAiAnalysis } from '@/types/ai'
 
 type AnalysisError = Error & { status?: number }
@@ -65,10 +65,6 @@ export function StudentAIAnalysis() {
 
   return (
     <>
-      <Header
-        title="AI Performance Analysis"
-        description="Personalized insights generated from your submitted exam results."
-      />
       {query.isPending && (
         <div className="grid gap-4 md:grid-cols-3" aria-busy="true" aria-live="polite">
           {[1, 2, 3].map(item => (

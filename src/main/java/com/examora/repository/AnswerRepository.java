@@ -74,11 +74,23 @@ public class AnswerRepository {
         return jdbcTemplate.update("delete from answers where id = ?", id);
     }
 
-    public Answer createForAttempt(String attemptId, Answer answer) {
+    public Answer createForAttempt(String attemptId, Answer answer, boolean correct) {
         jdbcTemplate.update(
-                "insert into answers (id, user_id, exam_id, question_id, option_id, answer_value, attempt_id) values (?, ?, ?, ?, ?, ?, ?)",
-                answer.id(), answer.userId(), answer.examId(), answer.questionId(), answer.optionId(), answer.value(), attemptId);
+                "insert into answers (id, user_id, exam_id, question_id, option_id, answer_value, attempt_id, correct) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                answer.id(), answer.userId(), answer.examId(), answer.questionId(), answer.optionId(), answer.value(), attemptId, correct);
         return answer;
+    }
+
+    public List<ReviewRow> findReviewRows(String attemptId, String examId) {
+        return jdbcTemplate.query(
+                "select q.id as question_id, q.text as question_text, q.answer as answer_text, "
+                        + "a.answer_value as selected_value, a.correct as correct "
+                        + "from questions q "
+                        + "left join answers a on a.question_id = q.id and a.attempt_id = ? "
+                        + "where q.exam_id = ? "
+                        + "order by q.id",
+                this::mapReviewRow,
+                attemptId, examId);
     }
 
     private Answer mapAnswer(ResultSet rs, int rowNum) throws SQLException {
@@ -90,5 +102,19 @@ public class AnswerRepository {
                 rs.getString("option_id"),
                 rs.getString("answer_value"),
                 rs.getString("attempt_id"));
+    }
+
+    private ReviewRow mapReviewRow(ResultSet rs, int rowNum) throws SQLException {
+        Boolean correct = rs.getObject("correct", Boolean.class);
+        return new ReviewRow(
+                rs.getString("question_id"),
+                rs.getString("question_text"),
+                rs.getString("answer_text"),
+                rs.getString("selected_value"),
+                correct);
+    }
+
+    public record ReviewRow(String questionId, String questionText, String answerText,
+                            String selectedValue, Boolean correct) {
     }
 }

@@ -25,4 +25,15 @@ public final class ExamDtos {
                                    String subject, int duration, String status,
                                    String startedAt, String expiresAt, long remainingSeconds) {
     }
+
+    public record ExamResultReviewDto(String resultId, String examId, String examTitle, String subject,
+                                      String date, int score, int total, double percentage,
+                                      int correctCount, int incorrectCount, int unansweredCount,
+                                      List<QuestionReviewDto> questions) {
+    }
+
+    public record QuestionReviewDto(int number, String questionId, String questionText, List<String> options,
+                                    String selectedOptionText, String correctOptionText,
+                                    boolean answered, boolean correct) {
+    }
 }

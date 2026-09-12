@@ -18,6 +18,9 @@ public class ExamAttemptRepository {
         return jdbc.query("select * from exam_attempts where exam_id = ? and student_id = ? and status = 'STARTED' order by started_at desc", this::map, examId, studentId).stream().findFirst();
     }
     public Optional<ExamAttempt> findById(String id) { return jdbc.query("select * from exam_attempts where id = ?", this::map, id).stream().findFirst(); }
+    public Optional<ExamAttempt> findLatestSubmitted(String examId, String studentId) {
+        return jdbc.query("select * from exam_attempts where exam_id = ? and student_id = ? and status = 'SUBMITTED' order by submitted_at desc, started_at desc", this::map, examId, studentId).stream().findFirst();
+    }
     public ExamAttempt create(ExamAttempt a) {
         jdbc.update("insert into exam_attempts (id, exam_id, student_id, attempt_number, status, started_at, expires_at, version) values (?, ?, ?, ?, ?, ?, ?, ?)", a.id(), a.examId(), a.studentId(), a.attemptNumber(), a.status(), Timestamp.from(a.startedAt()), Timestamp.from(a.expiresAt()), a.version());
         return a;

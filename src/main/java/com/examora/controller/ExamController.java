@@ -2,10 +2,11 @@ package com.examora.controller;
 
 import com.examora.dto.ApiResponse;
 import com.examora.dto.CreateExamRequest;
+import com.examora.dto.ExamDtos.ActiveAttemptDto;
+import com.examora.dto.ExamDtos.ExamResultReviewDto;
 import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
 import com.examora.dto.ExamDtos.StartExamResponse;
-import com.examora.dto.ExamDtos.ActiveAttemptDto;
 import com.examora.model.Exam;
 import com.examora.model.User;
 import com.examora.service.AuthService;
@@ -88,5 +89,12 @@ public class ExamController {
             @RequestBody ExamSubmissionRequest request) {
         User student = authService.requireUser(authorizationHeader);
         return ApiResponse.ok("Submitted", examAttemptService.submit(id, student, request));
+    }
+
+    @GetMapping("/{id}/result")
+    public ApiResponse<ExamResultReviewDto> result(@PathVariable String id,
+                                                    @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User student = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(examAttemptService.getStudentResultReview(id, student));
     }
 }

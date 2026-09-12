@@ -1,8 +1,10 @@
 package com.examora.service;
 
 import com.examora.dto.ExamDtos.ActiveAttemptDto;
+import com.examora.dto.ExamDtos.ExamResultReviewDto;
 import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
+import com.examora.dto.ExamDtos.QuestionReviewDto;
 import com.examora.dto.ExamDtos.StartExamResponse;
 import com.examora.dto.ExamDtos.SubmittedAnswer;
 import com.examora.exception.ApiException;
@@ -17,10 +19,12 @@ import com.examora.model.User;
 import com.examora.repository.AnswerRepository;
 import com.examora.repository.ExamRepository;
 import com.examora.repository.ExamAttemptRepository;
+import com.examora.repository.QuestionOptionRepository;
 import com.examora.repository.QuestionRepository;
 import com.examora.repository.ResultRepository;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExamAttemptService {
     private final ExamRepository examRepository;
     private final QuestionRepository questionRepository;
+    private final QuestionOptionRepository optionRepository;
     private final AnswerRepository answerRepository;
     private final ResultRepository resultRepository;
     private final ExamAttemptRepository attemptRepository;
@@ -48,6 +53,7 @@ public class ExamAttemptService {
     public ExamAttemptService(
             ExamRepository examRepository,
             QuestionRepository questionRepository,
+            QuestionOptionRepository optionRepository,
             AnswerRepository answerRepository,
             ResultRepository resultRepository,
             ExamAttemptRepository attemptRepository,
@@ -57,6 +63,7 @@ public class ExamAttemptService {
             ProctorPublishService proctorPublishService) {
         this.examRepository = examRepository;
         this.questionRepository = questionRepository;
+        this.optionRepository = optionRepository;
         this.answerRepository = answerRepository;
         this.resultRepository = resultRepository;
         this.attemptRepository = attemptRepository;
@@ -95,6 +102,75 @@ public class ExamAttemptService {
                         row.duration(), row.status(), row.startedAt().toString(), row.expiresAt().toString(),
                         Math.max(0, row.expiresAt().getEpochSecond() - now.getEpochSecond())))
                 .toList();
+    }
+
+    public ExamResultReviewDto getStudentResultReview(String examId, User student) {
+        requireStudent(student);
+        if (isBlank(examId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Exam id is required.");
+        }
+        String examIdTrimmed = examId.trim();
+        Result result = resultRepository.findByUserIdAndExamId(student.id(), examIdTrimmed)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Result not found for this exam."));
+        ExamAttempt attempt = attemptRepository.findLatestSubmitted(examIdTrimmed, student.id())
+                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "This exam has not been submitted yet."));
+
+        List<AnswerRepository.ReviewRow> rows = answerRepository.findReviewRows(attempt.id(), examIdTrimmed);
+        Map<String, List<QuestionOption>> optionsByQuestion = optionRepository
+                .findByQuestionIds(rows.stream().map(AnswerRepository.ReviewRow::questionId).toList())
+                .stream()
+                .collect(Collectors.groupingBy(QuestionOption::questionId));
+
+        List<QuestionReviewDto> questionDtos = new ArrayList<>();
+        int correctCount = 0;
+        int unansweredCount = 0;
+        int number = 1;
+        for (AnswerRepository.ReviewRow row : rows) {
+            List<QuestionOption> questionOptions = optionsByQuestion.getOrDefault(row.questionId(), List.of());
+            String correctOptionText = questionOptions.stream()
+                    .filter(QuestionOption::correctAnswer)
+                    .map(QuestionOption::text)
+                    .findFirst()
+                    .orElse(row.answerText());
+            boolean answered = !isBlank(row.selectedValue());
+            boolean correct = answered && resolveCorrectness(row, correctOptionText);
+            if (answered && correct) {
+                correctCount++;
+            }
+            if (!answered) {
+                unansweredCount++;
+            }
+            questionDtos.add(new QuestionReviewDto(
+                    number++,
+                    row.questionId(),
+                    row.questionText(),
+                    questionOptions.stream().map(QuestionOption::text).toList(),
+                    row.selectedValue(),
+                    correctOptionText,
+                    answered,
+                    correct));
+        }
+
+        int total = rows.size();
+        int attempted = total - unansweredCount;
+        int incorrectCount = Math.max(0, attempted - correctCount);
+        return new ExamResultReviewDto(
+                result.id(), result.examId(), result.examTitle(), result.subject(), result.date(),
+                result.score(), total, percentage(result.score(), total),
+                correctCount, incorrectCount, unansweredCount, questionDtos);
+    }
+
+    private boolean resolveCorrectness(AnswerRepository.ReviewRow row, String correctOptionText) {
+        if (row.correct() != null) {
+            return row.correct();
+        }
+        String selected = row.selectedValue();
+        return selected != null
+                && (matches(correctOptionText, selected) || matches(row.answerText(), selected));
+    }
+
+    private boolean matches(String expected, String actual) {
+        return expected != null && actual != null && expected.trim().equalsIgnoreCase(actual.trim());
     }
 
     @Transactional
@@ -147,7 +223,7 @@ public class ExamAttemptService {
                     question.id(),
                     evaluation.optionId(),
                     evaluation.value(),
-                    attempt.id()));
+                    attempt.id()), evaluation.correct());
         }
 
         Result result = new Result(

@@ -38,6 +38,17 @@ public class QuestionOptionRepository {
                 .findFirst();
     }
 
+    public List<QuestionOption> findByQuestionIds(List<String> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(questionIds.size(), "?"));
+        return jdbcTemplate.query(
+                "select id, question_id, text, display_order, correct_answer from question_options where question_id in (" + placeholders + ") order by question_id, display_order, id",
+                this::mapOption,
+                questionIds.toArray());
+    }
+
     public QuestionOption create(QuestionOption option) {
         jdbcTemplate.update(
                 "insert into question_options (id, question_id, text, display_order, correct_answer) values (?, ?, ?, ?, ?)",

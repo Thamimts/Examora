@@ -2,12 +2,12 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Activity, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X } from 'lucide-react'
+import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
 import type { ActivityEvent, LoginRole, Role, Result } from '@/types'
-import type { ActiveAttemptInfo } from '@/types/exam'
+import type { ActiveAttemptInfo, ExamResultReview, QuestionReview } from '@/types/exam'
 import type { StudentAiAnalysis } from '@/types/ai'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
@@ -26,7 +26,8 @@ import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
 import { ProctorMonitor } from '@/features/proctor/ProctorMonitor'
-import { StudentAIAnalysis } from '@/features/analytics/StudentAIAnalysis'
+import { StudentAICoach } from '@/features/analytics/StudentAICoach'
+import { StudentAIPractice } from '@/features/ai/StudentAIPractice'
 import { StudentPerformance } from '@/features/analytics/StudentPerformance'
 import { ConfirmDialog, ToastProvider, useToast } from '@/components/feedback'
 
@@ -281,7 +282,122 @@ function StudentExams() {
 function StudentPractice() { const navigate = useNavigate(); const examsQuery = useQuery({ queryKey: ['student-practice'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); return <><Header title="Adaptive Practice" description="Drill any exam with questions that adjust to your skill as you answer."/>{examsQuery.isPending ? <div className="grid gap-4 md:grid-cols-2" aria-busy="true">{[1,2,3,4].map(item => <Card key={item}><div className="h-24 animate-pulse rounded-xl bg-muted"/></Card>)}</div> : examsQuery.isError ? <Card><div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load available exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div></Card> : examsQuery.data?.length ? <div className="grid gap-4 md:grid-cols-2">{examsQuery.data.map(exam => <Card key={exam.id}><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-primary">{exam.subject}</p><h2 className="mt-2 font-semibold">{exam.title}</h2><p className="mt-2 text-sm text-muted-foreground">{exam.duration} minutes</p></div><Target className="text-primary"/></div><div className="mt-5"><button className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/adaptive/${exam.id}`)}>Start practice <ChevronRight size={16}/></button></div></Card>)}</div> : <Card><p className="py-8 text-center text-sm text-muted-foreground">No exams are available to practice right now.</p></Card>}</> }
 function Instructions() { const { id = '' } = useParams(); const navigate = useNavigate(); const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 }); const startMutation = useMutation({ mutationFn: () => examApi.start(id), onSuccess: () => navigate(`/student/exams/${id}`) }); if (examQuery.isPending) return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="h-40 animate-pulse rounded-xl bg-muted"/></Card></>; if (examQuery.isError || !examQuery.data) return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><p className="text-sm text-destructive">Unable to load this exam.</p></Card></>; const exam = examQuery.data; return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><FileText/></div><div><h2 className="font-semibold">{exam.title}</h2><p className="text-sm text-muted-foreground">{exam.subject} · {exam.duration} minutes</p></div></div><div className="mt-8 grid gap-3 text-sm"><p>• Select one option for each multiple-choice question.</p><p>• Use the navigator to move between questions.</p><p>• Submit the exam when you finish.</p><p>• Your score is calculated and saved after submission.</p></div>{startMutation.isError && <p className="mt-5 text-sm text-destructive">Unable to start the exam. Try again.</p>}<button disabled={startMutation.isPending} className="mt-8 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60" onClick={() => startMutation.mutate()}>{startMutation.isPending ? 'Starting...' : 'Start exam'}</button></Card></> }
 function Attempt() { const { id = '' } = useParams(); const navigate = useNavigate(); const [index, setIndex] = useState(0); const [answers, setAnswers] = useState<Record<string, string>>({}); const [seconds, setSeconds] = useState(0); const [deadline, setDeadline] = useState<number | null>(null); const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 }); const questionsQuery = useQuery({ queryKey: ['exam-questions', id], queryFn: async () => (await questionApi.list(id)).data.data, enabled: Boolean(id), retry: 1 }); const submitMutation = useMutation({ mutationFn: () => { const questions = questionsQuery.data || []; return examApi.submit(id, questions.map(question => ({ questionId: question.id, value: answers[question.id] || '' }))) }, onSuccess: response => navigate(`/student/exams/${id}/result`, { replace: true, state: { submission: response.data.data } }) }); useEffect(() => { if (!examQuery.data || deadline) return; const endAt = examQuery.data.endAt; if (endAt) setDeadline(new Date(endAt).getTime()); }, [deadline, examQuery.data]); useEffect(() => { if (!deadline) return; const update = () => setSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))); update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer) }, [deadline]); const questions = questionsQuery.data || []; const q = questions[Math.min(index, Math.max(questions.length - 1, 0))]; const answeredCount = questions.filter(question => answers[question.id]).length; if (examQuery.isPending || questionsQuery.isPending) return <div className="mx-auto max-w-5xl"><div className="h-80 animate-pulse rounded-2xl bg-muted"/></div>; if (examQuery.isError || questionsQuery.isError || !examQuery.data) return <><Header title="Exam attempt" description="Answer the questions and submit your exam."/><Card><p className="text-sm text-destructive">Unable to load this exam attempt.</p></Card></>; if (!q) return <><Header title={examQuery.data.title} description="This exam has no questions yet."/><Card><p className="py-8 text-center text-sm text-muted-foreground">No questions are available for this exam.</p></Card></>; const submit = () => submitMutation.mutate(); return <div className="mx-auto max-w-5xl"><div className="mb-6 flex items-center justify-between"><div><p className="text-xs font-semibold uppercase tracking-widest text-primary">Live attempt</p><h1 className="mt-2 text-2xl font-semibold">{examQuery.data.title}</h1></div><div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700"><Clock3 size={17}/>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</div></div><div className="grid gap-6 lg:grid-cols-[1fr_260px]"><Card><div className="flex items-center justify-between text-sm text-muted-foreground"><span>Question {index + 1} of {questions.length}</span><span>{answeredCount} answered</span></div><div className="mt-3 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary transition-all" style={{width: `${((index + 1) / questions.length) * 100}%`}}/></div><h2 className="mt-10 text-xl font-semibold leading-8">{q.text}</h2><div className="mt-7 space-y-3">{q.options.map(option => <button key={option} onClick={() => setAnswers(current => ({ ...current, [q.id]: option }))} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${answers[q.id] === option ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}><span className={`grid size-6 place-items-center rounded-full border text-xs ${answers[q.id] === option ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>{answers[q.id] === option && <Check size={14}/>}</span>{option}</button>)}</div>{submitMutation.isError && <p className="mt-5 text-sm text-destructive">Unable to submit this exam. Please try again.</p>}<div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"><button className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm disabled:opacity-50" disabled={index === 0} onClick={() => setIndex(Math.max(0, index - 1))}><ChevronLeft size={16}/> Previous</button><div className="flex gap-2"><button className="rounded-xl border border-border px-4 py-2 text-sm" onClick={() => setAnswers(current => { const next = { ...current }; delete next[q.id]; return next })}><X size={15} className="mr-2 inline"/>Clear</button><button disabled={submitMutation.isPending} className="rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-60" onClick={() => index === questions.length - 1 ? submit() : setIndex(index + 1)}>{index === questions.length - 1 ? submitMutation.isPending ? 'Submitting...' : 'Submit exam' : 'Next'} <ChevronRight size={16} className="ml-1 inline"/></button></div></div></Card><Card><h2 className="font-semibold">Question navigator</h2><div className="mt-4 grid grid-cols-5 gap-2">{questions.map((question, i) => <button key={question.id} onClick={() => setIndex(i)} className={`grid size-9 place-items-center rounded-lg text-sm ${i === index ? 'bg-primary text-primary-foreground' : answers[question.id] ? 'bg-emerald-500/20 text-emerald-700' : 'bg-muted'}`}>{i + 1}</button>)}</div><p className="mt-6 text-xs leading-5 text-muted-foreground">Submit once you have selected your answers. The result is saved automatically.</p></Card></div></div> }
-function ResultPage() { const { id = '' } = useParams(); const navigate = useNavigate(); const location = useLocation() as { state?: { submission?: { result: Result; score: number; total: number; percentage: number } } }; const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 }); const submission = location.state?.submission; const savedResult = submission?.result || resultsQuery.data?.find(result => result.examId === id) || resultsQuery.data?.[0]; const score = submission?.score ?? savedResult?.score ?? 0; const total = submission?.total ?? savedResult?.total ?? 0; const percentage = submission?.percentage ?? (total > 0 ? Math.round((score * 10000) / total) / 100 : 0); return <><Header title="Exam result" description="Your submission has been recorded successfully."/><Card className="max-w-2xl">{!savedResult && resultsQuery.isPending ? <div className="h-48 animate-pulse rounded-xl bg-muted"/> : !savedResult ? <p className="py-8 text-center text-sm text-muted-foreground">No result was found for this exam.</p> : <><div className="text-center"><div className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-500/10 text-emerald-600"><Check size={30}/></div><p className="mt-5 text-5xl font-semibold">{percentage}%</p><p className="mt-2 text-sm text-muted-foreground">{savedResult.examTitle} · {score} of {total} correct</p></div><div className="mt-8 grid grid-cols-3 gap-3 text-center"><div className="rounded-xl bg-muted p-3"><b>{score}</b><p className="text-xs text-muted-foreground">Correct</p></div><div className="rounded-xl bg-muted p-3"><b>{Math.max(total - score, 0)}</b><p className="text-xs text-muted-foreground">Incorrect</p></div><div className="rounded-xl bg-muted p-3"><b>{total}</b><p className="text-xs text-muted-foreground">Total</p></div></div></>}<button className="mt-8 w-full rounded-xl border border-border px-4 py-3 text-sm" onClick={() => navigate('/student/history')}>Back to history</button></Card></> }
+function QuestionReviewCard({ question }: { question: QuestionReview }) {
+  const status = question.answered ? (question.correct ? 'correct' : 'incorrect') : 'unanswered'
+  const badge = status === 'correct'
+    ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700"><Check size={12} />Correct</span>
+    : status === 'incorrect'
+      ? <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700"><X size={12} />Incorrect</span>
+      : <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"><MinusCircle size={12} />Unanswered</span>
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Question {question.number}</p>
+        {badge}
+      </div>
+      <h3 className="mt-3 font-medium leading-6">{question.questionText}</h3>
+      <ul className="mt-4 space-y-2">
+        {question.options.map((option, optionIndex) => {
+          const isCorrect = option === question.correctOptionText
+          const isSelected = question.answered && option === question.selectedOptionText
+          const tileClass = isCorrect ? 'border-emerald-500/40 bg-emerald-500/5' : isSelected ? 'border-amber-500/40 bg-amber-500/5' : 'border-border'
+          return (
+            <li key={`${question.questionId}-${optionIndex}`} className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm ${tileClass}`}>
+              <span className="grid size-6 shrink-0 place-items-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">{String.fromCharCode(65 + optionIndex)}</span>
+              <span className="min-w-0 flex-1 break-words">{option}</span>
+              <span className="flex shrink-0 items-center gap-2">
+                {isSelected && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"><Check size={11} className="text-emerald-600" />Your answer</span>}
+                {isCorrect && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"><Check size={11} />Correct answer</span>}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="mt-4 grid gap-2 rounded-xl bg-muted/60 p-3 text-sm sm:grid-cols-2">
+        <p className="break-words"><span className="text-muted-foreground">Your answer:</span> {question.answered ? <b>{question.selectedOptionText}</b> : <span className="italic text-muted-foreground">Not answered</span>}</p>
+        <p className="break-words"><span className="text-muted-foreground">Correct answer:</span> <b>{question.correctOptionText}</b></p>
+      </div>
+    </Card>
+  )
+}
+
+function ResultPage() {
+  const { id = '' } = useParams()
+  const navigate = useNavigate()
+  const reviewQuery = useQuery({
+    queryKey: ['exam-result-review', id],
+    queryFn: async () => (await examApi.resultReview(id)).data.data,
+    enabled: Boolean(id),
+    retry: 1,
+  })
+  if (reviewQuery.isPending) {
+    return (
+      <>
+        <Header title="Exam result" description="Loading your question-by-question review..." />
+        <div className="mx-auto max-w-3xl space-y-4" aria-busy="true">
+          <div className="h-44 animate-pulse rounded-2xl bg-muted" />
+          <div className="h-40 animate-pulse rounded-2xl bg-muted" />
+          <div className="h-40 animate-pulse rounded-2xl bg-muted" />
+        </div>
+      </>
+    )
+  }
+  const status = (reviewQuery.error as { response?: { status?: number } } | null)?.response?.status
+  if (reviewQuery.isError || !reviewQuery.data) {
+    const notFound = status === 404
+    const forbidden = status === 403
+    const message = notFound
+      ? 'No result was found for this exam. Submit the exam to unlock the full question-by-question review.'
+      : forbidden
+        ? 'You do not have access to this result.'
+        : 'Unable to load your result. Please try again.'
+    return (
+      <>
+        <Header title="Exam result" description="Your result review is not available right now." />
+        <Card className="mx-auto max-w-2xl">
+          <div role="alert" className="text-center">
+            <div className="mx-auto grid size-12 place-items-center rounded-full bg-muted text-muted-foreground"><AlertCircle size={22} /></div>
+            <p className="mt-4 text-sm text-muted-foreground">{message}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {!notFound && !forbidden && <button type="button" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => reviewQuery.refetch()}>Try again</button>}
+              <button type="button" className="rounded-xl border border-border px-4 py-2.5 text-sm" onClick={() => navigate('/student/exams')}>Back to My Exams</button>
+            </div>
+          </div>
+        </Card>
+      </>
+    )
+  }
+  const review = reviewQuery.data
+  return (
+    <>
+      <Header title="Exam result" description={`${review.examTitle} · ${review.subject} · ${review.date}`} />
+      <div className="mx-auto max-w-3xl space-y-4">
+        <Card>
+          <div className="text-center">
+            <div className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-500/10 text-emerald-600"><Award size={30} /></div>
+            <p className="mt-5 text-5xl font-semibold">{review.percentage}%</p>
+            <p className="mt-2 text-sm text-muted-foreground">{review.score} of {review.total} correct</p>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-3 text-center sm:grid-cols-5">
+            <div className="rounded-xl bg-muted p-3"><b className="text-xl">{review.score}</b><p className="mt-1 text-xs text-muted-foreground">Score</p></div>
+            <div className="rounded-xl bg-muted p-3"><b className="text-xl">{review.percentage}%</b><p className="mt-1 text-xs text-muted-foreground">Percentage</p></div>
+            <div className="rounded-xl bg-emerald-500/10 p-3"><b className="text-xl text-emerald-600">{review.correctCount}</b><p className="mt-1 text-xs font-medium text-emerald-700">Correct</p></div>
+            <div className="rounded-xl bg-amber-500/10 p-3"><b className="text-xl text-amber-600">{review.incorrectCount}</b><p className="mt-1 text-xs font-medium text-amber-700">Incorrect</p></div>
+            <div className="rounded-xl bg-muted p-3"><b className="text-xl">{review.unansweredCount}</b><p className="mt-1 text-xs text-muted-foreground">Unanswered</p></div>
+          </div>
+        </Card>
+        {review.questions.length === 0 ? (
+          <Card><p className="py-8 text-center text-sm text-muted-foreground">No question details are available for this result.</p></Card>
+        ) : (
+          review.questions.map(question => <QuestionReviewCard key={question.questionId} question={question} />)
+        )}
+        <div className="pt-2">
+          <button type="button" onClick={() => navigate('/student/exams')} className="w-full rounded-xl border border-border px-4 py-3 text-sm">Back to My Exams</button>
+        </div>
+      </div>
+    </>
+  )
+}
 function History() { const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 }); return <><Header title="Exam history" description="Review your completed attempts and results."/><Card>{resultsQuery.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-muted"/>)}</div> : resultsQuery.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load your results.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => resultsQuery.refetch()}>Retry</button></div> : resultsQuery.data?.length ? <div className="divide-y divide-border">{resultsQuery.data.map(r => { const percentage = r.total > 0 ? Math.round((r.score * 10000) / r.total) / 100 : 0; return <div key={r.id} className="flex items-center justify-between gap-4 py-4 first:pt-0"><div><p className="font-medium">{r.examTitle}</p><p className="mt-1 text-sm text-muted-foreground">{r.subject} · {r.date} · {r.score}/{r.total}</p></div><span className="font-semibold text-emerald-600">{percentage}%</span></div> })}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No completed exams yet.</p>}</Card></> }
 function TeacherExams() { const navigate = useNavigate(); const queryClient = useQueryClient(); const examsQuery = useQuery({ queryKey: ['teacher-exams'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); const publishMutation = useMutation({ mutationFn: (id: string) => examApi.publish(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }) }); const deleteMutation = useMutation({ mutationFn: (id: string) => examApi.remove(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }) }); return <><Header title="Exam management" description="Create, edit, validate, and publish assessments."/><div className="mb-5 flex justify-end"><button onClick={() => navigate('/teacher/exams/create')} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground"><Plus size={16}/> Create exam</button></div><Card>{examsQuery.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-16 animate-pulse rounded-xl bg-muted"/>)}</div> : examsQuery.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div> : examsQuery.data?.length ? <div className="divide-y divide-border">{examsQuery.data.map(e => <div key={e.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0"><div><p className="font-medium">{e.title}</p><p className="mt-1 text-sm text-muted-foreground">{e.subject} · {e.duration} min · {e.status} · {e.participants} participants</p></div><div className="flex gap-2"><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/teacher/exams/${e.id}/questions`)}>Questions</button><button disabled={e.status === 'DRAFT'} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-50" onClick={() => navigate(`/teacher/monitor/${e.id}`)}>Monitor</button><button disabled={publishMutation.isPending || e.status !== 'DRAFT'} className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary disabled:opacity-50" onClick={() => publishMutation.mutate(e.id)}>Publish</button><button className="rounded-lg p-2 text-muted-foreground" onClick={() => deleteMutation.mutate(e.id)}><Trash2 size={15}/></button></div></div>)}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No exams created yet.</p>}</Card></> }
 function CreateExam() { const navigate = useNavigate(); const queryClient = useQueryClient(); const schema = z.object({ title: z.string().min(3), subject: z.string().min(2), date: z.string().min(1), duration: z.coerce.number().min(1).max(300) }); const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema), defaultValues: { date: new Date().toISOString().slice(0, 10), duration: 60 } }); const createMutation = useMutation({ mutationFn: (values: { title: string; subject: string; date: string; duration: number }) => examApi.create(values), onSuccess: response => { queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }); navigate(`/teacher/exams/${response.data.data.id}/questions`) } }); return <><Header title="Create an exam" description="Set the assessment details, then add and validate questions."/><Card className="max-w-2xl"><form className="space-y-5" onSubmit={handleSubmit(values => createMutation.mutate(values))}><label className="block text-sm font-medium">Title<input className="field mt-2" {...register('title')} placeholder="e.g. Biology midterm"/>{errors.title && <span className="text-xs text-destructive">Enter a title</span>}</label><label className="block text-sm font-medium">Subject<input className="field mt-2" {...register('subject')} placeholder="Biology"/>{errors.subject && <span className="text-xs text-destructive">Enter a subject</span>}</label><label className="block text-sm font-medium">Exam date<input className="field mt-2" type="date" {...register('date')} /></label><label className="block text-sm font-medium">Duration in minutes<input className="field mt-2" type="number" {...register('duration')} />{errors.duration && <span className="text-xs text-destructive">Enter a valid duration</span>}</label>{createMutation.isError && <p className="text-sm text-destructive">Unable to create this exam.</p>}<button disabled={createMutation.isPending} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm text-primary-foreground disabled:opacity-60"><Save size={16}/> {createMutation.isPending ? 'Saving...' : 'Save draft'}</button></form></Card></> }
@@ -495,7 +611,8 @@ function App() {
     <Routes>
       <Route path="/login" element={<RealAuth mode="login" />} />
       <Route path="/register" element={<RealAuth mode="register" />} />
-      <Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAIAnalysis /></Protected>} />
+      <Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAICoach /></Protected>} />
+      <Route path="/student/ai-practice/:id" element={<Protected roles={['STUDENT']}><StudentAIPractice /></Protected>} />
       <Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentPerformance /></Protected>} />
       <Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><PracticeSession /></Protected>} />
       <Route path="/student/practice" element={<Protected roles={['STUDENT']}><StudentPractice /></Protected>} />

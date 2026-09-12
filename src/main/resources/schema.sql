@@ -32,6 +32,7 @@ create table if not exists answers (
  id varchar(36) primary key, user_id varchar(36), exam_id varchar(36) not null, question_id varchar(36) not null, option_id varchar(36), answer_value text, attempt_id varchar(36), created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
  constraint uq_answer_attempt_question unique (attempt_id, question_id), constraint fk_answers_user foreign key (user_id) references users(id) on delete set null, constraint fk_answers_exam foreign key (exam_id) references exams(id) on delete cascade, constraint fk_answers_question foreign key (question_id) references questions(id) on delete cascade, constraint fk_answers_option foreign key (option_id) references question_options(id) on delete set null, constraint fk_answers_attempt foreign key (attempt_id) references exam_attempts(id)
 );
+alter table answers add column if not exists correct boolean;
 create table if not exists proctor_events (
  id varchar(36) primary key, attempt_id varchar(36) not null, event_id varchar(100), type varchar(80) not null, occurred_at varchar(40) not null, metadata text, created_at timestamp default current_timestamp, server_received_at timestamp default current_timestamp,
  constraint uq_proctor_event unique (attempt_id, event_id), constraint fk_proctor_attempt foreign key (attempt_id) references exam_attempts(id)
@@ -54,3 +55,31 @@ create table if not exists practice_answers (
  constraint fk_practice_answer_session foreign key (session_id) references practice_sessions(id) on delete cascade, constraint fk_practice_answer_question foreign key (question_id) references questions(id) on delete cascade, constraint fk_practice_answer_option foreign key (option_id) references question_options(id) on delete set null, constraint uq_practice_session_question unique (session_id, question_id)
 );
 create index if not exists idx_practice_answers_session on practice_answers (session_id, sequence_index);
+create table if not exists ai_practice_sessions (
+ id varchar(36) primary key, student_id varchar(36) not null, topic varchar(100) not null, difficulty varchar(10) not null, status varchar(20) not null default 'ACTIVE', question_count int not null, answered_count int not null default 0, correct_count int not null default 0, score int, percentage decimal(5,2), min_question_count int, min_accuracy decimal(5,2), completion_met boolean not null default false, started_at timestamp not null, completed_at timestamp,
+ constraint fk_ai_practice_session_student foreign key (student_id) references users(id) on delete cascade
+);
+alter table ai_practice_sessions add column if not exists min_question_count int;
+alter table ai_practice_sessions add column if not exists min_accuracy decimal(5,2);
+alter table ai_practice_sessions add column if not exists completion_met boolean not null default false;
+create index if not exists idx_ai_practice_sessions_student on ai_practice_sessions (student_id, status, started_at desc);
+create index if not exists idx_ai_practice_sessions_progress on ai_practice_sessions (student_id, status, topic, difficulty);
+create table if not exists ai_generated_questions (
+ id varchar(36) primary key, session_id varchar(36) not null, question_text text not null, correct_option text not null, explanation text not null, topic varchar(100) not null, difficulty varchar(10) not null, order_index int not null, created_at timestamp default current_timestamp,
+ constraint fk_ai_question_session foreign key (session_id) references ai_practice_sessions(id) on delete cascade
+);
+create index if not exists idx_ai_generated_questions_session on ai_generated_questions (session_id, order_index);
+create table if not exists ai_question_options (
+ id varchar(36) primary key, question_id varchar(36) not null, text text not null, display_order int not null default 0,
+ constraint fk_ai_option_question foreign key (question_id) references ai_generated_questions(id) on delete cascade
+);
+create index if not exists idx_ai_question_options_question on ai_question_options (question_id, display_order);
+create table if not exists ai_practice_answers (
+ id varchar(36) primary key, session_id varchar(36) not null, question_id varchar(36) not null, option_id varchar(36), selected_option text, correct boolean, answered_at timestamp not null,
+ constraint fk_ai_practice_answer_session foreign key (session_id) references ai_practice_sessions(id) on delete cascade, constraint fk_ai_practice_answer_question foreign key (question_id) references ai_generated_questions(id) on delete cascade, constraint fk_ai_practice_answer_option foreign key (option_id) references ai_question_options(id) on delete set null, constraint uq_ai_practice_session_question unique (session_id, question_id)
+);
+create index if not exists idx_ai_practice_answers_session on ai_practice_answers (session_id);
+create table if not exists ai_practice_reviews (
+ id varchar(36) primary key, session_id varchar(36) not null, question_id varchar(36) not null, explanation text not null, created_at timestamp default current_timestamp,
+ constraint fk_ai_review_session foreign key (session_id) references ai_practice_sessions(id) on delete cascade, constraint fk_ai_review_question foreign key (question_id) references ai_generated_questions(id) on delete cascade, constraint uq_ai_review_session_question unique (session_id, question_id)
+);
