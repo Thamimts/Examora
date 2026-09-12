@@ -7,6 +7,7 @@ import { Card, Header } from '@/components/shared'
 import { useToast } from '@/components/feedback'
 import { useAuthStore } from '@/store/authStore'
 import { aiPracticeApi } from '@/services/aiPracticeApi'
+import { AiTutorSection } from './AiTutorSection'
 import type { AIPracticeReview, AIPracticeSession, RoadmapDifficulty } from '@/types/ai'
 
 const difficultyStyles: Record<RoadmapDifficulty, string> = {
@@ -530,6 +531,7 @@ function AiReviewBody({ review, sessionId, token }: { review: AIPracticeReview; 
                 {question.explanation}
               </p>
             )}
+            <AiTutorSection question={question} sessionId={sessionId} token={token} />
           </div>
         ))}
       </div>

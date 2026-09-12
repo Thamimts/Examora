@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/student/adaptive/**").hasRole("STUDENT")
                         .requestMatchers("/api/student/ai-practice/**").hasRole("STUDENT")
+                        .requestMatchers("/api/student/ai-tutor/**").hasRole("STUDENT")
                         .requestMatchers("/api/users/me", "/api/student/**").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/exams/*/start", "/api/exams/*/submit").hasRole("STUDENT")
