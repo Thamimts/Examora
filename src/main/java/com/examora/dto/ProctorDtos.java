@@ -30,4 +30,9 @@ public final class ProctorDtos {
 
     public record ProctorMonitorData(String examId, String examTitle, List<ProctorAttemptMonitor> attempts) {
     }
+
+    public record ProctorSummary(String examId, String examTitle, boolean hasAttempts,
+                                 int totalAttempts, int activeAttempts, int eventCount,
+                                 RiskLevel riskLevel, Integer riskScore) {
+    }
 }

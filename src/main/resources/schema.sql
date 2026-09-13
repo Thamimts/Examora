@@ -109,3 +109,8 @@ create table if not exists oauth_accounts (
  constraint uq_oauth_provider_user unique (provider, provider_user_id)
 );
 create index if not exists idx_oauth_account_user on oauth_accounts (user_id);
+
+create index if not exists idx_results_exam_id on results (exam_id);
+create index if not exists idx_answers_exam_question on answers (exam_id, question_id);
+create index if not exists idx_answers_user_exam on answers (user_id, exam_id);
+create index if not exists idx_answers_attempt on answers (attempt_id);

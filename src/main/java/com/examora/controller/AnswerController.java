@@ -1,11 +1,14 @@
 package com.examora.controller;
 
 import com.examora.dto.ApiResponse;
+import com.examora.exception.ApiException;
 import com.examora.model.Answer;
+import com.examora.model.Role;
 import com.examora.model.User;
 import com.examora.service.AnswerService;
 import com.examora.service.AuthService;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,19 +32,29 @@ public class AnswerController {
     }
 
     @GetMapping
-    public ApiResponse<List<Answer>> list(@RequestParam(required = false) String userId, @RequestParam(required = false) String examId) {
+    public ApiResponse<List<Answer>> list(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String examId) {
+        User actor = authService.requireUser(authorizationHeader);
+        if (actor.role() == Role.STUDENT) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or administrator access is required.");
+        }
         if (userId != null && !userId.isBlank()) {
-            return ApiResponse.ok(answerService.findByUserId(userId));
+            return ApiResponse.ok(answerService.findByUserIdForStaff(userId, actor));
         }
         if (examId != null && !examId.isBlank()) {
-            return ApiResponse.ok(answerService.findByExamId(examId));
+            return ApiResponse.ok(answerService.findByExamIdForStaff(examId, actor));
         }
-        return ApiResponse.ok(answerService.findAll());
+        return ApiResponse.ok(answerService.findAllForStaff(actor));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<Answer> get(@PathVariable String id) {
-        return ApiResponse.ok(answerService.findById(id));
+    public ApiResponse<Answer> get(
+            @PathVariable String id,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User actor = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(answerService.findByIdForStaff(id, actor));
     }
 
     @PostMapping
@@ -59,8 +72,11 @@ public class AnswerController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable String id) {
-        answerService.delete(id);
+    public ApiResponse<Void> delete(
+            @PathVariable String id,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User actor = authService.requireUser(authorizationHeader);
+        answerService.delete(id, actor);
         return ApiResponse.ok("Deleted", null);
     }
 }

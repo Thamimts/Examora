@@ -181,6 +181,38 @@ class ProctorMonitorIntegrationTest {
     }
 
     @Test
+    void proctorSummaryAggregatesAttemptsAndRisk() throws Exception {
+        String token = token("teacher-a@example.com", "teacherA123");
+        mockMvc.perform(get("/api/proctor/exams/exam-a/summary").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.examId").value("exam-a"))
+                .andExpect(jsonPath("$.data.examTitle").value("Algebra"))
+                .andExpect(jsonPath("$.data.hasAttempts").value(true))
+                .andExpect(jsonPath("$.data.totalAttempts").value(3))
+                .andExpect(jsonPath("$.data.activeAttempts").value(1))
+                .andExpect(jsonPath("$.data.eventCount").value(6))
+                .andExpect(jsonPath("$.data.riskLevel").value("HIGH"))
+                .andExpect(jsonPath("$.data.riskScore").value(60));
+
+        mockMvc.perform(get("/api/proctor/exams/exam-b/summary").header(HttpHeaders.AUTHORIZATION, "Bearer " + token("teacher-b@example.com", "teacherB123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalAttempts").value(1))
+                .andExpect(jsonPath("$.data.activeAttempts").value(1))
+                .andExpect(jsonPath("$.data.eventCount").value(1))
+                .andExpect(jsonPath("$.data.riskLevel").value("LOW"))
+                .andExpect(jsonPath("$.data.riskScore").value(20));
+
+        mockMvc.perform(get("/api/proctor/exams/unknown/summary").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/proctor/exams/exam-b/summary").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/proctor/exams/exam-a/summary").header(HttpHeaders.AUTHORIZATION, "Bearer " + token("student-one@example.com", "student123")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/proctor/exams/exam-a/summary"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void unknownExamAndAttemptReturn404() throws Exception {
         String token = token("teacher-a@example.com", "teacherA123");
         mockMvc.perform(get("/api/proctor/exams/unknown-exam/monitor").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))

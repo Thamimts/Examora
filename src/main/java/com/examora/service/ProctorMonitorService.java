@@ -4,6 +4,7 @@ import com.examora.dto.ProctorDtos.ProctorAttemptMonitor;
 import com.examora.dto.ProctorDtos.ProctorEventDto;
 import com.examora.dto.ProctorDtos.ProctorMonitorData;
 import com.examora.dto.ProctorDtos.ProctorStudentDto;
+import com.examora.dto.ProctorDtos.ProctorSummary;
 import com.examora.dto.ProctorDtos.RiskLevel;
 import com.examora.exception.ApiException;
 import com.examora.model.Exam;
@@ -15,6 +16,7 @@ import com.examora.repository.ExamRepository;
 import com.examora.repository.ProctorRepository;
 import com.examora.repository.ProctorRepository.ProctorEventRow;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -58,6 +60,22 @@ public class ProctorMonitorService {
                 .map(row -> build(row, eventsByAttempt.getOrDefault(row.attempt().id(), List.of()), now))
                 .toList();
         return new ProctorMonitorData(exam.id(), exam.title(), items);
+    }
+
+    public ProctorSummary summary(String examId, User actor) {
+        ProctorMonitorData data = monitor(examId, actor);
+        int totalAttempts = data.attempts().size();
+        int activeAttempts = (int) data.attempts().stream()
+                .filter(ProctorAttemptMonitor::activeNow).count();
+        int eventCount = data.attempts().stream()
+                .mapToInt(ProctorAttemptMonitor::eventCount).sum();
+        RiskScore worst = data.attempts().stream()
+                .map(attempt -> new RiskScore(attempt.riskLevel(), attempt.riskScore()))
+                .max(Comparator.comparingInt(r -> r.level().ordinal()))
+                .orElse(new RiskScore(RiskLevel.LOW, 0.0));
+        return new ProctorSummary(data.examId(), data.examTitle(), totalAttempts > 0,
+                totalAttempts, activeAttempts, eventCount, worst.level(),
+                (int) Math.round(worst.score()));
     }
 
     public List<ProctorEventDto> events(String attemptId, User actor, int limit) {

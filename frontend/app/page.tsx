@@ -27,6 +27,10 @@ import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
 import { ProctorMonitor } from '@/features/proctor/ProctorMonitor'
+import { TeacherCommandCenter } from '@/features/teacher/TeacherCommandCenter'
+import { ExamIntelligenceList } from '@/features/teacher/ExamIntelligenceList'
+import { ExamIntelligence } from '@/features/teacher/ExamIntelligence'
+import { AdminAnalytics, MonitorPicker } from '@/features/teacher/MonitorPicker'
 import { StudentAICoach } from '@/features/analytics/StudentAICoach'
 import { StudentAIPractice } from '@/features/ai/StudentAIPractice'
 import { StudentPerformance } from '@/features/analytics/StudentPerformance'
@@ -61,6 +65,8 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
     { label: 'Exams', href: '/teacher/exams', icon: BookOpen },
     { label: 'Create exam', href: '/teacher/exams/create', icon: FileText },
+    { label: 'Analytics', href: '/teacher/analytics', icon: BarChart3 },
+    { label: 'Live monitor', href: '/teacher/monitor', icon: Activity },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
   ADMIN: [
@@ -69,6 +75,7 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Exams', href: '/admin/exams', icon: BookOpen },
     { label: 'Question bank', href: '/admin/question-bank', icon: ListChecks },
     { label: 'Results', href: '/admin/results', icon: BarChart3 },
+    { label: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
 }
@@ -595,19 +602,6 @@ function RetestRequests({ admin = false }: { admin?: boolean }) {
   return <><Header title={admin ? 'Retest requests' : 'Retest requests'} description={admin ? 'Review student requests securely.' : 'Track your requests for another attempt.'} /><Card><div className="flex flex-col gap-3" aria-live="polite">{query.isPending ? <p role="status">Loading requests...</p> : query.isError ? <p role="alert">Unable to load requests.</p> : query.data?.length ? query.data.map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"><div><p className="font-medium">{item.examTitle}</p><p className="text-sm text-muted-foreground">{item.status} · {new Date(item.requestedAt).toLocaleDateString()}</p></div>{admin && item.status === 'PENDING' && <div className="flex gap-2"><button type="button" disabled={review.isPending} onClick={() => review.mutate({ id: item.id, status: 'APPROVED' })} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Approve</button><button type="button" disabled={review.isPending} onClick={() => review.mutate({ id: item.id, status: 'REJECTED' })} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Reject</button></div>}</div>) : <p className="text-sm text-muted-foreground">No retest requests yet.</p>}</div></Card></>
 }
 
-function FeatureUnavailable({ title, description }: { title: string; description: string }) {
-  return (
-    <>
-      <Header title={title} description={description} />
-      <Card className="max-w-2xl">
-        <p className="text-sm text-muted-foreground">
-          The backend does not expose a real API for this screen yet, so the app shows a clear placeholder instead of fake data.
-        </p>
-      </Card>
-    </>
-  )
-}
-
 function AuthGateway() {
   const [searchParams] = useSearchParams()
   const user = useAuthStore(state => state.user)
@@ -630,7 +624,11 @@ function App() {
       <Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><PracticeSession /></Protected>} />
       <Route path="/student/practice" element={<Protected roles={['STUDENT']}><StudentPractice /></Protected>} />
       <Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER', 'ADMIN']}><ProctorMonitor /></Protected>} />
-      <Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><FeatureUnavailable title="AI analytics" description="This screen needs backend analytics endpoints before it can render live metrics." /></Protected>} />
+      <Route path="/teacher/monitor" element={<Protected roles={['TEACHER', 'ADMIN']}><MonitorPicker /></Protected>} />
+      <Route path="/teacher/analytics" element={<Protected roles={['TEACHER', 'ADMIN']}><ExamIntelligenceList /></Protected>} />
+      <Route path="/teacher/analytics/:examId" element={<Protected roles={['TEACHER', 'ADMIN']}><ExamIntelligence /></Protected>} />
+      <Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><AdminAnalytics /></Protected>} />
+      <Route path="/admin/analytics/:examId" element={<Protected roles={['ADMIN']}><ExamIntelligence /></Protected>} />
       <Route path="/student/dashboard" element={<Protected roles={['STUDENT']}><DashboardV2 /></Protected>} />
       <Route path="/student/exams" element={<Protected roles={['STUDENT']}><StudentExams /></Protected>} />
       <Route path="/student/exams/:id/instructions" element={<Protected roles={['STUDENT']}><Instructions /></Protected>} />
@@ -639,7 +637,7 @@ function App() {
       <Route path="/student/history" element={<Protected roles={['STUDENT']}><HistoryEnhanced /></Protected>} />
       <Route path="/student/retest-requests" element={<Protected roles={['STUDENT']}><RetestRequests /></Protected>} />
       <Route path="/admin/retest-requests" element={<Protected roles={['ADMIN']}><RetestRequests admin /></Protected>} />
-      <Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><DashboardV2 /></Protected>} />
+      <Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><TeacherCommandCenter /></Protected>} />
       <Route path="/teacher/exams" element={<Protected roles={['TEACHER', 'ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/teacher/exams/create" element={<Protected roles={['TEACHER', 'ADMIN']}><CreateExam /></Protected>} />
       <Route path="/teacher/exams/:id/questions" element={<Protected roles={['TEACHER', 'ADMIN']}><QuestionsPage /></Protected>} />

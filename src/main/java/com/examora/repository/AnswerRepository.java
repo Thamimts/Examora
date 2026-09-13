@@ -3,6 +3,7 @@ package com.examora.repository;
 import com.examora.model.Answer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,33 @@ public class AnswerRepository {
                 "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers where user_id = ? order by updated_at desc",
                 this::mapAnswer,
                 userId);
+    }
+
+    public List<Answer> findAllByExamIds(List<String> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(examIds.size(), "?"));
+        return jdbcTemplate.query(
+                "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers "
+                        + "where exam_id in (" + placeholders + ") order by updated_at desc",
+                this::mapAnswer,
+                examIds.toArray());
+    }
+
+    public List<Answer> findByUserIdInExamIds(String userId, List<String> examIds) {
+        if (userId == null || userId.isBlank() || examIds == null || examIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(examIds.size(), "?"));
+        Object[] params = new Object[examIds.size() + 1];
+        params[0] = userId;
+        System.arraycopy(examIds.toArray(), 0, params, 1, examIds.size());
+        return jdbcTemplate.query(
+                "select id, user_id, exam_id, question_id, option_id, answer_value, attempt_id from answers "
+                        + "where user_id = ? and exam_id in (" + placeholders + ") order by updated_at desc",
+                this::mapAnswer,
+                params);
     }
 
     public Answer create(Answer answer) {

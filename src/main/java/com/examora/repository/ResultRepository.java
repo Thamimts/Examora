@@ -3,6 +3,7 @@ package com.examora.repository;
 import com.examora.model.Result;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,6 +37,33 @@ public class ResultRepository {
                 "select id, user_id, exam_id, exam_title, subject, score, date, total from results where user_id = ? order by date desc",
                 this::mapResult,
                 userId);
+    }
+
+    public List<Result> findAllByExamIds(List<String> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(examIds.size(), "?"));
+        return jdbcTemplate.query(
+                "select id, user_id, exam_id, exam_title, subject, score, date, total from results "
+                        + "where exam_id in (" + placeholders + ") order by date desc",
+                this::mapResult,
+                examIds.toArray());
+    }
+
+    public List<Result> findByUserIdInExamIds(String userId, List<String> examIds) {
+        if (userId == null || userId.isBlank() || examIds == null || examIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(examIds.size(), "?"));
+        Object[] params = new Object[examIds.size() + 1];
+        params[0] = userId;
+        System.arraycopy(examIds.toArray(), 0, params, 1, examIds.size());
+        return jdbcTemplate.query(
+                "select id, user_id, exam_id, exam_title, subject, score, date, total from results "
+                        + "where user_id = ? and exam_id in (" + placeholders + ") order by date desc",
+                this::mapResult,
+                params);
     }
 
     public Optional<Result> findByUserIdAndExamId(String userId, String examId) {

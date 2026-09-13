@@ -74,6 +74,13 @@ public class ExamRepository {
         return jdbcTemplate.query("select created_by from exams where id = ?", (rs, row) -> rs.getString(1), id).stream().findFirst();
     }
 
+    public List<String> findIdsByOwner(String ownerId) {
+        return jdbcTemplate.query(
+                "select id from exams where created_by = ? order by date",
+                (rs, row) -> rs.getString(1),
+                ownerId);
+    }
+
     public int update(String id, Exam exam) {
         return jdbcTemplate.update(
                 "update exams set title = ?, subject = ?, date = ?, duration = ?, status = ?, participants = ?, average_score = ?, start_at = ?, end_at = ? where id = ?",

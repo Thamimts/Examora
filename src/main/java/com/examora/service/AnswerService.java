@@ -15,10 +15,12 @@ import org.springframework.stereotype.Service;
 public class AnswerService {
     private final AnswerRepository answerRepository;
     private final ExamAttemptService examAttemptService;
+    private final ExamService examService;
 
-    public AnswerService(AnswerRepository answerRepository, ExamAttemptService examAttemptService) {
+    public AnswerService(AnswerRepository answerRepository, ExamAttemptService examAttemptService, ExamService examService) {
         this.answerRepository = answerRepository;
         this.examAttemptService = examAttemptService;
+        this.examService = examService;
     }
 
     public List<Answer> findAll() {
@@ -38,11 +40,43 @@ public class AnswerService {
         return answerRepository.findByUserId(userId);
     }
 
+    public List<Answer> findAllForStaff(User actor) {
+        requireStaff(actor);
+        if (actor.role() == Role.ADMIN) {
+            return answerRepository.findAll();
+        }
+        return answerRepository.findAllByExamIds(examService.findOwnedExamIds(actor.id()));
+    }
+
+    public List<Answer> findByUserIdForStaff(String userId, User actor) {
+        requireStaff(actor);
+        if (actor.role() == Role.ADMIN) {
+            return answerRepository.findByUserId(userId);
+        }
+        return answerRepository.findByUserIdInExamIds(userId, examService.findOwnedExamIds(actor.id()));
+    }
+
+    public List<Answer> findByExamIdForStaff(String examId, User actor) {
+        requireStaff(actor);
+        examService.requireOwner(examId, actor);
+        return answerRepository.findByExamId(examId);
+    }
+
+    public Answer findByIdForStaff(String id, User actor) {
+        Answer answer = findById(id);
+        requireStaff(actor);
+        examService.requireOwner(answer.examId(), actor);
+        return answer;
+    }
+
     public Answer create(User actor, Answer answer) {
         if (actor.role() == Role.STUDENT) {
             return createForStudent(actor, answer);
         }
-        return answerRepository.create(enforceAttemptLink(normalize(answer)));
+        requireStaff(actor);
+        Answer linked = enforceAttemptLink(normalize(answer));
+        examService.requireOwner(linked.examId(), actor);
+        return answerRepository.create(linked);
     }
 
     public Answer update(String id, User actor, Answer answer) {
@@ -50,17 +84,30 @@ public class AnswerService {
         if (actor.role() == Role.STUDENT) {
             return updateForStudent(id, actor, existing, answer);
         }
+        requireStaff(actor);
         if (!existing.userId().equals(answer.userId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Answer user cannot be changed.");
         }
-        return answerRepository.update(id, enforceAttemptLink(normalize(id, answer))) == 0
+        examService.requireOwner(existing.examId(), actor);
+        Answer linked = enforceAttemptLink(normalize(id, answer));
+        examService.requireOwner(linked.examId(), actor);
+        return answerRepository.update(id, linked) == 0
                 ? throwUpdateFailed()
                 : findById(id);
     }
 
-    public void delete(String id) {
+    public void delete(String id, User actor) {
+        Answer existing = findById(id);
+        requireStaff(actor);
+        examService.requireOwner(existing.examId(), actor);
         if (answerRepository.delete(id) == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Answer not found.");
+        }
+    }
+
+    private void requireStaff(User actor) {
+        if (actor == null || (actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or administrator access is required.");
         }
     }
 

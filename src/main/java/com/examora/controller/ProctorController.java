@@ -4,6 +4,7 @@ import com.examora.dto.ApiResponse;
 import com.examora.dto.ProctorDtos.EventBatchRequest;
 import com.examora.dto.ProctorDtos.ProctorEventDto;
 import com.examora.dto.ProctorDtos.ProctorMonitorData;
+import com.examora.dto.ProctorDtos.ProctorSummary;
 import com.examora.service.ProctorService;
 import com.examora.service.AuthService;
 import com.examora.service.ExamAttemptService;
@@ -58,6 +59,12 @@ public class ProctorController {
     public ApiResponse<ProctorMonitorData> monitor(@PathVariable String examId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User user = authService.requireUser(authorizationHeader);
         return ApiResponse.ok(proctorService.monitor(examId, user));
+    }
+
+    @GetMapping("/exams/{examId}/summary")
+    public ApiResponse<ProctorSummary> summary(@PathVariable String examId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User user = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(proctorService.summary(examId, user));
     }
 
     @GetMapping("/attempts/{attemptId}/events")

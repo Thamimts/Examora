@@ -100,6 +100,10 @@ public class ExamService {
         }
     }
 
+    public List<String> findOwnedExamIds(String ownerId) {
+        return examRepository.findIdsByOwner(ownerId);
+    }
+
     private void requireTeacher(User actor) {
         if (actor == null || (actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Teacher or administrator access is required.");

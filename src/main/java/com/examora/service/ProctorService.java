@@ -2,6 +2,7 @@ package com.examora.service;
 
 import com.examora.dto.ProctorDtos.ProctorEventDto;
 import com.examora.dto.ProctorDtos.ProctorMonitorData;
+import com.examora.dto.ProctorDtos.ProctorSummary;
 import com.examora.exception.ApiException;
 import com.examora.model.ExamAttempt;
 import com.examora.model.ProctorEvent;
@@ -113,6 +114,10 @@ public class ProctorService {
 
     public ProctorMonitorData monitor(String examId, User actor) {
         return proctorMonitorService.monitor(examId, actor);
+    }
+
+    public ProctorSummary summary(String examId, User actor) {
+        return proctorMonitorService.summary(examId, actor);
     }
 
     public List<ProctorEventDto> events(String attemptId, User actor, int limit) {

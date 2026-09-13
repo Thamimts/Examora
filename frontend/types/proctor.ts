@@ -55,6 +55,17 @@ export interface ProctorMonitorData {
   attempts: ProctorAttempt[]
 }
 
+export interface ProctorSummary {
+  examId: string
+  examTitle: string
+  hasAttempts: boolean
+  totalAttempts: number
+  activeAttempts: number
+  eventCount: number
+  riskLevel: RiskLevel
+  riskScore: number | null
+}
+
 export interface ProctorUpdate {
   examId: string
   attemptId: string

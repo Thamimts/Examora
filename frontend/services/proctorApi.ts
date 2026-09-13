@@ -1,6 +1,6 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
-import type { ProctorEvent as ProctorEventDto, ProctorMonitorData, StudentProctorEvent } from '@/types/proctor'
+import type { ProctorEvent as ProctorEventDto, ProctorMonitorData, ProctorSummary, StudentProctorEvent } from '@/types/proctor'
 
 export const proctorApi = {
   events: (events: StudentProctorEvent[]) =>
@@ -11,6 +11,8 @@ export const proctorApi = {
     api.post(`/proctor/attempts/${attemptId}/stop`),
   monitor: (examId: string) =>
     api.get<ApiResponse<ProctorMonitorData>>(`/proctor/exams/${examId}/monitor`),
+  summary: (examId: string) =>
+    api.get<ApiResponse<ProctorSummary>>(`/proctor/exams/${examId}/summary`),
   attemptEvents: (attemptId: string, limit = 50) =>
     api.get<ApiResponse<ProctorEventDto[]>>(`/proctor/attempts/${attemptId}/events`, {
       params: { limit },
