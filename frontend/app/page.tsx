@@ -28,6 +28,8 @@ import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
 import { ProctorMonitor } from '@/features/proctor/ProctorMonitor'
+import { ProctoringBadge } from '@/features/proctor/ProctoringBadge'
+import { useProctorSession } from '@/hooks/useProctorSession'
 import { StudentAICoach } from '@/features/analytics/StudentAICoach'
 import { StudentAIPractice } from '@/features/ai/StudentAIPractice'
 import { StudentPerformance } from '@/features/analytics/StudentPerformance'
@@ -301,6 +303,7 @@ function Attempt() {
   const offline = useExamStore((state) => state.offline)
   const expired = useExamStore((state) => state.expired)
   const expiresAt = useExamStore((state) => state.expiresAt)
+  const attemptId = useExamStore((state) => state.attemptId)
   const resume = useExamStore((state) => state.resume)
   const setAnswer = useExamStore((state) => state.setAnswer)
   const clearAnswer = useExamStore((state) => state.clearAnswer)
@@ -359,6 +362,7 @@ function Attempt() {
     })
     return () => { cancelled = true }
   }, [id, seconds, expired, resumeState])
+  const { status: proctoringStatus } = useProctorSession({ attemptId, active: resumeState === 'ready' && !expired })
   const questions = questionsQuery.data || []
   const q = questions[Math.min(index, Math.max(questions.length - 1, 0))]
   const answeredCount = questions.filter(question => answers[question.id]).length
@@ -386,6 +390,7 @@ function Attempt() {
         </div>
         <div className="flex items-center gap-3">
           {saveStatusLabel && <p className="text-xs text-muted-foreground" role="status">{saveStatusLabel}</p>}
+          <ProctoringBadge status={proctoringStatus} />
           <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700"><Clock3 size={17}/>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</div>
         </div>
       </div>
