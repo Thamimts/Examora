@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -69,15 +70,24 @@ class ProctorSecurityIntegrationTest {
     }
 
     @Test
-    void studentsAreDeniedEveryProctorEndpoint() throws Exception {
+    void studentsAreDeniedEveryMonitorControlEndpoint() throws Exception {
         String token = token("student@example.com", "student123");
         mockMvc.perform(proctor("POST", "/api/proctor/attempts/attempt-1/start", token, null))
                 .andExpect(status().isForbidden());
         mockMvc.perform(proctor("POST", "/api/proctor/attempts/attempt-1/stop", token, null))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/proctor/exams/exam-a/monitor").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/proctor/attempts/attempt-1/events").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void studentCanSubmitEventsForOwnActiveAttempt() throws Exception {
+        String token = token("student@example.com", "student123");
         mockMvc.perform(proctor("POST", "/api/proctor/events/batch", token, eventsFor("attempt-1")))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value(containsString("Access is denied")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.saved").value(1));
     }
 
     @Test

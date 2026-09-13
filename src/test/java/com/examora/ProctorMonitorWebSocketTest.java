@@ -220,6 +220,40 @@ class ProctorMonitorWebSocketTest {
     }
 
     @Test
+    void studentEventBatchProducesProctorUpdate() throws Exception {
+        String attemptId = insertAttempt(EXAM_ID, "student-ws-1", "STARTED");
+
+        User teacher = new User("teacher-ws-1", "Teacher WS One", "teacher-ws@example.com", com.examora.model.Role.TEACHER, null);
+        StompSession session = connect(jwtService.generateToken(teacher));
+        LinkedBlockingQueue<ProctorUpdate> updates = new LinkedBlockingQueue<>();
+        session.subscribe("/topic/exams/" + EXAM_ID + "/activity", proctorUpdateHandler(updates));
+        Thread.sleep(300);
+
+        User student = new User("student-ws-1", "Student WS One", "student-ws@example.com", com.examora.model.Role.STUDENT, null);
+        String studentToken = jwtService.generateToken(student);
+
+        List<ProctorEvent> events = List.of(
+                new ProctorEvent("student-evt-1", attemptId, "TAB_SWITCH", Instant.now().toString(), Map.of()));
+        mockMvc.perform(post("/api/proctor/events/batch")
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new EventBatchRequest(events))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.saved").value(1));
+
+        ProctorUpdate update = updates.poll(5, TimeUnit.SECONDS);
+        assertThat(update).isNotNull();
+        assertThat(update.examId()).isEqualTo(EXAM_ID);
+        assertThat(update.attemptId()).isEqualTo(attemptId);
+        assertThat(update.student().id()).isEqualTo("student-ws-1");
+        assertThat(update.eventCount()).isEqualTo(1);
+        assertThat(update.riskScore()).isEqualTo(15.0);
+        assertThat(update.riskLevel()).isEqualTo(com.examora.dto.ProctorDtos.RiskLevel.LOW);
+        assertThat(update.latestEvent()).isNotNull();
+        disconnectQuietly(session);
+    }
+
+    @Test
     void attemptStartProducesProctorUpdate() throws Exception {
         User teacher = new User("teacher-ws-1", "Teacher WS One", "teacher-ws@example.com", com.examora.model.Role.TEACHER, null);
         StompSession session = connect(jwtService.generateToken(teacher));

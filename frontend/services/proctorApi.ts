@@ -1,10 +1,10 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
-import type { ProctorEvent as ProctorEventDto, ProctorMonitorData } from '@/types/proctor'
+import type { ProctorEvent as ProctorEventDto, ProctorMonitorData, StudentProctorEvent } from '@/types/proctor'
 
 export const proctorApi = {
-  events: (events: import('@/types/ai').ProctorEvent[]) =>
-    api.post('/proctor/events/batch', { events }),
+  events: (events: StudentProctorEvent[]) =>
+    api.post<ApiResponse<{ saved: number }>>('/proctor/events/batch', { events }),
   start: (attemptId: string) =>
     api.post(`/proctor/attempts/${attemptId}/start`),
   stop: (attemptId: string) =>

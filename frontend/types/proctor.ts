@@ -8,6 +8,16 @@ export type ProctorEventType =
   | 'AUDIO_DETECTED'
   | 'NETWORK_INTERRUPTION'
 
+export type StudentProctorEventType = ProctorEventType | 'FULLSCREEN_EXIT'
+
+export interface StudentProctorEvent {
+  eventId: string
+  attemptId: string
+  type: StudentProctorEventType
+  occurredAt: string
+  metadata?: Record<string, unknown>
+}
+
 export interface ProctorStudent {
   id: string
   name: string
