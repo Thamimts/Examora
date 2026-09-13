@@ -17,9 +17,12 @@ type ExamAutosaveStore = {
   offline: boolean
   loaded: boolean
   expired: boolean
+  review: Record<string, boolean>
   resume: (examId: string) => Promise<AttemptProgress>
   setAnswer: (questionId: string, value: string) => void
   clearAnswer: (questionId: string) => void
+  toggleReview: (questionId: string) => void
+  resync: (progress: AttemptProgress) => void
   flush: () => Promise<void>
   markExpired: () => void
   reset: () => void
@@ -92,6 +95,7 @@ export const useExamStore = create<ExamAutosaveStore>((set, get) => {
     offline: false,
     loaded: false,
     expired: false,
+    review: {},
 
     resume: async (examId) => {
       const response = await examApi.attemptProgress(examId)
@@ -145,6 +149,17 @@ export const useExamStore = create<ExamAutosaveStore>((set, get) => {
       }, DEBOUNCE_MS)
     },
 
+    toggleReview: (questionId) => {
+      const { expired } = get()
+      if (expired) return
+      set((state) => ({
+        review: {
+          ...state.review,
+          [questionId]: !state.review[questionId],
+        },
+      }))
+    },
+
     flush: async () => {
       if (debounceTimer !== null) {
         window.clearTimeout(debounceTimer)
@@ -159,6 +174,15 @@ export const useExamStore = create<ExamAutosaveStore>((set, get) => {
     },
 
     markExpired: () => set({ expired: true }),
+
+    resync: (progress) => {
+      set({
+        expiresAt: progress.expiresAt,
+        remainingSeconds: progress.remainingSeconds,
+        offline: false,
+      })
+    },
+
     reset: () =>
       set({
         examId: null,
@@ -172,6 +196,7 @@ export const useExamStore = create<ExamAutosaveStore>((set, get) => {
         offline: false,
         loaded: false,
         expired: false,
+        review: {},
       }),
   }
 })

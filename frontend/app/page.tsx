@@ -6,7 +6,6 @@ import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, 
 import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
-import { useExamStore } from '@/store/examStore'
 import type { ActivityEvent, LoginRole, OAuthProviderInfo, Result, Role, User } from '@/types'
 import type { ActiveAttemptInfo, ExamResultReview, QuestionReview } from '@/types/exam'
 import type { StudentAiAnalysis } from '@/types/ai'
@@ -28,14 +27,14 @@ import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
 import { ProctorMonitor } from '@/features/proctor/ProctorMonitor'
-import { ProctoringBadge } from '@/features/proctor/ProctoringBadge'
-import { useProctorSession } from '@/hooks/useProctorSession'
 import { StudentAICoach } from '@/features/analytics/StudentAICoach'
 import { StudentAIPractice } from '@/features/ai/StudentAIPractice'
 import { StudentPerformance } from '@/features/analytics/StudentPerformance'
 import { ConfirmDialog, ToastProvider, useToast } from '@/components/feedback'
 import { OAuthCallback } from '@/components/auth/OAuthCallback'
 import SecuritySettings from '@/components/security/SecuritySettings'
+import { Preflight } from '@/features/exam/Preflight'
+import { ExamWorkspace } from '@/features/exam/ExamWorkspace'
 
 type NavItem = { label: string; href: string; icon: LucideIcon }
 type NavSection = { label: string; items: NavItem[] }
@@ -145,16 +144,6 @@ function StudentExams() {
   const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 })
   const retestsQuery = useQuery({ queryKey: ['my-retests'], queryFn: async () => (await retestApi.mine()).data.data, retry: 1 })
 
-  const startMutation = useMutation({
-    mutationFn: (examId: string) => examApi.start(examId),
-    onSuccess: (_res: any, examId: string) => navigate(`/student/exams/${examId}`),
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message
-      if (error?.response?.status === 409) toast.error(msg || 'This exam cannot be started right now.')
-      else toast.error('Unable to start the exam. Please try again.')
-    },
-  })
-
   const retestMutation = useMutation({
     mutationFn: (examId: string) => retestApi.request(examId),
     onSuccess: () => { toast.success('Retest request submitted.'); retestsQuery.refetch() },
@@ -255,10 +244,10 @@ function StudentExams() {
                     <>
                       <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
                         onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>View Instructions</button>
-                      <button type="button" disabled={startMutation.isPending && startMutation.variables === exam.id}
-                        className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98] disabled:opacity-50"
-                        onClick={() => startMutation.mutate(exam.id)}>
-                        {startMutation.isPending && startMutation.variables === exam.id ? 'Starting...' : 'Start'} <ChevronRight size={14} />
+                      <button type="button"
+                        className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
+                        onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>
+                        Start <ChevronRight size={14} />
                       </button>
                     </>
                   ) : (
@@ -289,164 +278,8 @@ function StudentExams() {
   )
 }
 function StudentPractice() { const navigate = useNavigate(); const examsQuery = useQuery({ queryKey: ['student-practice'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); return <><Header title="Adaptive Practice" description="Drill any exam with questions that adjust to your skill as you answer."/>{examsQuery.isPending ? <div className="grid gap-4 md:grid-cols-2" aria-busy="true">{[1,2,3,4].map(item => <Card key={item}><div className="h-24 animate-pulse rounded-xl bg-muted"/></Card>)}</div> : examsQuery.isError ? <Card><div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load available exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div></Card> : examsQuery.data?.length ? <div className="grid gap-4 md:grid-cols-2">{examsQuery.data.map(exam => <Card key={exam.id}><div className="flex items-start justify-between"><div><p className="text-xs font-medium text-primary">{exam.subject}</p><h2 className="mt-2 font-semibold">{exam.title}</h2><p className="mt-2 text-sm text-muted-foreground">{exam.duration} minutes</p></div><Target className="text-primary"/></div><div className="mt-5"><button className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/adaptive/${exam.id}`)}>Start practice <ChevronRight size={16}/></button></div></Card>)}</div> : <Card><p className="py-8 text-center text-sm text-muted-foreground">No exams are available to practice right now.</p></Card>}</> }
-function Instructions() { const { id = '' } = useParams(); const navigate = useNavigate(); const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 }); const startMutation = useMutation({ mutationFn: () => examApi.start(id), onSuccess: () => navigate(`/student/exams/${id}`) }); if (examQuery.isPending) return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="h-40 animate-pulse rounded-xl bg-muted"/></Card></>; if (examQuery.isError || !examQuery.data) return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><p className="text-sm text-destructive">Unable to load this exam.</p></Card></>; const exam = examQuery.data; return <><Header title="Before you begin" description="Review the assessment rules carefully before starting."/><Card className="max-w-3xl"><div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><FileText/></div><div><h2 className="font-semibold">{exam.title}</h2><p className="text-sm text-muted-foreground">{exam.subject} · {exam.duration} minutes</p></div></div><div className="mt-8 grid gap-3 text-sm"><p>• Select one option for each multiple-choice question.</p><p>• Use the navigator to move between questions.</p><p>• Submit the exam when you finish.</p><p>• Your score is calculated and saved after submission.</p></div>{startMutation.isError && <p className="mt-5 text-sm text-destructive">Unable to start the exam. Try again.</p>}<button disabled={startMutation.isPending} className="mt-8 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60" onClick={() => startMutation.mutate()}>{startMutation.isPending ? 'Starting...' : 'Start exam'}</button></Card></> }
-function Attempt() {
-  const { id = '' } = useParams()
-  const navigate = useNavigate()
-  const [index, setIndex] = useState(0)
-  const [seconds, setSeconds] = useState(0)
-  const [resumeState, setResumeState] = useState<'loading' | 'ready' | 'expired' | 'unavailable'>('loading')
-  const [confirmSubmit, setConfirmSubmit] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const answers = useExamStore((state) => state.answers)
-  const saveState = useExamStore((state) => state.saveState)
-  const offline = useExamStore((state) => state.offline)
-  const expired = useExamStore((state) => state.expired)
-  const expiresAt = useExamStore((state) => state.expiresAt)
-  const attemptId = useExamStore((state) => state.attemptId)
-  const resume = useExamStore((state) => state.resume)
-  const setAnswer = useExamStore((state) => state.setAnswer)
-  const clearAnswer = useExamStore((state) => state.clearAnswer)
-  const flush = useExamStore((state) => state.flush)
-  const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 })
-  const questionsQuery = useQuery({ queryKey: ['exam-questions', id], queryFn: async () => (await questionApi.list(id)).data.data, enabled: Boolean(id), retry: 1 })
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      await flush()
-      const currentAnswers = useExamStore.getState().answers
-      const questions = questionsQuery.data || []
-      return examApi.submit(id, questions.map(question => ({ questionId: question.id, value: currentAnswers[question.id] || '' })))
-    },
-    onSuccess: response => navigate(`/student/exams/${id}/result`, { replace: true, state: { submission: response.data.data } }),
-    onError: (error) => {
-      const statusCode = (error as { response?: { status?: number } })?.response?.status
-      if (statusCode === 409) {
-        navigate(`/student/exams/${id}/result`, { replace: true })
-        return
-      }
-      setSubmitError('Unable to submit this exam. Please try again.')
-    },
-  })
-  useEffect(() => {
-    let cancelled = false
-    resume(id)
-      .then(() => { if (!cancelled) setResumeState('ready') })
-      .catch((error) => {
-        if (cancelled) return
-        const statusCode = (error as { response?: { status?: number } })?.response?.status
-        setResumeState(statusCode === 409 ? 'expired' : 'unavailable')
-      })
-    return () => { cancelled = true }
-  }, [id, resume])
-  useEffect(() => {
-    if (expired) return
-    if (!expiresAt) return
-    const target = new Date(expiresAt).getTime()
-    const update = () => setSeconds(Math.max(0, Math.ceil((target - Date.now()) / 1000)))
-    update()
-    const timer = window.setInterval(update, 1000)
-    return () => window.clearInterval(timer)
-  }, [expiresAt, expired])
-  useEffect(() => {
-    if (expired) setResumeState('expired')
-  }, [expired])
-  useEffect(() => {
-    if (expired || resumeState !== 'ready' || seconds > 0) return
-    let cancelled = false
-    void examApi.attemptProgress(id).catch((error) => {
-      if (cancelled) return
-      const statusCode = (error as { response?: { status?: number } })?.response?.status
-      if (statusCode === 409) {
-        useExamStore.getState().markExpired()
-      }
-    })
-    return () => { cancelled = true }
-  }, [id, seconds, expired, resumeState])
-  const { status: proctoringStatus } = useProctorSession({ attemptId, active: resumeState === 'ready' && !expired })
-  const questions = questionsQuery.data || []
-  const q = questions[Math.min(index, Math.max(questions.length - 1, 0))]
-  const answeredCount = questions.filter(question => answers[question.id]).length
-  const unanswered = questions.length - answeredCount
-  const stateValues = Object.values(saveState)
-  const anySaving = stateValues.includes('saving')
-  const anyFailed = stateValues.includes('failed')
-  const saveStatusLabel = expired ? null
-    : offline ? 'Offline — retrying when the connection returns'
-    : anySaving ? 'Saving…'
-    : anyFailed ? 'Some answers could not be saved'
-    : answeredCount > 0 ? 'All answers saved'
-    : null
-  if (resumeState === 'loading' || examQuery.isPending || questionsQuery.isPending) return <div className="mx-auto max-w-5xl"><div className="h-80 animate-pulse rounded-2xl bg-muted"/></div>
-  if (resumeState === 'expired') return <><Header title="Exam attempt" description="Answer the questions and submit your exam."/><Card><div role="alert" className="text-center"><div className="mx-auto grid size-12 place-items-center rounded-full bg-amber-500/10 text-amber-600"><AlertCircle size={22}/></div><h2 className="mt-4 font-semibold">Exam time expired</h2><p className="mt-2 text-sm text-muted-foreground">This attempt is no longer accepting answers.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><button className="rounded-xl border border-border px-4 py-2.5 text-sm" onClick={() => navigate('/student/exams')}>Back to exams</button><button className="rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground" onClick={() => navigate(`/student/exams/${id}/result`)}>View result</button></div></div></Card></>
-  if (resumeState === 'unavailable' || examQuery.isError || questionsQuery.isError || !examQuery.data) return <><Header title="Exam attempt" description="Answer the questions and submit your exam."/><Card><p className="text-sm text-destructive">Unable to load this exam attempt.</p></Card></>
-  if (!q) return <><Header title={examQuery.data.title} description="This exam has no questions yet."/><Card><p className="py-8 text-center text-sm text-muted-foreground">No questions are available for this exam.</p></Card></>
-  const submit = () => submitMutation.mutate()
-  return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Live attempt</p>
-          <h1 className="mt-2 text-2xl font-semibold">{examQuery.data.title}</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          {saveStatusLabel && <p className="text-xs text-muted-foreground" role="status">{saveStatusLabel}</p>}
-          <ProctoringBadge status={proctoringStatus} />
-          <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700"><Clock3 size={17}/>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</div>
-        </div>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
-        <Card>
-          <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Question {index + 1} of {questions.length}</span><span>{answeredCount} answered</span></div>
-          <div className="mt-3 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%` }}/></div>
-          <h2 className="mt-10 text-xl font-semibold leading-8">{q.text}</h2>
-          <div className="mt-7 space-y-3">{q.options.map(option => {
-            const selected = answers[q.id] === option
-            return (
-              <button key={option} onClick={() => setAnswer(q.id, option)} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left text-sm transition ${selected ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}>
-                <span className={`grid size-6 place-items-center rounded-full border text-xs ${selected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>{selected && <Check size={14}/>}</span>
-                {option}
-              </button>
-            )
-          })}</div>
-          {submitError && <p className="mt-5 text-sm text-destructive" role="alert">{submitError}</p>}
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
-            <button className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm disabled:opacity-50" disabled={index === 0} onClick={() => setIndex(Math.max(0, index - 1))}><ChevronLeft size={16}/> Previous</button>
-            <div className="flex gap-2">
-              <button className="rounded-xl border border-border px-4 py-2 text-sm" onClick={() => clearAnswer(q.id)}><X size={15} className="mr-2 inline"/>Clear</button>
-              <button className="rounded-xl border border-border px-4 py-2 text-sm disabled:opacity-50" disabled={index === questions.length - 1} onClick={() => setIndex(Math.min(questions.length - 1, index + 1))}>Next<ChevronRight size={16} className="ml-1 inline"/></button>
-              <button disabled={submitMutation.isPending} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60" onClick={() => { setSubmitError(null); setConfirmSubmit(true) }}>Submit exam</button>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <h2 className="font-semibold">Question navigator</h2>
-          <div className="mt-4 grid grid-cols-5 gap-2">{questions.map((question, i) => (
-            <button key={question.id} onClick={() => setIndex(i)} className={`grid size-9 place-items-center rounded-lg text-sm ${i === index ? 'bg-primary text-primary-foreground' : answers[question.id] ? 'bg-emerald-500/20 text-emerald-700' : 'bg-muted'}`}>{i + 1}</button>
-          ))}</div>
-          <p className="mt-6 text-xs leading-5 text-muted-foreground">Your answers are saved as you work. Submit once you are ready; the result is reported after submission.</p>
-        </Card>
-      </div>
-      {confirmSubmit && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-background/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="submit-dialog-title">
-          <section className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-            <h2 id="submit-dialog-title" className="text-lg font-semibold">Submit your exam?</h2>
-            <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-xl bg-muted p-3"><b className="text-xl">{answeredCount}</b><p className="mt-1 text-xs text-muted-foreground">Answered</p></div>
-              <div className={`rounded-xl p-3 ${unanswered > 0 ? 'bg-amber-500/10' : 'bg-muted'}`}><b className={`text-xl ${unanswered > 0 ? 'text-amber-600' : ''}`}>{unanswered}</b><p className="mt-1 text-xs text-muted-foreground">Unanswered</p></div>
-              <div className="rounded-xl bg-muted p-3"><b className="text-xl">{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</b><p className="mt-1 text-xs text-muted-foreground">Time left</p></div>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">You can review and change your answers before confirming. After submission this attempt closes and your result is saved.</p>
-            {submitError && <p className="mt-3 text-sm text-destructive" role="alert">{submitError}</p>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" disabled={submitMutation.isPending} className="rounded-xl border border-border px-4 py-2 text-sm transition-[opacity,transform,box-shadow] duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] disabled:opacity-50" onClick={() => setConfirmSubmit(false)}>Cancel</button>
-              <button type="button" disabled={submitMutation.isPending} aria-busy={submitMutation.isPending} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-[opacity,transform,box-shadow] duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] disabled:opacity-60" onClick={() => { setSubmitError(null); submit() }}>{submitMutation.isPending ? 'Submitting...' : 'Submit exam'}</button>
-            </div>
-          </section>
-        </div>
-      )}
-    </div>
-  )
-}
+function Instructions() { const { id = '' } = useParams(); return <Preflight id={id} /> }
+function Attempt() { const { id = '' } = useParams(); return <ExamWorkspace id={id} /> }
 function QuestionReviewCard({ question }: { question: QuestionReview }) {
   const status = question.answered ? (question.correct ? 'correct' : 'incorrect') : 'unanswered'
   const badge = status === 'correct'
