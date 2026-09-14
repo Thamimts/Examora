@@ -66,12 +66,23 @@ public class ResultRepository {
                 params);
     }
 
-    public Optional<Result> findByUserIdAndExamId(String userId, String examId) {
+public Optional<Result> findByUserIdAndExamId(String userId, String examId) {
         return jdbcTemplate.query(
                         "select id, user_id, exam_id, exam_title, subject, score, date, total from results where user_id = ? and exam_id = ?",
                         this::mapResult,
-                        userId,
-                        examId)
+                        userId, examId)
+                .stream()
+                .findFirst();
+    }
+
+    /** The most recent result row for a student + exam (retakes produce several rows on re-test). */
+    public Optional<Result> findLatestByUserIdAndExamId(String userId, String examId) {
+        return jdbcTemplate.query(
+                        "select id, user_id, exam_id, exam_title, subject, score, date, total "
+                                + "from results where user_id = ? and exam_id = ? "
+                                + "order by date desc, id desc limit 1",
+                        this::mapResult,
+                        userId, examId)
                 .stream()
                 .findFirst();
     }

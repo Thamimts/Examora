@@ -79,6 +79,20 @@ public class ExamAttemptRepository {
     public record AttemptWithStudent(ExamAttempt attempt, String studentName, String studentEmail) {
     }
 
+    public record SubmittedAttemptRow(String examId, int attemptNumber, Instant submittedAt) {
+    }
+
+    /** All SUBMITTED attempts of a student, newest first — used to attach attempt metadata to results. */
+    public List<SubmittedAttemptRow> findSubmittedByStudent(String studentId) {
+        return jdbc.query(
+                "select exam_id, attempt_number, submitted_at from exam_attempts "
+                        + "where student_id = ? and status = 'SUBMITTED' "
+                        + "order by submitted_at desc, started_at desc",
+                (rs, row) -> new SubmittedAttemptRow(rs.getString("exam_id"),
+                        rs.getInt("attempt_number"), rs.getTimestamp("submitted_at").toInstant()),
+                studentId);
+    }
+
     public record ActiveAttemptRow(String attemptId, String examId, String status,
                                    Instant startedAt, Instant expiresAt,
                                    String examTitle, String subject, int duration) {

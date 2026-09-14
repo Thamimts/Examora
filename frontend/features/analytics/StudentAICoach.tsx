@@ -1,9 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BarChart3, Map } from 'lucide-react'
 import { Header } from '@/components/shared'
-import { StudentAIAnalysis } from '@/features/analytics/StudentAIAnalysis'
+import { ExamSpecificCoach } from '@/features/analytics/ExamSpecificCoach'
 import { StudentStudyRoadmap } from '@/features/analytics/StudentStudyRoadmap'
 
 const tabs = [
@@ -15,13 +15,19 @@ type TabId = (typeof tabs)[number]['id']
 
 export function StudentAICoach() {
   const [searchParams] = useSearchParams()
-  const [tab, setTab] = useState<TabId>(searchParams.get('tab') === 'roadmap' ? 'roadmap' : 'performance')
+  const requestedTab = searchParams.get('tab') === 'roadmap' ? 'roadmap' : 'performance'
+  const [tab, setTab] = useState<TabId>(requestedTab)
+  const requestedExam = searchParams.get('exam')
+
+  useEffect(() => {
+    if (requestedExam && requestedTab === 'performance' && tab !== 'performance') setTab('performance')
+  }, [requestedExam, requestedTab, tab])
 
   return (
     <>
       <Header
         title="AI Study Coach"
-        description="Personalized performance insights and a step-by-step study roadmap built from your real exam results."
+        description="Pick one completed exam, then get a coach that explains and advises on only that exam."
       />
       <div role="tablist" aria-label="AI study coach sections" className="mb-6 flex flex-wrap gap-1 border-b border-border">
         {tabs.map(item => {
@@ -43,7 +49,7 @@ export function StudentAICoach() {
           )
         })}
       </div>
-      {tab === 'performance' ? <StudentAIAnalysis /> : <StudentStudyRoadmap />}
+      {tab === 'performance' ? <ExamSpecificCoach /> : <StudentStudyRoadmap />}
     </>
   )
 }

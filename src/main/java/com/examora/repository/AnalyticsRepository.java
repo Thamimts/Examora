@@ -142,6 +142,32 @@ public class AnalyticsRepository {
                 params);
     }
 
+    public List<ExamAccuracyRow> findPerExamGradedAccuracy(String userId, List<String> examIds) {
+        if (userId == null || userId.isBlank() || examIds == null || examIds.isEmpty()) {
+            return List.of();
+        }
+        String in = inClause(examIds.size());
+        Object[] params = prepend(userId, examIds);
+        return jdbc.query(
+                "select a.exam_id as exam_id, count(*) as graded, "
+                        + "sum(case when a.correct = true then 1 else 0 end) as correct "
+                        + "from answers a where a.user_id = ? and a.exam_id in (" + in + ") and a.correct is not null "
+                        + "group by a.exam_id",
+                this::mapExamAccuracy,
+                params);
+    }
+
+    public List<ExamDifficultyRow> findDifficultyCountsByExam(String userId) {
+        return jdbc.query(
+                "select a.exam_id as exam_id, q.difficulty as difficulty, count(a.id) as graded, "
+                        + "sum(case when a.correct = true then 1 else 0 end) as correct "
+                        + "from answers a join questions q on q.id = a.question_id "
+                        + "where a.user_id = ? and a.correct is not null "
+                        + "group by a.exam_id, q.difficulty order by a.exam_id, q.difficulty",
+                this::mapExamDifficulty,
+                userId);
+    }
+
     public List<SubjectRow> findSubjectPerformance(String userId) {
         return jdbc.query(
                 "select r.subject as subject, count(*) as completed, "
@@ -202,6 +228,14 @@ public class AnalyticsRepository {
         return count == null ? 0 : count;
     }
 
+    public int countSubmittedAttempts(String studentId) {
+        Integer count = jdbc.queryForObject(
+                "select count(*) from exam_attempts where student_id = ? and status = 'SUBMITTED'",
+                Integer.class,
+                studentId);
+        return count == null ? 0 : count;
+    }
+
     public int countCompletedPracticeSessions(String studentId) {
         return countCompletedPracticeSessions(studentId, null);
     }
@@ -251,6 +285,70 @@ public class AnalyticsRepository {
             params = new Object[]{studentId, examId};
         }
         return jdbc.query(sql, this::mapPracticeDifficulty, params);
+    }
+
+    public PracticeAnswerRow findRecentPracticeAccuracy(String studentId, int limit) {
+        List<PracticeAnswerRow> rows = jdbc.query(
+                "select count(*) as questions, sum(case when pa.correct = true then 1 else 0 end) as correct "
+                        + "from (select pa.correct from practice_answers pa "
+                        + "join practice_sessions ps on ps.id = pa.session_id "
+                        + "where ps.student_id = ? order by pa.answered_at desc limit ?) pa",
+                this::mapPracticeAnswer,
+                studentId, limit);
+        return rows.stream().findFirst().orElse(new PracticeAnswerRow(0, 0));
+    }
+
+    /** Newest-first bounded sample of practice answers (actual answered questions only). */
+    public List<PracticeAnswerSampleRow> findRecentPracticeAnswerRows(String studentId, int limit) {
+        return jdbc.query(
+                "select pa.correct as correct, pa.answered_at as answered_at from practice_answers pa "
+                        + "join practice_sessions ps on ps.id = pa.session_id "
+                        + "where ps.student_id = ? order by pa.answered_at desc, pa.id desc limit ?",
+                this::mapPracticeAnswerSample,
+                studentId, limit);
+    }
+
+    public FirstPracticeSessionRow findFirstCompletedPracticeSession(String studentId) {
+        return jdbc.query(
+                "select completed_at, answered_count, correct_count from practice_sessions "
+                        + "where student_id = ? and status = 'COMPLETED' and answered_count > 0 "
+                        + "order by completed_at asc limit 1",
+                this::mapFirstPracticeSession,
+                studentId).stream().findFirst().orElse(null);
+    }
+
+    /**
+     * Most recent completion timestamp per practice-answer difficulty (1-5), over COMPLETED
+     * practice sessions only. Used for the repetition/cooldown check; bounded to 5 rows.
+     */
+    public List<PracticeCompletionRow> findLastPracticeCompletionByDifficulty(String studentId) {
+        return jdbc.query(
+                "select pa.difficulty as difficulty, max(ps.completed_at) as last_completed_at "
+                        + "from practice_sessions ps "
+                        + "join practice_answers pa on pa.session_id = ps.id "
+                        + "where ps.student_id = ? and ps.status = 'COMPLETED' "
+                        + "group by pa.difficulty order by pa.difficulty",
+                this::mapPracticeCompletion,
+                studentId);
+    }
+
+    public int countCompletedAiPracticeSessions(String studentId) {
+        Integer count = jdbc.queryForObject(
+                "select count(*) from ai_practice_sessions where student_id = ? and status = 'COMPLETED'",
+                Integer.class,
+                studentId);
+        return count == null ? 0 : count;
+    }
+
+    public PracticeAnswerRow findAiPracticeAnswerAggregates(String studentId) {
+        List<PracticeAnswerRow> rows = jdbc.query(
+                "select count(*) as questions, sum(case when apa.correct = true then 1 else 0 end) as correct "
+                        + "from ai_practice_answers apa "
+                        + "join ai_practice_sessions aps on aps.id = apa.session_id "
+                        + "where aps.student_id = ?",
+                this::mapPracticeAnswer,
+                studentId);
+        return rows.stream().findFirst().orElse(new PracticeAnswerRow(0, 0));
     }
 
     public Instant findMostRecentPracticeActivity(String studentId, String examId) {
@@ -429,6 +527,35 @@ public class AnalyticsRepository {
         return new SubjectRow(rs.getString("subject"), rs.getInt("completed"), nullableDouble(rs, "average_percentage"));
     }
 
+    private ExamAccuracyRow mapExamAccuracy(ResultSet rs, int row) throws SQLException {
+        return new ExamAccuracyRow(rs.getString("exam_id"), rs.getInt("graded"), rs.getInt("correct"));
+    }
+
+    private ExamDifficultyRow mapExamDifficulty(ResultSet rs, int row) throws SQLException {
+        return new ExamDifficultyRow(rs.getString("exam_id"), rs.getInt("difficulty"), rs.getInt("graded"), rs.getInt("correct"));
+    }
+
+    private PracticeAnswerSampleRow mapPracticeAnswerSample(ResultSet rs, int row) throws SQLException {
+        Timestamp answeredAt = rs.getTimestamp("answered_at");
+        return new PracticeAnswerSampleRow(rs.getBoolean("correct"),
+                answeredAt == null ? null : answeredAt.toInstant());
+    }
+
+    private FirstPracticeSessionRow mapFirstPracticeSession(ResultSet rs, int row) throws SQLException {
+        Timestamp completedAt = rs.getTimestamp("completed_at");
+        return new FirstPracticeSessionRow(
+                completedAt == null ? null : completedAt.toInstant(),
+                rs.getInt("answered_count"),
+                rs.getInt("correct_count"));
+    }
+
+    private PracticeCompletionRow mapPracticeCompletion(ResultSet rs, int row) throws SQLException {
+        Timestamp lastCompletedAt = rs.getTimestamp("last_completed_at");
+        return new PracticeCompletionRow(
+                rs.getInt("difficulty"),
+                lastCompletedAt == null ? null : lastCompletedAt.toInstant());
+    }
+
     private AttemptTimingRow mapAttemptTiming(ResultSet rs, int row) throws SQLException {
         Timestamp submitted = rs.getTimestamp("submitted_at");
         return new AttemptTimingRow(
@@ -478,6 +605,21 @@ public class AnalyticsRepository {
     }
 
     public record SubjectRow(String subject, int completed, Double averagePercentage) {
+    }
+
+    public record ExamAccuracyRow(String examId, int graded, int correct) {
+    }
+
+    public record ExamDifficultyRow(String examId, int difficulty, int graded, int correct) {
+    }
+
+    public record PracticeAnswerSampleRow(boolean correct, Instant answeredAt) {
+    }
+
+    public record FirstPracticeSessionRow(Instant completedAt, int answeredCount, int correctCount) {
+    }
+
+    public record PracticeCompletionRow(int difficulty, Instant lastCompletedAt) {
     }
 
     public record AttemptTimingRow(String examId, int attemptNumber, Instant startedAt, Instant submittedAt) {
