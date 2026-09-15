@@ -271,6 +271,34 @@ Recommended additional:
 - CORS_ALLOWED_ORIGINS
 - LOG_LEVEL
 
+## 9.1 Production configuration policy (fail-fast, P6.1)
+
+Examora runs a startup fail-fast policy before the web server begins serving.
+The policy is evaluated from *presence flags only* — it never reads or logs any
+secret value — and aborts startup with an aggregated, secret-safe message when
+the running configuration violates a rule below.
+
+| Requirement | Rule | Enforced as | When violated |
+|---|---|---|---|
+| OAuth on + zero providers configured | at least one OAuth provider must be fully configured (client-id + client-secret + redirect-uri) | ERROR | startup aborted |
+| OAuth on + partially configured provider | any provider with credentials but not all three fields is an unfinished/insecure config | ERROR | startup aborted |
+| Fully configured provider (OAuth on) | one provider with all three fields present | valid | — |
+| OAuth off + asymmetric/partial provider | partial credentials are surfaced, never silently dropped | WARNING only | startup continues |
+| Demo + production profile together | demo profile must never activate with a production profile | ERROR | startup aborted |
+| Demo data outside demo profile | loading demo/`data-demo.sql` SQL data without the demo profile is a misconfiguration | ERROR | startup aborted |
+| Secret safety | issue messages reference only property/environment *keys*, never client-ids, secrets, redirect URIs, JWTs, or JWT-shaped content | invariant | — |
+
+Two properties drive the policy:
+- `EXAMORA_OAUTH_ENABLED` (boolean) — whether OAuth authentication is on.
+- `SPRING_PROFILES_ACTIVE` — active profiles; `demo`+production together is an
+  error, and demo SQL data requires the demo profile.
+
+The validator (`ConfigurationPolicyValidator`) performs no network I/O and holds
+no secret material; all rules live in the pure `ConfigurationPolicy.evaluate()`
+which returns a plain list of issues a test can assert against. Test messages
+never contain secret values, so a green test suite also proves the policy
+cannot leak secrets into logs at runtime.
+
 ## 10. Definition of done for production readiness
 
 Examora is production-ready when all conditions below are true:
