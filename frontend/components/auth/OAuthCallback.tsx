@@ -8,7 +8,7 @@ export function OAuthCallback() {
   const { setAuth } = useAuthStore()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  const token = searchParams.get('token') || (typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.slice(1)).get('token') : null)
   const returnTo = searchParams.get('to')
   const [error, setError] = useState('')
 
@@ -17,6 +17,7 @@ export function OAuthCallback() {
     let active = true
     ;(async () => {
       useAuthStore.setState({ token })
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search)
       const response = await userApi.me()
       if (!active) return
       const user = response.data.data

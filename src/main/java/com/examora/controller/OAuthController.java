@@ -60,7 +60,8 @@ public class OAuthController {
         try {
             OAuthService.OAuthCallbackResult result = oauthService.completeCallback(
                     resolved, code, state, clientIpResolver.resolve(http));
-            String target = config.frontendBase() + result.returnTo() + "?token=" + urlEncode(result.auth().token());
+                String target = config.frontendBase() + "/oauth/callback?to=" + urlEncode(result.returnTo())
+                    + "#token=" + urlEncode(result.auth().token());
             return redirect(target);
         } catch (ApiException exception) {
             log.info("OAuth callback for {} rejected: {}", provider, exception.getMessage());
