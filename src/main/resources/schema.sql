@@ -110,6 +110,18 @@ create table if not exists oauth_accounts (
 );
 create index if not exists idx_oauth_account_user on oauth_accounts (user_id);
 
+create table if not exists exam_rooms (
+ id varchar(36) primary key, exam_id varchar(36) not null, room_code varchar(10) not null, status varchar(10) not null default 'WAITING', created_by varchar(36), started_at timestamp, ended_at timestamp, created_at timestamp default current_timestamp, updated_at timestamp default current_timestamp,
+ constraint uq_exam_room_code unique (room_code), constraint fk_exam_room_exam foreign key (exam_id) references exams(id) on delete cascade, constraint fk_exam_room_creator foreign key (created_by) references users(id) on delete set null
+);
+create index if not exists idx_exam_room_active on exam_rooms (status, created_at desc);
+create table if not exists exam_room_members (
+ id varchar(36) primary key, room_id varchar(36) not null, student_id varchar(36) not null, joined_at timestamp not null default current_timestamp, left_at timestamp, status varchar(10) not null default 'JOINED',
+ constraint fk_exam_room_member_room foreign key (room_id) references exam_rooms(id) on delete cascade, constraint fk_exam_room_member_student foreign key (student_id) references users(id) on delete cascade,
+ constraint uq_exam_room_active_member unique (room_id, student_id, status)
+);
+create index if not exists idx_exam_room_member_room_active on exam_room_members (room_id, status, joined_at);
+create index if not exists idx_exam_room_member_student_active on exam_room_members (student_id, status, joined_at desc);
 create index if not exists idx_results_exam_id on results (exam_id);
 create index if not exists idx_answers_exam_question on answers (exam_id, question_id);
 create index if not exists idx_answers_user_exam on answers (user_id, exam_id);

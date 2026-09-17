@@ -92,6 +92,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/analytics/**").hasAnyRole("TEACHER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/answers/**").hasAnyRole("STUDENT", "TEACHER", "ADMIN")
                         .requestMatchers("/api/results/**", "/api/answers/**").hasAnyRole("TEACHER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/exam-rooms/join").hasRole("STUDENT")
+                        .requestMatchers(HttpMethod.GET, "/api/exam-rooms/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/exam-rooms/**").authenticated()
+                        .requestMatchers("/api/exam-rooms/**").hasAnyRole("TEACHER", "ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

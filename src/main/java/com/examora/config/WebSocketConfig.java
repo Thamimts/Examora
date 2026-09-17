@@ -1,8 +1,12 @@
 package com.examora.config;
 
+import com.examora.model.ExamRoom;
+import com.examora.model.ExamRoomMemberStatus;
 import com.examora.model.Role;
 import com.examora.model.User;
 import com.examora.repository.ExamRepository;
+import com.examora.repository.ExamRoomMemberRepository;
+import com.examora.repository.ExamRoomRepository;
 import com.examora.repository.UserRepository;
 import com.examora.security.JwtService;
 import com.examora.service.LoginRateLimiter;
@@ -35,18 +39,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final ExamRepository examRepository;
+    private final ExamRoomRepository examRoomRepository;
+    private final ExamRoomMemberRepository examRoomMemberRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final LoginRateLimiter connectRateLimiter;
     private final String[] allowedOrigins;
 
     public WebSocketConfig(JwtService jwtService, UserRepository userRepository,
                            ExamRepository examRepository,
+                           ExamRoomRepository examRoomRepository,
+                           ExamRoomMemberRepository examRoomMemberRepository,
                            ApplicationEventPublisher eventPublisher,
                            LoginRateLimiter connectRateLimiter,
                            @Value("${examora.cors.allowed-origins:}") List<String> allowedOrigins) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.examRepository = examRepository;
+        this.examRoomRepository = examRoomRepository;
+        this.examRoomMemberRepository = examRoomMemberRepository;
         this.eventPublisher = eventPublisher;
         this.connectRateLimiter = connectRateLimiter;
         this.allowedOrigins = allowedOrigins.toArray(new String[0]);
@@ -108,19 +118,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(new SubscriptionGuard(jwtService, userRepository, examRepository, eventPublisher));
+        registration.interceptors(new SubscriptionGuard(jwtService, userRepository, examRepository,
+                examRoomRepository, examRoomMemberRepository, eventPublisher));
     }
 
     private static final class SubscriptionGuard implements ChannelInterceptor {
         private final JwtService jwt;
         private final UserRepository users;
         private final ExamRepository exams;
+        private final ExamRoomRepository examRooms;
+        private final ExamRoomMemberRepository examRoomMembers;
         private final ApplicationEventPublisher eventPublisher;
 
-        SubscriptionGuard(JwtService jwt, UserRepository users, ExamRepository exams, ApplicationEventPublisher eventPublisher) {
+        SubscriptionGuard(JwtService jwt, UserRepository users, ExamRepository exams,
+                          ExamRoomRepository examRooms, ExamRoomMemberRepository examRoomMembers,
+                          ApplicationEventPublisher eventPublisher) {
             this.jwt = jwt;
             this.users = users;
             this.exams = exams;
+            this.examRooms = examRooms;
+            this.examRoomMembers = examRoomMembers;
             this.eventPublisher = eventPublisher;
         }
 
@@ -165,6 +182,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         }
                     }
                 }
+                if (destination != null && destination.startsWith("/topic/exam-rooms/") && destination.endsWith("/activity")) {
+                    guardRoomSubscription(extractRoomId(destination), account);
+                }
             }
             return accessor.getUser() == null ? message : rebuild(message, accessor);
         }
@@ -204,6 +224,41 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
         private String extractExamId(String destination) {
             String prefix = "/topic/exams/";
+            String suffix = "/activity";
+            if (!destination.startsWith(prefix) || !destination.endsWith(suffix)) {
+                return null;
+            }
+            return destination.substring(prefix.length(), destination.length() - suffix.length());
+        }
+
+        private void guardRoomSubscription(String roomId, User account) {
+            if (roomId == null || roomId.isBlank()) {
+                throw new AccessDeniedException("Invalid exam room topic destination.");
+            }
+            ExamRoom room = examRooms.findById(roomId)
+                    .orElseThrow(() -> new AccessDeniedException("Exam room not found."));
+            if (account.role() == Role.ADMIN) {
+                return;
+            }
+            if (account.role() == Role.TEACHER) {
+                boolean ownsExam = exams.findOwnerId(room.examId())
+                        .map(ownerId -> ownerId.equals(account.id()))
+                        .orElse(false);
+                if (!ownsExam) {
+                    throw new AccessDeniedException("You do not have access to this exam room.");
+                }
+                return;
+            }
+            boolean joined = examRoomMembers
+                    .findForStudentByRoom(room.id(), account.id(), ExamRoomMemberStatus.JOINED)
+                    .isPresent();
+            if (!joined) {
+                throw new AccessDeniedException("You have not joined this exam room.");
+            }
+        }
+
+        private String extractRoomId(String destination) {
+            String prefix = "/topic/exam-rooms/";
             String suffix = "/activity";
             if (!destination.startsWith(prefix) || !destination.endsWith(suffix)) {
                 return null;
