@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock3,
   DoorOpen,
+  FlaskConical,
   Loader2,
   MonitorUp,
   Radio,
@@ -650,6 +651,36 @@ function SelectedStudentPanel({ student, endRoomMutation }: {
           </span>
         </InfoTile>
       </div>
+
+      {student.shadowFusion && (
+        <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/30 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <FlaskConical size={12} /> Shadow fusion
+            </p>
+            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Experimental · Shadow
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-3 text-xs">
+            <div>
+              <p className="text-[10px] text-muted-foreground">Baseline score</p>
+              <p className="font-semibold">{student.shadowFusion.baselineScore.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Confidence-aware</p>
+              <p className="font-semibold">{student.shadowFusion.fusedScore.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Evidence</p>
+              <p className="font-semibold">{student.shadowFusion.evidenceCount} · {student.shadowFusion.algorithmVersion}</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+            Research-only estimate of combined evidence across the recent window. It does not affect warnings, risk, termination, or access.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {student.roomId && student.roomStatus === 'ACTIVE' && !roomEnded && (

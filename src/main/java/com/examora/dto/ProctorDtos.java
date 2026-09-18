@@ -103,8 +103,24 @@ public final class ProctorDtos {
             Boolean cameraOff,
             Boolean fullscreenExited,
             int audioSignalCount,
-            int networkInterruptionCount
+            int networkInterruptionCount,
+            ShadowFusionDto shadowFusion
     ) {
+    }
+
+    public record ProctorFusionContributionDto(String id, String type, String source,
+                                               double baseWeight, double sourceWeight,
+                                               double confidence, double contribution) {
+    }
+
+    public record ProctorFusionResultDto(String attemptId, String algorithmVersion, int evidenceCount,
+                                         String windowStart, String windowEnd,
+                                         double baselineScore, double fusedScore, double fusedConfidence,
+                                         List<ProctorFusionContributionDto> contributingSignals) {
+    }
+
+    public record ShadowFusionDto(Double baselineScore, Double fusedScore, Integer evidenceCount,
+                                  String algorithmVersion) {
     }
 
     public record CommandCenterData(

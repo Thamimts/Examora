@@ -167,6 +167,36 @@ export interface CommandCenterStudent {
   fullscreenExited: boolean | null
   audioSignalCount: number
   networkInterruptionCount: number
+  shadowFusion: ShadowFusion | null
+}
+
+export interface ShadowFusion {
+  baselineScore: number
+  fusedScore: number
+  evidenceCount: number
+  algorithmVersion: string
+}
+
+export interface ProctorFusionContribution {
+  id: string
+  type: string
+  source: string
+  baseWeight: number
+  sourceWeight: number
+  confidence: number
+  contribution: number
+}
+
+export interface ProctorFusionResult {
+  attemptId: string
+  algorithmVersion: string
+  evidenceCount: number
+  windowStart: string
+  windowEnd: string
+  baselineScore: number
+  fusedScore: number
+  fusedConfidence: number
+  contributingSignals: ProctorFusionContribution[]
 }
 
 export interface CommandCenterData {

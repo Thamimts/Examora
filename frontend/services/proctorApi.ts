@@ -1,6 +1,6 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
-import type { CommandCenterData, ProctorEvent as ProctorEventDto, ProctorMonitorData, ProctorSignalInput, ProctorSummary, StudentProctorEvent, SubmitSignalResponse } from '@/types/proctor'
+import type { CommandCenterData, ProctorEvent as ProctorEventDto, ProctorFusionResult, ProctorMonitorData, ProctorSignalInput, ProctorSummary, StudentProctorEvent, SubmitSignalResponse } from '@/types/proctor'
 
 export const proctorApi = {
   events: (events: StudentProctorEvent[]) =>
@@ -21,4 +21,6 @@ export const proctorApi = {
     api.get<ApiResponse<ProctorEventDto[]>>(`/proctor/attempts/${attemptId}/events`, {
       params: { limit },
     }),
+  fusion: (attemptId: string) =>
+    api.get<ApiResponse<ProctorFusionResult>>(`/proctor/attempts/${attemptId}/fusion`),
 }

@@ -2,7 +2,7 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, DoorOpen, FileText, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X, KeyRound } from 'lucide-react'
+import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, DoorOpen, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X, KeyRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
@@ -29,6 +29,7 @@ import { analyticsApi } from '@/services/analyticsApi'
 import { adaptiveApi } from '@/services/adaptiveApi'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
+import { ProctoringResearch } from '@/features/proctor/ProctoringResearch'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
 import { ProctoringCommandCenter } from '@/features/proctor/ProctoringCommandCenter'
 import { TeacherCommandCenter } from '@/features/teacher/TeacherCommandCenter'
@@ -93,6 +94,7 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
     { label: 'Live monitor', href: '/admin/monitor', icon: Activity },
     { label: 'Retests', href: '/admin/retests', icon: RotateCcw },
+    { label: 'Proctoring research', href: '/admin/research', icon: FlaskConical },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
 }
@@ -851,6 +853,7 @@ function App() {
       <Route path="/admin/users" element={<Protected roles={['ADMIN']}><AdminUsers /></Protected>} />
       <Route path="/admin/exams" element={<Protected roles={['ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/admin/question-bank" element={<Protected roles={['ADMIN']}><QuestionBank /></Protected>} />
+      <Route path="/admin/research" element={<Protected roles={['ADMIN']}><ProctoringResearch /></Protected>} />
       <Route path="/admin/results" element={<Protected roles={['ADMIN']}><AdminResults /></Protected>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

@@ -57,11 +57,12 @@ public class ProctorMonitorService {
     private final ExamRoomRepository roomRepository;
     private final ExamRoomMemberRepository memberRepository;
     private final ExamAccessRepository accessRepository;
+    private final ProctorFusionCoordinator fusionCoordinator;
 
     public ProctorMonitorService(ExamRepository examRepository, ExamAttemptRepository attemptRepository,
                                  ProctorRepository proctorRepository, ExamAttemptService examAttemptService,
                                  ExamRoomRepository roomRepository, ExamRoomMemberRepository memberRepository,
-                                 ExamAccessRepository accessRepository) {
+                                 ExamAccessRepository accessRepository, ProctorFusionCoordinator fusionCoordinator) {
         this.examRepository = examRepository;
         this.attemptRepository = attemptRepository;
         this.proctorRepository = proctorRepository;
@@ -69,6 +70,7 @@ public class ProctorMonitorService {
         this.roomRepository = roomRepository;
         this.memberRepository = memberRepository;
         this.accessRepository = accessRepository;
+        this.fusionCoordinator = fusionCoordinator;
     }
 
     public ProctorMonitorData monitor(String examId, User actor) {
@@ -164,7 +166,7 @@ public class ProctorMonitorService {
                     0, WarningLevel.NONE,
                     accessByStudent.getOrDefault(member.studentId(), ExamAccessStatus.ELIGIBLE),
                     RiskLevel.LOW, 0.0, 0, null, null,
-                    null, null, 0, 0));
+                    null, null, 0, 0, null));
         }
         roster.sort(Comparator.comparing(CommandCenterStudent::studentName,
                 Comparator.nullsLast(String::compareTo)).thenComparing(CommandCenterStudent::studentId));
@@ -240,7 +242,8 @@ public class ProctorMonitorService {
                 cameraOff,
                 fullscreenExited,
                 audioCount,
-                networkCount);
+                networkCount,
+                fusionCoordinator.shadowFor(events, now));
     }
 
     private int roomPriority(ExamRoomStatus status) {

@@ -6,7 +6,9 @@ import com.examora.dto.ProctorDtos.EventBatchRequest;
 import com.examora.dto.ProctorDtos.ProctorEventDto;
 import com.examora.dto.ProctorDtos.ProctorMonitorData;
 import com.examora.dto.ProctorDtos.ProctorSummary;
+import com.examora.dto.ProctorDtos.ProctorFusionResultDto;
 import com.examora.dto.ProctorDtos.SubmitSignalRequest;
+import com.examora.service.ProctorFusionCoordinator;
 import com.examora.service.ProctorSignalService;
 import com.examora.service.ProctorService;
 import com.examora.service.AuthService;
@@ -30,13 +32,16 @@ public class ProctorController {
     private final AuthService authService;
     private final ExamAttemptService examAttemptService;
     private final ProctorSignalService proctorSignalService;
+    private final ProctorFusionCoordinator proctorFusionCoordinator;
 
     public ProctorController(ProctorService proctorService, AuthService authService,
-                             ExamAttemptService examAttemptService, ProctorSignalService proctorSignalService) {
+                             ExamAttemptService examAttemptService, ProctorSignalService proctorSignalService,
+                             ProctorFusionCoordinator proctorFusionCoordinator) {
         this.proctorService = proctorService;
         this.authService = authService;
         this.examAttemptService = examAttemptService;
         this.proctorSignalService = proctorSignalService;
+        this.proctorFusionCoordinator = proctorFusionCoordinator;
     }
 
     @PostMapping("/attempts/{attemptId}/signals")
@@ -91,5 +96,11 @@ public class ProctorController {
     public ApiResponse<List<ProctorEventDto>> events(@PathVariable String attemptId, @RequestParam(defaultValue = "50") int limit, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User user = authService.requireUser(authorizationHeader);
         return ApiResponse.ok(proctorService.events(attemptId, user, limit));
+    }
+
+    @GetMapping("/attempts/{attemptId}/fusion")
+    public ApiResponse<ProctorFusionResultDto> fusion(@PathVariable String attemptId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User user = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(proctorFusionCoordinator.fusionForAttempt(attemptId, user));
     }
 }

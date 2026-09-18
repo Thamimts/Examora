@@ -147,3 +147,64 @@ create index if not exists idx_exam_access_status on exam_access_state (status);
 alter table exam_attempts add column if not exists warning_count int not null default 0;
 alter table exam_attempts add column if not exists terminated_at timestamp;
 alter table exam_attempts add column if not exists terminated_reason varchar(100);
+
+create table if not exists proctor_fusion_results (
+ id varchar(36) primary key,
+ attempt_id varchar(36) not null,
+ calculated_at timestamp not null default current_timestamp,
+ window_start varchar(40) not null,
+ window_end varchar(40) not null,
+ baseline_score double not null,
+ fused_score double not null,
+ fused_confidence double,
+ evidence_count int not null,
+ algorithm_version varchar(40) not null,
+ constraint fk_fusion_attempt foreign key (attempt_id) references exam_attempts(id) on delete cascade,
+ constraint uq_fusion_attempt_version unique (attempt_id, algorithm_version)
+);
+create index if not exists idx_fusion_attempt_calculated on proctor_fusion_results (attempt_id, calculated_at desc);
+
+create table if not exists research_experiments (
+ id varchar(36) primary key,
+ name varchar(180) not null,
+ description varchar(500),
+ algorithm_version varchar(40) not null,
+ baseline_version varchar(40) not null,
+ status varchar(20) not null default 'DRAFT',
+ created_by varchar(36),
+ created_at timestamp not null default current_timestamp,
+ constraint fk_research_experiment_creator foreign key (created_by) references users(id) on delete set null
+);
+create index if not exists idx_research_experiments_created on research_experiments (created_at desc);
+
+create table if not exists research_samples (
+ id varchar(36) primary key,
+ experiment_id varchar(36) not null,
+ attempt_id varchar(36),
+ window_start varchar(40) not null,
+ window_end varchar(40) not null,
+ label varchar(40),
+ metadata text,
+ raw_media_bytes bigint,
+ signal_bytes bigint,
+ created_at timestamp not null default current_timestamp,
+ constraint fk_research_sample_experiment foreign key (experiment_id) references research_experiments(id) on delete cascade,
+ constraint fk_research_sample_attempt foreign key (attempt_id) references exam_attempts(id) on delete set null,
+ constraint uq_research_sample_window unique (experiment_id, window_start, window_end)
+);
+create index if not exists idx_research_samples_experiment on research_samples (experiment_id, created_at desc);
+create index if not exists idx_research_samples_attempt_window on research_samples (attempt_id, window_start, window_end);
+
+create table if not exists research_reviews (
+ id varchar(36) primary key,
+ sample_id varchar(36) not null,
+ reviewer_id varchar(36) not null,
+ label varchar(40) not null,
+ confidence double,
+ notes varchar(500),
+ reviewed_at timestamp not null default current_timestamp,
+ constraint fk_research_review_sample foreign key (sample_id) references research_samples(id) on delete cascade,
+ constraint fk_research_review_reviewer foreign key (reviewer_id) references users(id) on delete set null,
+ constraint uq_research_review_sample_reviewer unique (sample_id, reviewer_id)
+);
+create index if not exists idx_research_reviews_sample on research_reviews (sample_id, reviewed_at desc);

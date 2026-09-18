@@ -70,6 +70,19 @@ public class ProctorRepository {
                 limit);
     }
 
+    public List<ProctorEventRow> findByAttemptIdWithin(String attemptId, String fromOccurredAt, String toOccurredAt, int limit) {
+        return jdbcTemplate.query(
+                "select id, attempt_id, event_id, type, occurred_at, metadata, server_received_at, source, confidence, duration_ms "
+                        + "from proctor_events "
+                        + "where attempt_id = ? and occurred_at >= ? and occurred_at <= ? "
+                        + "order by occurred_at desc, server_received_at desc, id desc limit ?",
+                this::mapRow,
+                attemptId,
+                fromOccurredAt,
+                toOccurredAt,
+                limit);
+    }
+
     public List<ProctorEventRow> findByExamId(String examId) {
         return jdbcTemplate.query(
                 "select pe.id, pe.attempt_id, pe.event_id, pe.type, pe.occurred_at, pe.metadata, pe.server_received_at, "
