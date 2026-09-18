@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useExamRoomFeed } from '@/hooks/useExamRoomFeed'
 import { ConfirmDialog, useToast } from '@/components/feedback'
 import { roomStatusLabels, type ExamRoom, type RoomActivity } from '@/types/examRoom'
+import { TeacherScreenViewer } from '@/features/exam/TeacherScreenViewer'
 
 const formatTime = (value: string | null) => (value ? new Date(value).toLocaleString() : null)
 const initialsFor = (name: string | null) => (name ? name.trim().split(/\s+/).map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() : 'S')
@@ -234,6 +235,8 @@ export function ExamRoomManager({ examId }: { examId: string }) {
                 <p className="mt-3 text-sm text-muted-foreground">No students have joined yet. Share the room code above.</p>
               )}
             </div>
+
+            <TeacherScreenViewer roomId={room.roomId} members={members} status={room.status} />
           </>
           )
         })()}

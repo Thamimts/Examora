@@ -1,5 +1,9 @@
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 
+export type WarningLevel = 'NONE' | 'WARNING_1' | 'WARNING_2' | 'WARNING_3'
+
+export type ExamAccessStatus = 'ELIGIBLE' | 'SUSPENDED' | 'RETEST_PENDING' | 'RETEST_APPROVED' | 'RETEST_REJECTED'
+
 export type ProctorEventType =
   | 'TAB_SWITCH'
   | 'WINDOW_BLUR'
@@ -77,4 +81,7 @@ export interface ProctorUpdate {
   eventCount: number
   sequence: number
   occurredAt: string
+  warningCount: number
+  warningLevel: WarningLevel
+  accessStatus: ExamAccessStatus
 }

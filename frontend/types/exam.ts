@@ -1,5 +1,7 @@
 import type { Exam, Question, Result } from '@/types'
+import type { ExamAccessStatus, WarningLevel } from '@/types/proctor'
 export type AnswerValue = string | string[]
+export type StudentAttemptStatus = { examId: string; attemptId: string | null; attemptStatus: string | null; warningCount: number; warningLevel: WarningLevel; accessStatus: ExamAccessStatus; hasResult: boolean }
 export type ActiveAttemptInfo = { attemptId: string; examId: string; examTitle: string; subject: string; duration: number; status: string; startedAt: string; expiresAt: string; remainingSeconds: number }
 export type AttemptProgress = { attemptId: string; examId: string; status: string; startedAt: string; expiresAt: string; remainingSeconds: number; answers: Record<string, string> }
 export type ExamSession = { exam: Exam & { questions?: Question[] }; startAt: string; endAt: string; durationSeconds: number }

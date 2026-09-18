@@ -126,3 +126,20 @@ create index if not exists idx_results_exam_id on results (exam_id);
 create index if not exists idx_answers_exam_question on answers (exam_id, question_id);
 create index if not exists idx_answers_user_exam on answers (user_id, exam_id);
 create index if not exists idx_answers_attempt on answers (attempt_id);
+
+create table if not exists exam_access_state (
+ student_id varchar(36) not null,
+ exam_id varchar(36) not null,
+ status varchar(30) not null default 'ELIGIBLE',
+ suspended_at timestamp,
+ suspended_reason varchar(100),
+ created_at timestamp default current_timestamp,
+ updated_at timestamp default current_timestamp,
+ primary key (student_id, exam_id),
+ constraint fk_eas_student foreign key (student_id) references users(id) on delete cascade,
+ constraint fk_eas_exam foreign key (exam_id) references exams(id) on delete cascade
+);
+create index if not exists idx_exam_access_status on exam_access_state (status);
+alter table exam_attempts add column if not exists warning_count int not null default 0;
+alter table exam_attempts add column if not exists terminated_at timestamp;
+alter table exam_attempts add column if not exists terminated_reason varchar(100);
