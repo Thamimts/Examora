@@ -112,6 +112,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.setApplicationDestinationPrefixes("/app");
         registry.enableSimpleBroker("/topic", "/queue");
         registry.setUserDestinationPrefix("/user");
     }
@@ -185,6 +186,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 if (destination != null && destination.startsWith("/topic/exam-rooms/") && destination.endsWith("/activity")) {
                     guardRoomSubscription(extractRoomId(destination), account);
                 }
+                if (destination != null && destination.startsWith("/topic/exam-rooms/") && destination.endsWith("/webrtc")) {
+                    guardWebRtcSubscription(extractRoomId(destination), account);
+                }
             }
             return accessor.getUser() == null ? message : rebuild(message, accessor);
         }
@@ -257,13 +261,38 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             }
         }
 
+        private void guardWebRtcSubscription(String roomId, User account) {
+            if (roomId == null || roomId.isBlank()) {
+                throw new AccessDeniedException("Invalid exam room topic destination.");
+            }
+            ExamRoom room = examRooms.findById(roomId)
+                    .orElseThrow(() -> new AccessDeniedException("Exam room not found."));
+            if (account.role() == Role.ADMIN) {
+                return;
+            }
+            if (account.role() == Role.TEACHER) {
+                boolean ownsExam = exams.findOwnerId(room.examId())
+                        .map(ownerId -> ownerId.equals(account.id()))
+                        .orElse(false);
+                if (!ownsExam) {
+                    throw new AccessDeniedException("You do not have access to this exam room.");
+                }
+                return;
+            }
+            throw new AccessDeniedException("Screen sharing is only visible to the exam proctor.");
+        }
+
         private String extractRoomId(String destination) {
             String prefix = "/topic/exam-rooms/";
-            String suffix = "/activity";
-            if (!destination.startsWith(prefix) || !destination.endsWith(suffix)) {
+            if (!destination.startsWith(prefix)) {
                 return null;
             }
-            return destination.substring(prefix.length(), destination.length() - suffix.length());
+            String rest = destination.substring(prefix.length());
+            int slash = rest.indexOf('/');
+            if (slash <= 0) {
+                return null;
+            }
+            return rest.substring(0, slash);
         }
     }
 }

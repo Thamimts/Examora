@@ -36,15 +36,17 @@ public class ProctorService {
     private final ExamAttemptService examAttemptService;
     private final ProctorMonitorService proctorMonitorService;
     private final ProctorPublishService proctorPublishService;
+    private final ProctorEnforcementService enforcementService;
     private final ObjectMapper objectMapper;
 
     public ProctorService(ProctorRepository proctorRepository, ExamAttemptService examAttemptService,
                           ProctorMonitorService proctorMonitorService, ProctorPublishService proctorPublishService,
-                          ObjectMapper objectMapper) {
+                          ProctorEnforcementService enforcementService, ObjectMapper objectMapper) {
         this.proctorRepository = proctorRepository;
         this.examAttemptService = examAttemptService;
         this.proctorMonitorService = proctorMonitorService;
         this.proctorPublishService = proctorPublishService;
+        this.enforcementService = enforcementService;
         this.objectMapper = objectMapper;
     }
 
@@ -64,11 +66,12 @@ public class ProctorService {
         for (ProctorEvent event : events) {
             validateEvent(event, attempt);
         }
-        int saved = proctorRepository.saveBatch(events);
-        if (saved > 0) {
+        List<ProctorEvent> savedEvents = proctorRepository.saveBatch(events);
+        if (!savedEvents.isEmpty()) {
+            enforcementService.enforce(savedEvents);
             proctorPublishService.publishAfterEventBatch(attempt.id());
         }
-        return saved;
+        return savedEvents.size();
     }
 
     private void validateEvent(ProctorEvent event, ExamAttempt attempt) {

@@ -22,6 +22,16 @@ public class ExamRoomRepository {
     private static final String SELECT_COLUMNS =
             "select id, exam_id, room_code, status, created_by, started_at, ended_at, created_at, updated_at from exam_rooms";
 
+    /** Earliest ACTIVE room for the exam that the student has JOINED. */
+    public Optional<String> findActiveRoomForStudent(String examId, String studentId) {
+        return jdbc.query(
+                        "select r.id from exam_rooms r join exam_room_members m on m.room_id = r.id "
+                                + "where r.exam_id = ? and m.student_id = ? and r.status = 'ACTIVE' and m.status = 'JOINED' "
+                                + "order by r.started_at asc, r.created_at asc, r.id asc limit 1",
+                        (rs, row) -> rs.getString(1), examId, studentId)
+                .stream().findFirst();
+    }
+
     public ExamRoom create(ExamRoom room) {
         jdbc.update(
                 "insert into exam_rooms (id, exam_id, room_code, status, created_by, started_at, ended_at) values (?, ?, ?, ?, ?, ?, ?)",

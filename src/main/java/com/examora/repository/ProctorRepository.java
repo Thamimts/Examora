@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,20 +27,22 @@ public class ProctorRepository {
         this.objectMapper = objectMapper;
     }
 
-    public int saveBatch(List<ProctorEvent> events) {
+    public List<ProctorEvent> saveBatch(List<ProctorEvent> events) {
         if (events == null || events.isEmpty()) {
-            return 0;
+            return List.of();
         }
-        int saved = 0;
+        List<ProctorEvent> saved = new ArrayList<>();
         for (ProctorEvent event : events) {
-            saved += insert(event);
+            if (insert(event)) {
+                saved.add(event);
+            }
         }
         return saved;
     }
 
-    private int insert(ProctorEvent event) {
+    private boolean insert(ProctorEvent event) {
         try {
-            return jdbcTemplate.update(
+            jdbcTemplate.update(
                     "insert into proctor_events (id, attempt_id, event_id, type, occurred_at, metadata) values (?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID().toString(),
                     event.attemptId(),
@@ -47,8 +50,9 @@ public class ProctorRepository {
                     event.type(),
                     event.occurredAt() == null ? Instant.now().toString() : event.occurredAt(),
                     writeMetadata(event.metadata()));
+            return true;
         } catch (DuplicateKeyException exception) {
-            return 0;
+            return false;
         }
     }
 

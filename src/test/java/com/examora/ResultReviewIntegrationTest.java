@@ -100,6 +100,8 @@ class ResultReviewIntegrationTest {
         publishExam(teacherToken, examId);
         createQuestion(teacherToken, examId, "1+1?", "2", "3", "2", 2);
 
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentToken);
+
         mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(studentToken)))
                 .andExpect(status().isOk());
@@ -332,6 +334,8 @@ class ResultReviewIntegrationTest {
         publishExam(teacherToken, examId);
         String questionId = createQuestion(teacherToken, examId, "8/2?", "4", "2", "4", 2);
 
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentToken);
+
         String startResponse = mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(studentToken)))
                 .andExpect(status().isOk())
@@ -365,6 +369,8 @@ class ResultReviewIntegrationTest {
     }
 
     private void start(String token, String examId) throws Exception {
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, login("teacher@example.com", "teacher123"),
+                examId, token);
         mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isOk());

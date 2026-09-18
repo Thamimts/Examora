@@ -127,6 +127,8 @@ class ExamFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].id").value(examId));
 
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentToken);
+
         mockMvc.perform(post("/api/exams/" + examId + "/start").header("Authorization", bearer(studentToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("STARTED"));
@@ -268,6 +270,7 @@ class ExamFlowIntegrationTest {
         String questionId = createQuestion(teacherToken, examId, "R", "A", "B", "A");
         mockMvc.perform(post("/api/exams/" + examId + "/publish").header("Authorization", bearer(teacherToken)))
                 .andExpect(status().isOk());
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentOneToken);
         mockMvc.perform(post("/api/exams/" + examId + "/start").header("Authorization", bearer(studentOneToken)))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/exams/" + examId + "/submit")

@@ -465,6 +465,8 @@ class ExamAutosaveIntegrationTest {
     }
 
     private String startExam(String token, String examId) throws Exception {
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, login("teacher@example.com", "teacher123"),
+                examId, token);
         String response = mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(token)))
                 .andReturn().getResponse().getContentAsString();

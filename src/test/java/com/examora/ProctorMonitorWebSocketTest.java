@@ -114,7 +114,8 @@ class ProctorMonitorWebSocketTest {
         messagingTemplate.convertAndSend("/topic/exams/" + EXAM_ID + "/activity",
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
-                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now()));
+                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
         assertThat(updates.poll(5, TimeUnit.SECONDS)).isNotNull();
         disconnectQuietly(session);
     }
@@ -130,7 +131,8 @@ class ProctorMonitorWebSocketTest {
         messagingTemplate.convertAndSend("/topic/exams/" + EXAM_ID + "/activity",
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
-                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now()));
+                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
         assertThat(updates.poll(2, TimeUnit.SECONDS)).isNull();
         disconnectQuietly(session);
     }
@@ -146,7 +148,8 @@ class ProctorMonitorWebSocketTest {
         messagingTemplate.convertAndSend("/topic/exams/" + EXAM_ID + "/activity",
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
-                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now()));
+                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
         assertThat(updates.poll(2, TimeUnit.SECONDS)).isNull();
         disconnectQuietly(session);
     }
@@ -162,7 +165,8 @@ class ProctorMonitorWebSocketTest {
         messagingTemplate.convertAndSend("/topic/exams/" + EXAM_ID + "/activity",
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
-                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now()));
+                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
         assertThat(updates.poll(5, TimeUnit.SECONDS)).isNotNull();
         disconnectQuietly(session);
     }
@@ -178,7 +182,8 @@ class ProctorMonitorWebSocketTest {
         messagingTemplate.convertAndSend("/topic/exams/" + EXAM_ID_OTHER + "/activity",
                 new ProctorUpdate(EXAM_ID_OTHER, "att-2", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
-                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now()));
+                        com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
         assertThat(updates.poll(5, TimeUnit.SECONDS)).isNotNull();
         disconnectQuietly(session);
     }
@@ -264,6 +269,8 @@ class ProctorMonitorWebSocketTest {
         User student = new User("student-ws-1", "Student WS One", "student-ws@example.com", com.examora.model.Role.STUDENT, null);
         String studentToken = jwtService.generateToken(student);
 
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, jwtService.generateToken(teacher), EXAM_ID, studentToken);
+
         mockMvc.perform(post("/api/exams/" + EXAM_ID + "/start")
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isOk());
@@ -290,6 +297,8 @@ class ProctorMonitorWebSocketTest {
 
         User student = new User("student-ws-1", "Student WS One", "student-ws@example.com", com.examora.model.Role.STUDENT, null);
         String studentToken = jwtService.generateToken(student);
+
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, jwtService.generateToken(teacher), EXAM_ID, studentToken);
 
         mockMvc.perform(post("/api/exams/" + EXAM_ID + "/start")
                         .header("Authorization", "Bearer " + studentToken))
@@ -342,6 +351,8 @@ class ProctorMonitorWebSocketTest {
 
         User student = new User("student-ws-1", "Student WS One", "student-ws@example.com", com.examora.model.Role.STUDENT, null);
         String studentToken = jwtService.generateToken(student);
+
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, jwtService.generateToken(teacher), EXAM_ID, studentToken);
 
         mockMvc.perform(post("/api/exams/" + EXAM_ID + "/start")
                         .header("Authorization", "Bearer " + studentToken))

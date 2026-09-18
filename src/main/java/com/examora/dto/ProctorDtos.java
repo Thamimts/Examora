@@ -15,6 +15,17 @@ public final class ProctorDtos {
         LOW, MEDIUM, HIGH
     }
 
+    public enum WarningLevel {
+        NONE, WARNING_1, WARNING_2, WARNING_3;
+
+        public static WarningLevel fromWarningCount(int warningCount) {
+            if (warningCount >= 3) return WARNING_3;
+            if (warningCount == 2) return WARNING_2;
+            if (warningCount == 1) return WARNING_1;
+            return NONE;
+        }
+    }
+
     public record ProctorStudentDto(String id, String name, String email) {
     }
 

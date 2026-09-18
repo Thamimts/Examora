@@ -9,6 +9,7 @@ import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
 import com.examora.dto.ExamDtos.SaveAnswerRequest;
 import com.examora.dto.ExamDtos.StartExamResponse;
+import com.examora.dto.ExamDtos.StudentAttemptStatusDto;
 import com.examora.model.Exam;
 import com.examora.model.User;
 import com.examora.service.AuthService;
@@ -108,6 +109,13 @@ public class ExamController {
                                                     @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User student = authService.requireUser(authorizationHeader);
         return ApiResponse.ok(examAttemptService.getAttemptProgress(id, student));
+    }
+
+    @GetMapping("/{id}/attempt/status")
+    public ApiResponse<StudentAttemptStatusDto> attemptStatus(@PathVariable String id,
+                                                              @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User student = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(examAttemptService.getStudentAttemptStatus(id, student));
     }
 
     @GetMapping("/{id}/result")

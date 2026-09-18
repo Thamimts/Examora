@@ -111,6 +111,7 @@ class ExamAttemptLifecycleIntegrationTest {
         String studentToken = login("student@example.com", "student123");
         String examId = createPublishedExam(teacherToken);
         String questionId = createQuestion(teacherToken, examId, "Q", "A", "B", "A");
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentToken);
 
         List<MvcResult> results = runConcurrently(2, index -> mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(studentToken)))
@@ -135,6 +136,10 @@ class ExamAttemptLifecycleIntegrationTest {
         String studentTwoToken = login("student2@example.com", "student234");
         String examId = createPublishedExam(teacherToken);
         String questionId = createQuestion(teacherToken, examId, "Q", "A", "B", "A");
+        RoomTestSupport.Room room = RoomTestSupport.createRoom(mockMvc, objectMapper, teacherToken, examId);
+        RoomTestSupport.joinRoom(mockMvc, studentOneToken, room.code());
+        RoomTestSupport.joinRoom(mockMvc, studentTwoToken, room.code());
+        RoomTestSupport.startRoom(mockMvc, teacherToken, room.id());
 
         List<MvcResult> results = runConcurrently(2, index -> mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(index % 2 == 0 ? studentOneToken : studentTwoToken)))
@@ -544,6 +549,8 @@ class ExamAttemptLifecycleIntegrationTest {
     }
 
     private String startExam(String token, String examId) throws Exception {
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, login("teacher@example.com", "teacher123"),
+                examId, token);
         String response = mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(token)))
                 .andReturn().getResponse().getContentAsString();

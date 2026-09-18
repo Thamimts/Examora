@@ -5,11 +5,53 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Flag, LayoutGrid, X } from 'lucide-react'
 import { examApi } from '@/services/examApi'
 import { questionApi } from '@/services/questionApi'
+import { retestApi } from '@/services/retestApi'
 import { useExamStore } from '@/store/examStore'
+import { useAuthStore } from '@/store/authStore'
 import { useProctorSession } from '@/hooks/useProctorSession'
+import { useStudentProctorFeed } from '@/hooks/useStudentProctorFeed'
 import { ExamStatusBar, type CountdownTier } from '@/features/exam/ExamStatusBar'
 import { QuestionPalette } from '@/features/exam/QuestionPalette'
 import { SubmissionReviewModal } from '@/features/exam/SubmissionReviewModal'
+import { StudentScreenShare } from '@/features/exam/StudentScreenShare'
+import { ProctorWarningDialog } from '@/features/exam/ProctorWarningDialog'
+import { ProctorAccessNotice } from '@/features/exam/ProctorAccessNotice'
+import type { ExamAccessStatus, ProctorUpdate, WarningLevel } from '@/types/proctor'
+
+type ProctorSnapshot = {
+  attemptId: string | null
+  attemptStatus: string | null
+  warningCount: number
+  warningLevel: WarningLevel
+  accessStatus: ExamAccessStatus
+  hasResult: boolean
+}
+
+const EMPTY_PROCTOR_SNAPSHOT: ProctorSnapshot = {
+  attemptId: null,
+  attemptStatus: null,
+  warningCount: 0,
+  warningLevel: 'NONE',
+  accessStatus: 'ELIGIBLE',
+  hasResult: false,
+}
+
+const WARNING_ORDER: Record<WarningLevel, number> = { NONE: 0, WARNING_1: 1, WARNING_2: 2, WARNING_3: 3 }
+
+function mergeProctorSnapshot(previous: ProctorSnapshot, next: ProctorSnapshot): ProctorSnapshot {
+  const sameAttempt = !previous.attemptId || !next.attemptId || previous.attemptId === next.attemptId
+  const base = sameAttempt ? previous : EMPTY_PROCTOR_SNAPSHOT
+  return {
+    attemptId: next.attemptId ?? base.attemptId,
+    attemptStatus: base.attemptStatus === 'PROCTOR_TERMINATED'
+      ? base.attemptStatus
+      : (next.attemptStatus ?? base.attemptStatus),
+    warningCount: Math.max(base.warningCount, next.warningCount),
+    warningLevel: WARNING_ORDER[next.warningLevel] >= WARNING_ORDER[base.warningLevel] ? next.warningLevel : base.warningLevel,
+    accessStatus: next.accessStatus !== 'ELIGIBLE' ? next.accessStatus : base.accessStatus,
+    hasResult: next.hasResult || base.hasResult,
+  }
+}
 
 export function ExamWorkspace({ id }: { id: string }) {
   const navigate = useNavigate()
@@ -40,6 +82,82 @@ export function ExamWorkspace({ id }: { id: string }) {
 
   const examQuery = useQuery({ queryKey: ['exam', id], queryFn: async () => (await examApi.get(id)).data.data, enabled: Boolean(id), retry: 1 })
   const questionsQuery = useQuery({ queryKey: ['exam-questions', id], queryFn: async () => (await questionApi.list(id)).data.data, enabled: Boolean(id), retry: 1 })
+
+  const token = useAuthStore((state) => state.token)
+  const [proctorState, setProctorState] = useState<ProctorSnapshot>(EMPTY_PROCTOR_SNAPSHOT)
+  const [dismissedWarning, setDismissedWarning] = useState<WarningLevel>('NONE')
+  const [retestError, setRetestError] = useState<string | null>(null)
+  const lastSequenceRef = useRef(0)
+
+  const statusQuery = useQuery({
+    queryKey: ['exam-attempt-status', id],
+    queryFn: async () => (await examApi.attemptStatus(id)).data.data,
+    enabled: Boolean(id),
+    retry: 1,
+    refetchOnWindowFocus: true,
+  })
+  const refetchStatus = statusQuery.refetch
+
+  useEffect(() => {
+    const status = statusQuery.data
+    if (!status) return
+    setProctorState((previous) => mergeProctorSnapshot(previous, {
+      attemptId: status.attemptId,
+      attemptStatus: status.attemptStatus,
+      warningCount: status.warningCount,
+      warningLevel: status.warningLevel,
+      accessStatus: status.accessStatus,
+      hasResult: status.hasResult,
+    }))
+  }, [statusQuery.data])
+
+  const handleProctorUpdate = useCallback((update: ProctorUpdate) => {
+    if (update.sequence <= lastSequenceRef.current) return
+    lastSequenceRef.current = update.sequence
+    setProctorState((previous) => mergeProctorSnapshot(previous, {
+      attemptId: update.attemptId,
+      attemptStatus: update.status,
+      warningCount: update.warningCount,
+      warningLevel: update.warningLevel,
+      accessStatus: update.accessStatus,
+      hasResult: previous.hasResult,
+    }))
+  }, [])
+
+  const { connectionState } = useStudentProctorFeed(id, proctorState.attemptId, token, handleProctorUpdate)
+
+  useEffect(() => {
+    if (connectionState === 'connected') void refetchStatus()
+  }, [connectionState, refetchStatus])
+
+  useEffect(() => {
+    lastSequenceRef.current = 0
+    setDismissedWarning('NONE')
+  }, [proctorState.attemptId])
+
+  const accessStatus = proctorState.accessStatus
+  const warningLevel = proctorState.warningLevel
+  const terminated = accessStatus === 'SUSPENDED' || proctorState.attemptStatus === 'PROCTOR_TERMINATED'
+  const restricted = terminated || accessStatus === 'RETEST_PENDING' || accessStatus === 'RETEST_REJECTED'
+  const showNotice = restricted || accessStatus === 'RETEST_APPROVED' || warningLevel === 'WARNING_3'
+  const statusResolved = statusQuery.isSuccess || statusQuery.isError
+  const activeWarning = warningLevel === 'WARNING_1' || warningLevel === 'WARNING_2' ? warningLevel : null
+  const warningOpen = Boolean(activeWarning) && !showNotice && WARNING_ORDER[warningLevel] > WARNING_ORDER[dismissedWarning]
+
+  useEffect(() => {
+    if (warningLevel === 'WARNING_1') setAnnouncement('Warning 1 of 3. Stay on the exam and keep proctoring active.')
+    else if (warningLevel === 'WARNING_2') setAnnouncement('Warning 2 of 3. This is your final warning before your attempt ends.')
+    else if (warningLevel === 'WARNING_3') setAnnouncement('Maximum warnings reached. Your attempt is ending.')
+  }, [warningLevel])
+
+  const retestMutation = useMutation({
+    mutationFn: () => retestApi.request(id),
+    onSuccess: () => { setRetestError(null); void refetchStatus() },
+    onError: (error) => {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setRetestError(message ?? 'Unable to submit your retest request. Please try again.')
+    },
+  })
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -76,6 +194,11 @@ export function ExamWorkspace({ id }: { id: string }) {
 
   useEffect(() => {
     let cancelled = false
+    if (!statusResolved) return
+    if (showNotice) {
+      setResumeState('ready')
+      return
+    }
     resume(id)
       .then(() => { if (!cancelled) setResumeState('ready') })
       .catch((error) => {
@@ -84,7 +207,7 @@ export function ExamWorkspace({ id }: { id: string }) {
         setResumeState(statusCode === 409 ? 'expired' : 'unavailable')
       })
     return () => { cancelled = true }
-  }, [id, resume])
+  }, [id, resume, statusResolved, showNotice])
 
   useEffect(() => {
     if (expired) setResumeState('expired')
@@ -135,7 +258,7 @@ export function ExamWorkspace({ id }: { id: string }) {
   }, [questions.length, questions, answers])
 
   useEffect(() => {
-    if (resumeState !== 'ready' || expired) return
+    if (resumeState !== 'ready' || expired || showNotice) return
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return
@@ -156,11 +279,29 @@ export function ExamWorkspace({ id }: { id: string }) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [resumeState, expired, index, questions.length, q, review, toggleReview, goTo])
+  }, [resumeState, expired, showNotice, index, questions.length, q, review, toggleReview, goTo])
 
-  const { status: proctoringStatus } = useProctorSession({ attemptId, active: resumeState === 'ready' && !expired })
+  const { status: proctoringStatus } = useProctorSession({ attemptId, active: resumeState === 'ready' && !expired && !showNotice })
 
   const currentMarked = Boolean(q && review[q.id])
+
+  if (showNotice) return (
+    <ProctorAccessNotice
+      examTitle={examQuery.data?.title ?? 'This exam'}
+      warningCount={proctorState.warningCount}
+      warningLevel={warningLevel}
+      attemptStatus={proctorState.attemptStatus}
+      accessStatus={accessStatus}
+      hasResult={proctorState.hasResult}
+      retestBusy={retestMutation.isPending}
+      retestError={retestError}
+      onRequestRetest={() => { setRetestError(null); retestMutation.mutate() }}
+      onRefresh={() => void refetchStatus()}
+      onBackToExams={() => navigate('/student/exams')}
+      onViewResult={() => navigate(`/student/exams/${id}/result`)}
+      onGoToExamCenter={() => navigate('/student/exams')}
+    />
+  )
 
   if (resumeState === 'loading' || examQuery.isPending || questionsQuery.isPending) return <div className="mx-auto max-w-5xl"><div className="h-80 animate-pulse rounded-2xl bg-muted" /></div>
   if (resumeState === 'expired') return (
@@ -195,6 +336,12 @@ export function ExamWorkspace({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-5xl pb-28 lg:pb-20">
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
+      <ProctorWarningDialog
+        open={warningOpen}
+        level={warningLevel}
+        warningCount={proctorState.warningCount}
+        onAcknowledge={() => setDismissedWarning(warningLevel)}
+      />
       <ExamStatusBar
         title={examQuery.data.title}
         index={index}
@@ -207,6 +354,7 @@ export function ExamWorkspace({ id }: { id: string }) {
         onCountdownZero={handleCountdownZero}
         onTierChange={handleTierChange}
       />
+      <StudentScreenShare examId={id} />
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <div>
           <Card>

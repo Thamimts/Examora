@@ -18,6 +18,9 @@ public class ExamAttemptRepository {
         return jdbc.query("select * from exam_attempts where exam_id = ? and student_id = ? and status = 'STARTED' order by started_at desc", this::map, examId, studentId).stream().findFirst();
     }
     public Optional<ExamAttempt> findById(String id) { return jdbc.query("select * from exam_attempts where id = ?", this::map, id).stream().findFirst(); }
+    public Optional<ExamAttempt> findLatest(String examId, String studentId) {
+        return jdbc.query("select * from exam_attempts where exam_id = ? and student_id = ? order by attempt_number desc, started_at desc", this::map, examId, studentId).stream().findFirst();
+    }
     public Optional<ExamAttempt> findLatestSubmitted(String examId, String studentId) {
         return jdbc.query("select * from exam_attempts where exam_id = ? and student_id = ? and status = 'SUBMITTED' order by submitted_at desc, started_at desc", this::map, examId, studentId).stream().findFirst();
     }
@@ -39,6 +42,23 @@ public class ExamAttemptRepository {
     }
     public int markSubmitted(String id, Instant at) { return jdbc.update("update exam_attempts set status = 'SUBMITTED', submitted_at = ?, version = version + 1 where id = ? and status = 'STARTED'", Timestamp.from(at), id); }
     public int markExpired(String id) { return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where id = ? and status = 'STARTED'", id); }
+
+    public int incrementWarningCount(String id, int maxWarnings) {
+        return jdbc.update("update exam_attempts set warning_count = warning_count + 1, version = version + 1 "
+                + "where id = ? and status = 'STARTED' and warning_count < ?", id, maxWarnings);
+    }
+
+    public Optional<Integer> warningCount(String id) {
+        return jdbc.query("select warning_count from exam_attempts where id = ?",
+                (rs, row) -> rs.getInt("warning_count"), id).stream().findFirst();
+    }
+
+    public int markProctorTerminated(String id, String reason, Instant at, int maxWarnings) {
+        return jdbc.update("update exam_attempts set status = 'PROCTOR_TERMINATED', terminated_at = ?, "
+                + "terminated_reason = ?, version = version + 1 "
+                + "where id = ? and status = 'STARTED' and warning_count >= ?",
+                Timestamp.from(at), reason, id, maxWarnings);
+    }
     public int expireOverdue(Instant now) {
         return jdbc.update("update exam_attempts set status = 'EXPIRED', version = version + 1 where status = 'STARTED' and expires_at <= ?", Timestamp.from(now));
     }

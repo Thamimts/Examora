@@ -2,9 +2,11 @@ package com.examora.service;
 
 import com.examora.exception.ApiException;
 import com.examora.model.Exam;
+import com.examora.model.ExamAccessStatus;
 import com.examora.model.RetestRequest;
 import com.examora.model.Role;
 import com.examora.model.User;
+import com.examora.repository.ExamAccessRepository;
 import com.examora.repository.ExamAttemptRepository;
 import com.examora.repository.ExamRepository;
 import com.examora.repository.ResultRepository;
@@ -23,14 +25,16 @@ public class RetestRequestService {
     private final ResultRepository results;
     private final ExamRepository exams;
     private final ExamAttemptRepository attempts;
+    private final ExamAccessRepository access;
     private final ActivityService activity;
 
     public RetestRequestService(RetestRequestRepository requests, ResultRepository results, ExamRepository exams,
-                                ExamAttemptRepository attempts, ActivityService activity) {
+                                ExamAttemptRepository attempts, ExamAccessRepository access, ActivityService activity) {
         this.requests = requests;
         this.results = results;
         this.exams = exams;
         this.attempts = attempts;
+        this.access = access;
         this.activity = activity;
     }
 
@@ -45,7 +49,11 @@ public class RetestRequestService {
         if (examId == null || examId.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Exam id is required.");
         }
-        if (results.findByUserIdAndExamId(student.id(), examId).isEmpty()) {
+        ExamAccessStatus accessStatus = access.findStatus(student.id(), examId).orElse(ExamAccessStatus.ELIGIBLE);
+        boolean suspendedFlow = accessStatus == ExamAccessStatus.SUSPENDED
+                || accessStatus == ExamAccessStatus.RETEST_REJECTED
+                || accessStatus == ExamAccessStatus.RETEST_PENDING;
+        if (!suspendedFlow && results.findByUserIdAndExamId(student.id(), examId).isEmpty()) {
             throw new ApiException(HttpStatus.CONFLICT, "A retest can only be requested for a completed exam.");
         }
         if (requests.findPending(student.id(), examId).isPresent()) {
@@ -56,6 +64,9 @@ public class RetestRequestService {
             RetestRequest request = new RetestRequest(UUID.randomUUID().toString(), examId, student.id(),
                     student.name(), exam.title(), "PENDING", Instant.now(), null, null, null);
             RetestRequest saved = requests.create(request);
+            if (accessStatus == ExamAccessStatus.SUSPENDED || accessStatus == ExamAccessStatus.RETEST_REJECTED) {
+                access.markRetestPending(student.id(), examId);
+            }
             activity.student(student, "RETEST_REQUESTED", "Your retest request for “" + exam.title() + "” is pending review.");
             activity.admin("RETEST_REQUESTED", student.name() + " requested a retest for “" + exam.title() + "”.");
             return saved;
@@ -88,6 +99,11 @@ public class RetestRequestService {
         }
         if (requests.review(id, status, admin.id(), reason, Instant.now()) != 1) {
             throw new ApiException(HttpStatus.CONFLICT, "This request was reviewed concurrently.");
+        }
+        if ("APPROVED".equals(status)) {
+            access.markRetestApproved(current.studentId(), current.examId());
+        } else {
+            access.markRetestRejected(current.studentId(), current.examId());
         }
         return requests.findById(id).orElseThrow();
     }

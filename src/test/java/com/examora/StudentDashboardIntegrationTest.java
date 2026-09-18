@@ -100,6 +100,8 @@ class StudentDashboardIntegrationTest {
         publishExam(teacherToken, examId);
         createQuestion(teacherToken, examId, "What is 2+2?", "3", "4", "4", 3);
 
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentOneToken);
+
         mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(studentOneToken)))
                 .andExpect(status().isOk());
@@ -128,6 +130,8 @@ class StudentDashboardIntegrationTest {
         String examId = createExam(teacherToken, "Submit Exam", "Physics", "UPCOMING");
         publishExam(teacherToken, examId);
         String questionId = createQuestion(teacherToken, examId, "What is speed of light?", "A", "B", "A", 5);
+
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentToken);
 
         mockMvc.perform(post("/api/exams/" + examId + "/start")
                         .header("Authorization", bearer(studentToken)))

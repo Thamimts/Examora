@@ -174,6 +174,7 @@ class RetestSecurityIntegrationTest {
                         .content("{\"text\":\"Q\",\"options\":[\"A\",\"B\"],\"answer\":\"A\"}"))
                 .andReturn().getResponse().getContentAsString();
         String questionId = objectMapper.readTree(questionResponse).path("data").path("id").asText();
+        RoomTestSupport.createJoinAndStartRoom(mockMvc, objectMapper, teacherToken, examId, studentToken);
         mockMvc.perform(post("/api/exams/" + examId + "/start").header("Authorization", bearer(studentToken)))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/exams/" + examId + "/submit")

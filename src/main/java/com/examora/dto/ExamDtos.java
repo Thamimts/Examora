@@ -1,6 +1,8 @@
 package com.examora.dto;
 
+import com.examora.dto.ProctorDtos.WarningLevel;
 import com.examora.model.Exam;
+import com.examora.model.ExamAccessStatus;
 import com.examora.model.Result;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,11 @@ public final class ExamDtos {
 
     public record AttemptProgressDto(String attemptId, String examId, String status, String startedAt,
                                      String expiresAt, long remainingSeconds, Map<String, String> answers) {
+    }
+
+    public record StudentAttemptStatusDto(String examId, String attemptId, String attemptStatus,
+                                          int warningCount, WarningLevel warningLevel,
+                                          ExamAccessStatus accessStatus, boolean hasResult) {
     }
 
     public record ExamSubmissionRequest(List<SubmittedAnswer> answers) {

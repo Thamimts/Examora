@@ -8,6 +8,8 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useAuthStore } from '@/store/authStore'
 import type { ActivityEvent, LoginRole, OAuthProviderInfo, Result, Role, User } from '@/types'
 import type { ActiveAttemptInfo, ExamResultReview, QuestionReview } from '@/types/exam'
+import type { ExamAccessStatus } from '@/types/proctor'
+import type { ExamRoom } from '@/types/examRoom'
 import type { StudentAiAnalysis } from '@/types/ai'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
@@ -19,8 +21,10 @@ import { userApi } from '@/services/userApi'
 import { examApi } from '@/services/examApi'
 import { questionApi } from '@/services/questionApi'
 import { resultApi } from '@/services/resultApi'
+import { examRoomApi } from '@/services/examRoomApi'
 import { activityApi } from '@/services/activityApi'
 import { retestApi } from '@/services/retestApi'
+import type { RetestRequest } from '@/services/retestApi'
 import { analyticsApi } from '@/services/analyticsApi'
 import { adaptiveApi } from '@/services/adaptiveApi'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
@@ -57,7 +61,7 @@ type MobileNavItem = { label: string; icon: LucideIcon; href?: string; more?: bo
 
 const studentNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-  { label: 'My exams', href: '/student/exams', icon: BookOpen },
+  { label: 'Exam Center', href: '/student/exams', icon: BookOpen },
   { label: 'Practice', href: '/student/practice', icon: Target },
   { label: 'Performance', href: '/student/analysis', icon: BarChart3 },
   { label: 'AI Coach', href: '/student/ai-analysis', icon: Sparkles },
@@ -87,6 +91,7 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Question bank', href: '/admin/question-bank', icon: ListChecks },
     { label: 'Results', href: '/admin/results', icon: BarChart3 },
     { label: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
+    { label: 'Retests', href: '/admin/retests', icon: RotateCcw },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
 }
@@ -161,6 +166,7 @@ function StudentExams() {
   const examsQuery = useQuery({ queryKey: ['student-exams'], queryFn: async () => (await examApi.list()).data.data, retry: 1 })
   const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 })
   const retestsQuery = useQuery({ queryKey: ['my-retests'], queryFn: async () => (await retestApi.mine()).data.data, retry: 1 })
+  const roomsQuery = useQuery({ queryKey: ['my-exam-rooms'], queryFn: async () => (await examRoomApi.mine()).data.data, retry: 1 })
 
   const retestMutation = useMutation({
     mutationFn: (examId: string) => retestApi.request(examId),
@@ -185,18 +191,65 @@ function StudentExams() {
     return map
   }, [retestsQuery.data])
 
+  const roomByExam = useMemo(() => {
+    const map = new Map<string, ExamRoom>()
+    for (const room of roomsQuery.data ?? []) {
+      if (room.status === 'ENDED') continue
+      const current = map.get(room.examId)
+      if (!current || room.status === 'ACTIVE') map.set(room.examId, room)
+    }
+    return map
+  }, [roomsQuery.data])
+
+  const statusIds = useMemo(() => {
+    const ids: string[] = []
+    for (const exam of examsQuery.data ?? []) {
+      const result = completedByExam.get(exam.id)
+      const retest = retestByExam.get(exam.id)
+      if (result || retest === 'PENDING' || retest === 'APPROVED') continue
+      ids.push(exam.id)
+    }
+    return ids
+  }, [examsQuery.data, completedByExam, retestByExam])
+
+  const statusesQuery = useQuery({
+    queryKey: ['exam-center-statuses', statusIds.join('|')],
+    queryFn: async () => {
+      const map: Record<string, ExamAccessStatus> = {}
+      await Promise.allSettled(statusIds.map(async id => {
+        try { map[id] = (await examApi.attemptStatus(id)).data.data.accessStatus } catch { }
+      }))
+      return map
+    },
+    enabled: statusIds.length > 0,
+    retry: 1,
+  })
+
   const isLoading = examsQuery.isPending || resultsQuery.isPending
   const isError = examsQuery.isError || resultsQuery.isError
 
   const exams = useMemo(() => {
     if (!examsQuery.data) return []
     return examsQuery.data
-      .map(exam => {
+      .map<{
+        id: string
+        title: string
+        subject: string
+        duration: number
+        startAt?: string
+        endAt?: string
+        isCompleted: boolean
+        result: Result | undefined
+        percentage: number | null
+        retestStatus: string | null
+        room: ExamRoom | null
+        accessStatus: ExamAccessStatus
+      }>(exam => {
         const result = completedByExam.get(exam.id)
         const retestStatus = retestByExam.get(exam.id) ?? null
         const isCompleted = Boolean(result)
         const percentage = result && result.total > 0 ? Math.round((result.score * 10000) / result.total) / 100 : null
-        return { ...exam, isCompleted, result, percentage, retestStatus }
+        return { ...exam, isCompleted, result, percentage, retestStatus, room: roomByExam.get(exam.id) ?? null, accessStatus: statusesQuery.data?.[exam.id] ?? 'ELIGIBLE' }
       })
       .filter(exam => {
         const matchesSearch = !search || exam.title.toLowerCase().includes(search.toLowerCase()) || exam.subject.toLowerCase().includes(search.toLowerCase())
@@ -204,11 +257,11 @@ function StudentExams() {
         return matchesSearch && matchesFilter
       })
       .sort((a, b) => (a.isCompleted ? 1 : 0) - (b.isCompleted ? 1 : 0))
-  }, [examsQuery.data, completedByExam, retestByExam, search, filter])
+  }, [examsQuery.data, completedByExam, roomByExam, retestByExam, statusesQuery.data, search, filter])
 
   return (
     <>
-      <Header title="Exam center" description="Review assigned assessments, start when you are ready, and track your progress." />
+      <Header title="Exam center" description="Review assigned assessments, join exam rooms, and track your progress." />
       <div className="mb-5 flex justify-end">
         <button type="button" onClick={() => navigate('/student/exams/join')} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98]"><DoorOpen size={16}/> Join exam room</button>
       </div>
@@ -244,7 +297,19 @@ function StudentExams() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-medium text-primary">{exam.subject}</p>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${exam.isCompleted ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'}`}>{exam.isCompleted ? 'Completed' : 'Available'}</span>
+                      {exam.isCompleted ? (
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">Completed</span>
+                      ) : exam.room?.status === 'ACTIVE' ? (
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">Room in progress</span>
+                      ) : exam.room?.status === 'WAITING' ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600">In waiting room</span>
+                      ) : exam.accessStatus === 'SUSPENDED' ? (
+                        <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">Suspended</span>
+                      ) : exam.retestStatus === 'PENDING' || exam.accessStatus === 'RETEST_PENDING' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600"><Clock3 size={10}/>Retest pending</span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Available</span>
+                      )}
                     </div>
                     <h2 className="mt-2 truncate font-semibold">{exam.title}</h2>
                     <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -265,28 +330,52 @@ function StudentExams() {
                     <>
                       <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
                         onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>View Instructions</button>
-                      <button type="button"
-                        className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
-                        onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>
-                        Start <ChevronRight size={14} />
-                      </button>
+                      {exam.retestStatus === 'PENDING' || exam.accessStatus === 'RETEST_PENDING' ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground"><Clock3 size={14}/>Retest pending</span>
+                      ) : exam.accessStatus === 'SUSPENDED' || exam.retestStatus === 'REJECTED' || exam.accessStatus === 'RETEST_REJECTED' ? (
+                        <button type="button" disabled={retestMutation.isPending && retestMutation.variables === exam.id}
+                          className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98] disabled:opacity-50"
+                          onClick={() => retestMutation.mutate(exam.id)}>
+                          <RotateCcw size={14} />{retestMutation.isPending && retestMutation.variables === exam.id ? 'Requesting...' : 'Request Retest'}
+                        </button>
+                      ) : exam.room?.status === 'ACTIVE' ? (
+                        <button type="button" className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
+                          onClick={() => navigate(`/student/exams/room/${exam.room!.roomId}`)}>Enter Exam Room <ChevronRight size={14}/></button>
+                      ) : exam.room?.status === 'WAITING' ? (
+                        <button type="button" className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
+                          onClick={() => navigate(`/student/exams/room/${exam.room!.roomId}`)}>Enter Waiting Room <ChevronRight size={14}/></button>
+                      ) : (
+                        <button type="button"
+                          className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
+                          onClick={() => navigate('/student/exams/join')}>
+                          Join Exam Room <ChevronRight size={14} />
+                        </button>
+                      )}
                     </>
                   ) : (
                     <>
                       <button type="button" className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98]"
                         onClick={() => navigate(`/student/exams/${exam.id}/result`)}>View Result</button>
-                      {exam.retestStatus === null || exam.retestStatus === 'REJECTED' ? (
+                      {exam.retestStatus === 'APPROVED' ? (
+                        exam.room?.status === 'ACTIVE' ? (
+                          <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
+                            onClick={() => navigate(`/student/exams/room/${exam.room!.roomId}`)}><Check size={14} className="text-emerald-500"/>Enter Exam Room</button>
+                        ) : exam.room?.status === 'WAITING' ? (
+                          <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
+                            onClick={() => navigate(`/student/exams/room/${exam.room!.roomId}`)}><Check size={14} className="text-emerald-500"/>Enter Waiting Room</button>
+                        ) : (
+                          <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
+                            onClick={() => navigate('/student/exams/join')}><Check size={14} className="text-emerald-500"/>Join Exam Room</button>
+                        )
+                      ) : exam.retestStatus === 'PENDING' ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground"><Clock3 size={14}/>Retest pending</span>
+                      ) : exam.retestStatus === null || exam.retestStatus === 'REJECTED' ? (
                         <button type="button" disabled={retestMutation.isPending && retestMutation.variables === exam.id}
                           className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98] disabled:opacity-50"
                           onClick={() => retestMutation.mutate(exam.id)}>
                           <RotateCcw size={14} />{retestMutation.isPending && retestMutation.variables === exam.id ? 'Requesting...' : 'Request Retest'}
                         </button>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">
-                          {exam.retestStatus === 'PENDING' && <><Clock3 size={14} />Retest pending</>}
-                          {exam.retestStatus === 'APPROVED' && <><Check size={14} className="text-emerald-500" />Retest approved</>}
-                        </span>
-                      )}
+                      ) : null}
                     </>
                   )}
                 </div>
@@ -627,9 +716,86 @@ function RealAuth({ mode }: { mode: 'login' | 'register' }) {
 }
 
 function RetestRequests({ admin = false }: { admin?: boolean }) {
+  const toast = useToast()
   const query = useQuery({ queryKey: [admin ? 'admin-retests' : 'my-retests'], queryFn: async () => (await (admin ? retestApi.admin() : retestApi.mine())).data.data, retry: 1 })
-  const review = useMutation({ mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' }) => retestApi.review(id, status), onSuccess: () => query.refetch() })
-  return <><Header title={admin ? 'Retest requests' : 'Retest requests'} description={admin ? 'Review student requests securely.' : 'Track your requests for another attempt.'} /><Card><div className="flex flex-col gap-3" aria-live="polite">{query.isPending ? <p role="status">Loading requests...</p> : query.isError ? <p role="alert">Unable to load requests.</p> : query.data?.length ? query.data.map((item) => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"><div><p className="font-medium">{item.examTitle}</p><p className="text-sm text-muted-foreground">{item.status} · {new Date(item.requestedAt).toLocaleDateString()}</p></div>{admin && item.status === 'PENDING' && <div className="flex gap-2"><button type="button" disabled={review.isPending} onClick={() => review.mutate({ id: item.id, status: 'APPROVED' })} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Approve</button><button type="button" disabled={review.isPending} onClick={() => review.mutate({ id: item.id, status: 'REJECTED' })} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Reject</button></div>}</div>) : <p className="text-sm text-muted-foreground">No retest requests yet.</p>}</div></Card></>
+  const [filter, setFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'>(admin ? 'PENDING' : 'ALL')
+  const [pendingReview, setPendingReview] = useState<{ request: RetestRequest; status: 'APPROVED' | 'REJECTED' } | null>(null)
+  const review = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' }) => retestApi.review(id, status),
+    onSuccess: () => { toast.success(pendingReview?.status === 'APPROVED' ? 'Retest approved.' : 'Retest rejected.'); setPendingReview(null); query.refetch() },
+    onError: (error: any) => {
+      const msg: string | undefined = error?.response?.data?.message
+      if (error?.response?.status === 409) toast.error(msg || 'This request has already been reviewed.')
+      else toast.error(msg || 'Unable to review this request. Please try again.')
+      setPendingReview(null)
+      query.refetch()
+    },
+  })
+  const filtered = useMemo(() => {
+    if (admin && filter === 'PENDING') return (query.data ?? []).filter(item => item.status === 'PENDING')
+    if (filter === 'ALL') return query.data ?? []
+    return (query.data ?? []).filter(item => item.status === filter)
+  }, [query.data, filter, admin])
+  const statusChip = (status: string) => {
+    if (status === 'APPROVED') return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600"><Check size={12}/>Approved</span>
+    if (status === 'REJECTED') return <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"><X size={12}/>Rejected</span>
+    return <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600"><Clock3 size={12}/>Pending</span>
+  }
+  return <>
+    <Header title="Retest requests" description={admin ? 'Review and respond to student requests for another attempt.' : 'Track your requests for another attempt.'} />
+    <Card>
+      {admin && (
+        <div className="mb-5 flex gap-1" role="tablist" aria-label="Filter retest requests">
+          {(['PENDING', 'APPROVED', 'REJECTED', 'ALL'] as const).map(tab => (
+            <button key={tab} type="button" role="tab" aria-selected={filter === tab}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${filter === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              onClick={() => setFilter(tab)}>
+              {tab === 'ALL' ? 'All' : tab === 'PENDING' ? 'Pending' : tab === 'APPROVED' ? 'Approved' : 'Rejected'}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-col gap-3" aria-live="polite">
+        {query.isPending ? <p role="status">Loading requests...</p>
+          : query.isError ? <p role="alert">Unable to load requests.</p>
+          : filtered.length ? filtered.map((item: RetestRequest) => (
+            <div key={item.id} className="rounded-xl border border-border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium">{item.examTitle}</p>
+                  <p className="text-sm text-muted-foreground">{admin && item.studentName ? `${item.studentName} · ` : ''}{new Date(item.requestedAt).toLocaleString()}</p>
+                </div>
+                {statusChip(item.status)}
+              </div>
+              <div className="mt-3 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                <div><p className="text-xs text-muted-foreground/80">Student</p><p className="mt-0.5 font-medium text-foreground">{item.studentName || '—'}</p></div>
+                <div><p className="text-xs text-muted-foreground/80">Exam</p><p className="mt-0.5 font-medium text-foreground">{item.examTitle || '—'}</p></div>
+                <div><p className="text-xs text-muted-foreground/80">Reviewed</p><p className="mt-0.5 font-medium text-foreground">{item.reviewedAt ? new Date(item.reviewedAt).toLocaleString() : 'Not reviewed'}{item.reviewedBy ? ` by ${item.reviewedBy}` : ''}</p></div>
+                <div><p className="text-xs text-muted-foreground/80">Reason</p><p className="mt-0.5 font-medium text-foreground">{item.reason || '—'}</p></div>
+              </div>
+              {admin && item.status === 'PENDING' && (
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
+                  <button type="button" disabled={review.isPending} onClick={() => setPendingReview({ request: item, status: 'APPROVED' })} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98] disabled:opacity-50"><Check size={14}/>Approve</button>
+                  <button type="button" disabled={review.isPending} onClick={() => setPendingReview({ request: item, status: 'REJECTED' })} className="flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/10 active:scale-[.98] disabled:opacity-50"><X size={14}/>Reject</button>
+                </div>
+              )}
+            </div>
+          )) : <p className="text-sm text-muted-foreground">No retest requests {filter === 'PENDING' ? 'awaiting review' : 'match this filter'}.</p>}
+      </div>
+      <ConfirmDialog
+        open={Boolean(pendingReview)}
+        title={pendingReview?.status === 'APPROVED' ? 'Approve retest request' : 'Reject retest request'}
+        description={pendingReview?.status === 'APPROVED'
+          ? `Approve ${pendingReview?.request.studentName || 'this student'}'s retest request for "${pendingReview?.request.examTitle || 'this exam'}". They will be able to attempt it again through an exam room.`
+          : `Reject ${pendingReview?.request.studentName || 'this student'}'s retest request for "${pendingReview?.request.examTitle || 'this exam'}"? They will not be able to retake this exam unless you approve a later request.`}
+        confirmLabel={pendingReview?.status === 'APPROVED' ? 'Approve' : 'Reject'}
+        busy={review.isPending}
+        destructive={pendingReview?.status === 'REJECTED'}
+        onCancel={() => setPendingReview(null)}
+        onConfirm={() => { if (pendingReview) review.mutate({ id: pendingReview.request.id, status: pendingReview.status }) }}
+      />
+    </Card>
+  </>
 }
 
 function AuthGateway() {
@@ -670,6 +836,7 @@ function App() {
       <Route path="/student/history" element={<Protected roles={['STUDENT']}><HistoryEnhanced /></Protected>} />
       <Route path="/student/retest-requests" element={<Protected roles={['STUDENT']}><RetestRequests /></Protected>} />
       <Route path="/admin/retest-requests" element={<Protected roles={['ADMIN']}><RetestRequests admin /></Protected>} />
+      <Route path="/admin/retests" element={<Protected roles={['ADMIN']}><RetestRequests admin /></Protected>} />
       <Route path="/teacher/dashboard" element={<Protected roles={['TEACHER']}><TeacherCommandCenter /></Protected>} />
       <Route path="/teacher/exams" element={<Protected roles={['TEACHER', 'ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/teacher/exams/create" element={<Protected roles={['TEACHER', 'ADMIN']}><CreateExam /></Protected>} />

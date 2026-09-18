@@ -1,12 +1,15 @@
 package com.examora.service;
 
+import com.examora.dto.ProctorUpdate;
 import com.examora.dto.ProctorDtos.ProctorEventDto;
 import com.examora.dto.ProctorDtos.ProctorStudentDto;
 import com.examora.dto.ProctorDtos.RiskLevel;
-import com.examora.dto.ProctorUpdate;
+import com.examora.dto.ProctorDtos.WarningLevel;
 import com.examora.model.Exam;
+import com.examora.model.ExamAccessStatus;
 import com.examora.model.ExamAttempt;
 import com.examora.model.User;
+import com.examora.repository.ExamAccessRepository;
 import com.examora.repository.ExamAttemptRepository;
 import com.examora.repository.ExamRepository;
 import com.examora.repository.ProctorRepository;
@@ -38,21 +41,23 @@ public class ProctorPublishService {
     private final ExamAttemptRepository attemptRepository;
     private final ProctorRepository proctorRepository;
     private final UserRepository userRepository;
+    private final ExamAccessRepository accessRepository;
     private final AtomicLong sequenceGenerator = new AtomicLong(0);
 
     public ProctorPublishService(SimpMessagingTemplate messaging, ExamRepository examRepository,
                                   ExamAttemptRepository attemptRepository, ProctorRepository proctorRepository,
-                                  UserRepository userRepository) {
+                                  UserRepository userRepository, ExamAccessRepository accessRepository) {
         this.messaging = messaging;
         this.examRepository = examRepository;
         this.attemptRepository = attemptRepository;
         this.proctorRepository = proctorRepository;
         this.userRepository = userRepository;
+        this.accessRepository = accessRepository;
     }
 
     public void publishLifecycle(Exam exam, ExamAttempt attempt, User student, String status) {
         ProctorUpdate update = buildUpdate(exam.id(), attempt.id(), status, student);
-        messaging.convertAndSend("/topic/exams/" + exam.id() + "/activity", update);
+        dispatch(update);
     }
 
     public void publishAfterEventBatch(String attemptId) {
@@ -63,7 +68,7 @@ public class ProctorPublishService {
         User student = userRepository.findById(attempt.studentId()).orElse(null);
         if (student == null) return;
         ProctorUpdate update = buildUpdate(exam.id(), attempt.id(), attempt.status(), student);
-        messaging.convertAndSend("/topic/exams/" + exam.id() + "/activity", update);
+        dispatch(update);
     }
 
     public void publishExpired(ExamAttempt attempt) {
@@ -72,7 +77,14 @@ public class ProctorPublishService {
         User student = userRepository.findById(attempt.studentId()).orElse(null);
         if (student == null) return;
         ProctorUpdate update = buildUpdate(exam.id(), attempt.id(), "EXPIRED", student);
-        messaging.convertAndSend("/topic/exams/" + exam.id() + "/activity", update);
+        dispatch(update);
+    }
+
+    private void dispatch(ProctorUpdate update) {
+        messaging.convertAndSend("/topic/exams/" + update.examId() + "/activity", update);
+        if (update.student() != null && update.student().id() != null) {
+            messaging.convertAndSendToUser(update.student().id(), "/queue/proctor", update);
+        }
     }
 
     private ProctorUpdate buildUpdate(String examId, String attemptId, String status, User student) {
@@ -80,6 +92,10 @@ public class ProctorPublishService {
         RiskScore risk = riskOf(events);
         ProctorEventDto latestEvent = events.isEmpty() ? null : toDto(events.getFirst());
         ProctorStudentDto studentDto = new ProctorStudentDto(student.id(), student.name(), student.email());
+        int warningCount = attemptRepository.warningCount(attemptId).orElse(0);
+        WarningLevel warningLevel = WarningLevel.fromWarningCount(warningCount);
+        ExamAccessStatus accessStatus = accessRepository.findStatus(student.id(), examId)
+                .orElse(ExamAccessStatus.ELIGIBLE);
         return new ProctorUpdate(
                 examId,
                 attemptId,
@@ -90,7 +106,10 @@ public class ProctorPublishService {
                 latestEvent,
                 events.size(),
                 sequenceGenerator.incrementAndGet(),
-                Instant.now());
+                Instant.now(),
+                warningCount,
+                warningLevel,
+                accessStatus);
     }
 
     private RiskScore riskOf(List<ProctorEventRow> events) {

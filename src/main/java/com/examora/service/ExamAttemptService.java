@@ -7,18 +7,23 @@ import com.examora.dto.ExamDtos.ExamSubmissionRequest;
 import com.examora.dto.ExamDtos.ExamSubmissionResponse;
 import com.examora.dto.ExamDtos.QuestionReviewDto;
 import com.examora.dto.ExamDtos.StartExamResponse;
+import com.examora.dto.ExamDtos.StudentAttemptStatusDto;
 import com.examora.dto.ExamDtos.SubmittedAnswer;
+import com.examora.dto.ProctorDtos.WarningLevel;
 import com.examora.exception.ApiException;
 import com.examora.model.Answer;
 import com.examora.model.Exam;
 import com.examora.model.ExamAttempt;
+import com.examora.model.ExamAccessStatus;
 import com.examora.model.Question;
 import com.examora.model.QuestionOption;
 import com.examora.model.Result;
 import com.examora.model.Role;
 import com.examora.model.User;
 import com.examora.repository.AnswerRepository;
+import com.examora.repository.ExamAccessRepository;
 import com.examora.repository.ExamRepository;
+import com.examora.repository.ExamRoomRepository;
 import com.examora.repository.ExamAttemptRepository;
 import com.examora.repository.QuestionOptionRepository;
 import com.examora.repository.QuestionRepository;
@@ -47,6 +52,8 @@ public class ExamAttemptService {
     private final AnswerRepository answerRepository;
     private final ResultRepository resultRepository;
     private final ExamAttemptRepository attemptRepository;
+    private final ExamAccessRepository accessRepository;
+    private final ExamRoomRepository examRoomRepository;
     private final ActivityService activityService;
     private final RetestRequestService retestRequestService;
     private final QuestionGradingService gradingService;
@@ -59,6 +66,8 @@ public class ExamAttemptService {
             AnswerRepository answerRepository,
             ResultRepository resultRepository,
             ExamAttemptRepository attemptRepository,
+            ExamAccessRepository accessRepository,
+            ExamRoomRepository examRoomRepository,
             ActivityService activityService,
             RetestRequestService retestRequestService,
             QuestionGradingService gradingService,
@@ -69,6 +78,8 @@ public class ExamAttemptService {
         this.answerRepository = answerRepository;
         this.resultRepository = resultRepository;
         this.attemptRepository = attemptRepository;
+        this.accessRepository = accessRepository;
+        this.examRoomRepository = examRoomRepository;
         this.activityService = activityService;
         this.retestRequestService = retestRequestService;
         this.gradingService = gradingService;
@@ -88,6 +99,8 @@ public class ExamAttemptService {
     public StartExamResponse start(String examId, User student) {
         requireStudent(student);
         Exam exam = requireAvailableExam(examId);
+        requireStartEligible(exam, student);
+        requireRoomForNewAttempt(exam, student);
         ExamAttempt attempt = resolveAttempt(exam, student);
         activityService.student(student, "EXAM_STARTED", "You started “" + exam.title() + "”.");
         activityService.admin("EXAM_STARTED", student.name() + " started exam “" + exam.title() + "”.");
@@ -150,6 +163,24 @@ public class ExamAttemptService {
         long remainingSeconds = Math.max(0, attempt.expiresAt().getEpochSecond() - Instant.now().getEpochSecond());
         return new AttemptProgressDto(attempt.id(), exam.id(), attempt.status(), attempt.startedAt().toString(),
                 attempt.expiresAt().toString(), remainingSeconds, answerRepository.findValuesByAttempt(attempt.id()));
+    }
+
+    public StudentAttemptStatusDto getStudentAttemptStatus(String examId, User student) {
+        requireStudent(student);
+        Exam exam = requireAvailableExam(examId);
+        ExamAccessStatus accessStatus = accessRepository.findStatus(student.id(), exam.id())
+                .orElse(ExamAccessStatus.ELIGIBLE);
+        ExamAttempt attempt = attemptRepository.findLatest(exam.id(), student.id()).orElse(null);
+        int warningCount = attempt == null ? 0 : attemptRepository.warningCount(attempt.id()).orElse(0);
+        boolean hasResult = resultRepository.findByUserIdAndExamId(student.id(), exam.id()).isPresent();
+        return new StudentAttemptStatusDto(
+                exam.id(),
+                attempt == null ? null : attempt.id(),
+                attempt == null ? null : attempt.status(),
+                warningCount,
+                WarningLevel.fromWarningCount(warningCount),
+                accessStatus,
+                hasResult);
     }
 
     public ExamResultReviewDto getStudentResultReview(String examId, User student) {
@@ -353,6 +384,22 @@ public class ExamAttemptService {
     }
 
     private ExamAttempt resolveAttempt(Exam exam, User student) {
+        requireStartEligible(exam, student);
+        ExamAttempt active = attemptRepository.findActive(exam.id(), student.id()).orElse(null);
+        if (active != null) {
+            if (Instant.now().isBefore(active.expiresAt())) return active;
+            attemptRepository.markExpired(active.id());
+            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
+        }
+        ExamAttempt nextAttempt = createNextAttempt(exam, student);
+        if (accessRepository.findStatus(student.id(), exam.id()).orElse(ExamAccessStatus.ELIGIBLE)
+                == ExamAccessStatus.RETEST_APPROVED) {
+            accessRepository.consumeRetestApproval(student.id(), exam.id());
+        }
+        return nextAttempt;
+    }
+
+    private void requireStartEligible(Exam exam, User student) {
         Instant now = Instant.now();
         if (exam.startAt() != null && now.isBefore(exam.startAt())) {
             throw new ApiException(HttpStatus.CONFLICT, "This exam has not started yet.");
@@ -360,13 +407,29 @@ public class ExamAttemptService {
         if (exam.endAt() != null && !now.isBefore(exam.endAt())) {
             throw new ApiException(HttpStatus.CONFLICT, "This exam has ended.");
         }
-        ExamAttempt active = attemptRepository.findActive(exam.id(), student.id()).orElse(null);
-        if (active != null) {
-            if (now.isBefore(active.expiresAt())) return active;
-            attemptRepository.markExpired(active.id());
-            throw new ApiException(HttpStatus.CONFLICT, "This exam attempt has expired.");
+        ExamAccessStatus access = accessRepository.findStatus(student.id(), exam.id())
+                .orElse(ExamAccessStatus.ELIGIBLE);
+        if (access == ExamAccessStatus.SUSPENDED) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam has been suspended for this student due to proctoring violations.");
         }
-        return createNextAttempt(exam, student);
+        if (access == ExamAccessStatus.RETEST_PENDING) {
+            throw new ApiException(HttpStatus.CONFLICT, "This exam is locked pending review of the retest request.");
+        }
+        if (access == ExamAccessStatus.RETEST_REJECTED) {
+            throw new ApiException(HttpStatus.CONFLICT, "The retest request for this exam was rejected.");
+        }
+    }
+
+    private void requireRoomForNewAttempt(Exam exam, User student) {
+        boolean hasUnexpiredActive = attemptRepository.findActive(exam.id(), student.id())
+                .map(active -> Instant.now().isBefore(active.expiresAt()))
+                .orElse(false);
+        if (hasUnexpiredActive) {
+            return;
+        }
+        if (examRoomRepository.findActiveRoomForStudent(exam.id(), student.id()).isEmpty()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "This exam must be started through an active exam room.");
+        }
     }
 
     private ExamAttempt createNextAttempt(Exam exam, User student) {
