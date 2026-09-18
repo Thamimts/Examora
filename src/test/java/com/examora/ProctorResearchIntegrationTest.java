@@ -209,7 +209,7 @@ class ProctorResearchIntegrationTest {
         String experimentId = createExperiment("Conditioned study");
         String token = login("research-admin@example.com", "admin123");
         String sampleNormal = createUnlinkedSampleWithCondition(experimentId, "lighting", "NORMAL", token, 0);
-        String sampleLow = createUnlinkedSampleWithCondition(experimentId, "lighting", "LOW", token, 2);
+        String sampleLow = createUnlinkedSampleWithCondition(experimentId, "lighting", "LOW", token, 15);
         review(sampleNormal, "NORMAL", token);
         review(sampleLow, "NORMAL", token);
 
@@ -290,18 +290,24 @@ class ProctorResearchIntegrationTest {
         String sampleId = createSample(experimentId, attemptId, BASE.toString(), BASE.plusSeconds(10).toString(),
                 "", token);
         review(sampleId, "NORMAL", token);
+        int warningsBefore = warningCount(attemptId) + 3;
+        jdbcTemplate.update("update exam_attempts set warning_count = ? where id = ?", warningsBefore, attemptId);
 
-        int warningsBefore = warningCount(attemptId);
+        int warningsAtStart = warningCount(attemptId);
         String statusBefore = attemptStatus(attemptId);
         String accessBefore = accessStatus("research-student-1", EXAM);
+        java.time.Instant terminatedBefore = terminatedAt(attemptId);
+        String terminatedReasonBefore = terminatedReason(attemptId);
 
         mockMvc.perform(get("/api/proctor/research/experiments/" + experimentId + "/evaluation")
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isOk());
 
-        assertThat(warningCount(attemptId)).isEqualTo(warningsBefore);
+        assertThat(warningCount(attemptId)).isEqualTo(warningsAtStart);
         assertThat(attemptStatus(attemptId)).isEqualTo(statusBefore);
         assertThat(accessStatus("research-student-1", EXAM)).isEqualTo(accessBefore);
+        assertThat(terminatedAt(attemptId)).isEqualTo(terminatedBefore);
+        assertThat(terminatedReason(attemptId)).isEqualTo(terminatedReasonBefore);
         assertThat(accessBefore).isEqualTo(ExamAccessStatus.ELIGIBLE.name());
     }
 
@@ -323,6 +329,224 @@ class ProctorResearchIntegrationTest {
                 .andExpect(jsonPath("$.data.latency.medianMs").value(closeTo(3000.0, 1e-9)))
                 .andExpect(jsonPath("$.data.bandwidth.measuredCount").value(1))
                 .andExpect(jsonPath("$.data.bandwidth.meanDataMinimizationRatio").value(closeTo(0.8, 1e-9)));
+    }
+
+    @Test
+    void sampleRegistrationCarriesScenarioAndMeasuredLatency() throws Exception {
+        String experimentId = createExperiment("Carrier study");
+        String token = login("research-admin@example.com", "admin123");
+
+        String json = mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/samples")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"startedAt\":\"" + BASE + "\",\"endedAt\":\"" + BASE.plusSeconds(10)
+                                + "\",\"scenario\":\"TAB_SWITCH\",\"conditions\":{\"lighting\":\"NORMAL\"},"
+                                + "\"measuredLatencyMs\":1200}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.scenario").value("TAB_SWITCH"))
+                .andExpect(jsonPath("$.data.startedAt").value(BASE.toString()))
+                .andExpect(jsonPath("$.data.endedAt").value(BASE.plusSeconds(10).toString()))
+                .andExpect(jsonPath("$.data.measuredLatencyMs").value(1200))
+                .andReturn().getResponse().getContentAsString();
+        String sampleId = objectMapper.readTree(json).at("/data/id").asText();
+
+        Long stored = jdbcTemplate.queryForObject(
+                "select measured_latency_ms from research_samples where id = ?", Long.class, sampleId);
+        assertThat(stored).isEqualTo(1200L);
+        String scenario = jdbcTemplate.queryForObject(
+                "select scenario from research_samples where id = ?", String.class, sampleId);
+        assertThat(scenario).isEqualTo("TAB_SWITCH");
+    }
+
+    @Test
+    void invalidScenarioAndNegativeMeasuredLatencyAreRejected() throws Exception {
+        String experimentId = createExperiment("Rejection study");
+        String token = login("research-admin@example.com", "admin123");
+
+        mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/samples")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"windowStart\":\"" + BASE + "\",\"windowEnd\":\"" + BASE.plusSeconds(10)
+                                + "\",\"scenario\":\"INVENTED\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/samples")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"windowStart\":\"" + BASE + "\",\"windowEnd\":\"" + BASE.plusSeconds(10)
+                                + "\",\"measuredLatencyMs\":-5}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void overlappingWindowsOnTheSameAttemptAreRejected() throws Exception {
+        String attemptId = insertAttempt("research-at-20", BASE.minusSeconds(30), BASE.plusSeconds(30));
+        String experimentId = createExperiment("Overlap attempt study");
+        String token = login("research-admin@example.com", "admin123");
+        createSample(experimentId, attemptId, BASE.toString(), BASE.plusSeconds(10).toString(), "", token);
+
+        mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/samples")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\"" + attemptId + "\",\"windowStart\":\""
+                                + BASE.plusSeconds(5) + "\",\"windowEnd\":\"" + BASE.plusSeconds(15) + "\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void evaluateEndpointIsAvailableViaGetAndPost() throws Exception {
+        String experimentId = createExperiment("Endpoint study");
+        String token = login("research-admin@example.com", "admin123");
+        createUnlinkedSample(experimentId, token);
+
+        mockMvc.perform(get("/api/proctor/research/experiments/" + experimentId + "/evaluate")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalSamples").value(1))
+                .andExpect(jsonPath("$.data.datasetVersion").value("dataset-v1"))
+                .andExpect(jsonPath("$.data.evaluatedAt").isNotEmpty())
+                .andExpect(jsonPath("$.data.dataQuality.registered").value(1));
+
+        mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/evaluate")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalSamples").value(1));
+    }
+
+    @Test
+    void controlledDatasetEvaluationReportsDataQualityAndScenarios() throws Exception {
+        String attemptId = insertAttempt("research-at-21", BASE.minusSeconds(30), BASE.plusSeconds(30));
+        insertEvent("research-ev-21", attemptId, "MULTIPLE_FACES", "CLIENT_AI", 0.9, BASE.plusSeconds(3));
+        String experimentId = createExperiment("Controlled dataset");
+        String token = login("research-admin@example.com", "admin123");
+
+        String s1 = createSample(experimentId, attemptId, BASE.toString(), BASE.plusSeconds(10).toString(),
+                "\"scenario\":\"NORMAL\",\"conditions\":{\"lighting\":\"NORMAL\"},"
+                        + "\"rawMediaBytes\":1000,\"signalBytes\":200,\"measuredLatencyMs\":2500", token);
+        String s2 = createSample(experimentId, attemptId, BASE.plusSeconds(15).toString(), BASE.plusSeconds(25).toString(),
+                "\"scenario\":\"TAB_SWITCH\",\"conditions\":{\"network\":\"GOOD\"},\"measuredLatencyMs\":800", token);
+        String s3 = createUnlinkedSampleWithExtra(experimentId, 30,
+                "\"scenario\":\"MULTIPLE_FACES\",\"conditions\":{\"cameraQuality\":\"HIGH\"}", token);
+        String s4 = createUnlinkedSampleWithExtra(experimentId, 45,
+                "\"scenario\":\"CAMERA_OFF\",\"conditions\":{\"cameraAngle\":\"OBSTRUCTED\"}", token);
+        String s5 = createUnlinkedSampleWithExtra(experimentId, 60, "\"scenario\":\"NORMAL\"", token);
+
+        review(s1, "NORMAL", token);
+        review(s2, "TAB_SWITCH", token);
+        review(s3, "ANOMALY", token);
+        String token2 = login("research-admin2@example.com", "admin234");
+        mockMvc.perform(post("/api/proctor/research/samples/" + s4 + "/review")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"label\":\"ANOMALY\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/proctor/research/samples/" + s4 + "/review")
+                        .header("Authorization", bearer(token2))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"label\":\"NORMAL\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.label").value((Object) null));
+
+        mockMvc.perform(get("/api/proctor/research/experiments/" + experimentId + "/evaluate")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalSamples").value(5))
+                .andExpect(jsonPath("$.data.evaluatedSamples").value(3))
+                .andExpect(jsonPath("$.data.reviewedSamples").value(3))
+                .andExpect(jsonPath("$.data.unevaluatedSamples").value(2))
+                .andExpect(jsonPath("$.data.datasetVersion").value("dataset-v1"))
+                .andExpect(jsonPath("$.data.dataQuality.registered").value(5))
+                .andExpect(jsonPath("$.data.dataQuality.evaluable").value(3))
+                .andExpect(jsonPath("$.data.dataQuality.unreviewed").value(1))
+                .andExpect(jsonPath("$.data.dataQuality.tied").value(1))
+                .andExpect(jsonPath("$.data.dataQuality.invalid").value(0))
+                .andExpect(jsonPath("$.data.dataQuality.scenarioGroundTruthAgreement").value(2))
+                .andExpect(jsonPath("$.data.dataQuality.missingSignals").value(1))
+                .andExpect(jsonPath("$.data.dataQuality.missingMeasuredLatency").value(3))
+                .andExpect(jsonPath("$.data.dataQuality.missingBandwidth").value(4))
+                .andExpect(jsonPath("$.data.scenarios").isArray())
+                .andExpect(jsonPath("$.data.scenarios.length()").value(4))
+                .andExpect(jsonPath("$.data.scenarios[0].scenario").value("NORMAL"))
+                .andExpect(jsonPath("$.data.scenarios[0].expectedLabel").value("NORMAL"))
+                .andExpect(jsonPath("$.data.scenarios[0].sampleCount").value(2))
+                .andExpect(jsonPath("$.data.scenarios[0].resolvedCount").value(1))
+                .andExpect(jsonPath("$.data.scenarios[0].agreementCount").value(1));
+    }
+
+    @Test
+    void sampleStoreAcceptsNoDemographicFields() throws Exception {
+        String experimentId = createExperiment("Privacy study");
+        String token = login("research-admin@example.com", "admin123");
+
+        mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/samples")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"windowStart\":\"" + BASE + "\",\"windowEnd\":\"" + BASE.plusSeconds(10)
+                                + "\",\"scenario\":\"NORMAL\",\"studentId\":\"research-student-1\","
+                                + "\"examId\":\"" + EXAM + "\",\"reviewerId\":\"research-admin-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.studentId").doesNotExist())
+                .andExpect(jsonPath("$.data.examId").doesNotExist())
+                .andExpect(jsonPath("$.data.reviewerId").doesNotExist())
+                .andExpect(jsonPath("$.data.attemptId").value((Object) null));
+
+        Integer demographicColumns = jdbcTemplate.queryForObject(
+                "select count(*) from information_schema.columns "
+                        + "where table_name = 'research_samples' "
+                        + "and lower(column_name) in ('student_id', 'exam_id', 'reviewer_id')",
+                Integer.class);
+        assertThat(demographicColumns).isZero();
+    }
+
+    @Test
+    void creatingASampleCopiesNoSignalsIntoResearchTables() throws Exception {
+        String attemptId = insertAttempt("research-at-22", BASE.minusSeconds(30), BASE.plusSeconds(30));
+        insertEvent("research-ev-22", attemptId, "TAB_SWITCH", "BROWSER", null, BASE.plusSeconds(2));
+        int eventsBefore = jdbcTemplate.queryForObject("select count(*) from proctor_events", Integer.class);
+        String experimentId = createExperiment("No copy study");
+        String token = login("research-admin@example.com", "admin123");
+        String sampleId = createSample(experimentId, attemptId, BASE.toString(), BASE.plusSeconds(10).toString(),
+                "\"scenario\":\"TAB_SWITCH\"", token);
+        review(sampleId, "TAB_SWITCH", token);
+
+        assertThat(jdbcTemplate.queryForObject("select count(*) from proctor_events", Integer.class))
+                .isEqualTo(eventsBefore);
+    }
+
+    @Test
+    void windowOutsideAttemptSpanIsCountedInvalidInDataQuality() throws Exception {
+        String attemptId = insertAttempt("research-at-23", BASE.minusSeconds(30), BASE.plusSeconds(30));
+        String experimentId = createExperiment("Span study");
+        String token = login("research-admin@example.com", "admin123");
+
+        // The API would reject this window, so insert directly to test runner invalid-counting.
+        String sampleId = "invalid-span-sample";
+        jdbcTemplate.update(
+                "insert into research_samples (id, experiment_id, attempt_id, window_start, window_end, "
+                        + "scenario, label, metadata, raw_media_bytes, signal_bytes, measured_latency_ms, created_at) "
+                        + "values (?, ?, ?, ?, ?, 'NORMAL', null, '{}', null, null, null, ?)",
+                sampleId, experimentId, attemptId,
+                BASE.plusSeconds(100).toString(), BASE.plusSeconds(110).toString(), Instant.now());
+        review(sampleId, "NORMAL", token);
+
+        mockMvc.perform(get("/api/proctor/research/experiments/" + experimentId + "/evaluate")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dataQuality.invalid").value(1))
+                .andExpect(jsonPath("$.data.dataQuality.evaluable").value(0))
+                .andExpect(jsonPath("$.data.evaluatedSamples").value(0));
+    }
+
+    private String createUnlinkedSampleWithExtra(String experimentId, int offsetSeconds, String extra,
+                                                 String token) throws Exception {
+        String content = "{\"windowStart\":\"" + BASE.plusSeconds(offsetSeconds)
+                + "\",\"windowEnd\":\"" + BASE.plusSeconds(offsetSeconds + 10)
+                + "\"," + extra + "}";
+        String json = mockMvc.perform(post("/api/proctor/research/experiments/" + experimentId + "/samples")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(content))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(json).at("/data/id").asText();
     }
 
     private String createExperiment(String name) throws Exception {
@@ -415,6 +639,17 @@ class ProctorResearchIntegrationTest {
                 "select status from exam_access_state where student_id = ? and exam_id = ?",
                 (rs, i) -> rs.getString("status"), studentId, examId);
         return statuses.isEmpty() ? ExamAccessStatus.ELIGIBLE.name() : statuses.getFirst();
+    }
+
+    private java.time.Instant terminatedAt(String attemptId) {
+        java.sql.Timestamp value = jdbcTemplate.queryForObject(
+                "select terminated_at from exam_attempts where id = ?", java.sql.Timestamp.class, attemptId);
+        return value == null ? null : value.toInstant();
+    }
+
+    private String terminatedReason(String attemptId) {
+        return jdbcTemplate.queryForObject(
+                "select terminated_reason from exam_attempts where id = ?", String.class, attemptId);
     }
 
     private void insertUser(String id, String name, String email, String password, Role role) {
