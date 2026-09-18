@@ -1,5 +1,37 @@
 export type ResearchExperimentStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
 
+export type ResearchScenario =
+  | 'NORMAL'
+  | 'WINDOW_BLUR'
+  | 'TAB_SWITCH'
+  | 'CAMERA_OFF'
+  | 'MULTIPLE_FACES'
+  | 'AUDIO_DETECTED'
+  | 'FULLSCREEN_EXIT'
+  | 'NETWORK_INTERRUPTION'
+
+export const RESEARCH_SCENARIOS: ResearchScenario[] = [
+  'NORMAL',
+  'WINDOW_BLUR',
+  'TAB_SWITCH',
+  'CAMERA_OFF',
+  'MULTIPLE_FACES',
+  'AUDIO_DETECTED',
+  'FULLSCREEN_EXIT',
+  'NETWORK_INTERRUPTION',
+]
+
+export const RESEARCH_SCENARIO_LABELS: Record<ResearchScenario, string> = {
+  NORMAL: 'Normal behavior',
+  WINDOW_BLUR: 'Incidental window blur',
+  TAB_SWITCH: 'Tab switch',
+  CAMERA_OFF: 'Camera turned off',
+  MULTIPLE_FACES: 'Multiple faces visible',
+  AUDIO_DETECTED: 'Unexpected audio detected',
+  FULLSCREEN_EXIT: 'Exited fullscreen',
+  NETWORK_INTERRUPTION: 'Network interruption',
+}
+
 export type ResearchCondition = {
   lighting?: 'NORMAL' | 'LOW' | 'BRIGHT'
   cameraQuality?: 'LOW' | 'MEDIUM' | 'HIGH'
@@ -13,6 +45,7 @@ export interface ResearchExperiment {
   description: string | null
   algorithmVersion: string
   baselineVersion: string
+  datasetVersion: string
   status: ResearchExperimentStatus
   createdAt: string
   createdBy: string | null
@@ -24,10 +57,14 @@ export interface ResearchSample {
   attemptId: string | null
   windowStart: string
   windowEnd: string
+  startedAt: string
+  endedAt: string
+  scenario: ResearchScenario | null
   label: string | null
   conditions: ResearchCondition
   rawMediaBytes: number | null
   signalBytes: number | null
+  measuredLatencyMs: number | null
   reviewCount: number
   createdAt: string
 }
@@ -78,6 +115,29 @@ export interface ResearchConditionEvaluation {
   fusion: ResearchEvaluatorResult
 }
 
+export interface ResearchScenarioOutcome {
+  scenario: ResearchScenario
+  label: string | null
+  expectedLabel: string
+  sampleCount: number
+  resolvedCount: number
+  agreementCount: number
+}
+
+export interface ResearchDataQuality {
+  registered: number
+  evaluable: number
+  unreviewed: number
+  tied: number
+  invalid: number
+  scenarioGroundTruthAgreement: number
+  missingSignals: number
+  missingCondition: number
+  missingMeasuredLatency: number
+  missingBandwidth: number
+  scenarios: ResearchScenarioOutcome[]
+}
+
 export interface ResearchEvaluation {
   experimentId: string
   totalSamples: number
@@ -89,6 +149,10 @@ export interface ResearchEvaluation {
   latency: ResearchLatencyStats
   bandwidth: ResearchBandwidthStats
   conditions: ResearchConditionEvaluation[] | null
+  datasetVersion: string
+  evaluatedAt: string
+  dataQuality: ResearchDataQuality
+  scenarios: ResearchScenarioOutcome[]
 }
 
 export type ResearchConditionKey = keyof ResearchCondition

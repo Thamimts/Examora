@@ -208,3 +208,8 @@ create table if not exists research_reviews (
  constraint uq_research_review_sample_reviewer unique (sample_id, reviewer_id)
 );
 create index if not exists idx_research_reviews_sample on research_reviews (sample_id, reviewed_at desc);
+
+alter table research_experiments add column if not exists dataset_version varchar(40) not null default 'dataset-v1';
+alter table research_samples add column if not exists scenario varchar(40);
+alter table research_samples add column if not exists measured_latency_ms bigint;
+create index if not exists idx_research_samples_experiment_attempt on research_samples (experiment_id, attempt_id, window_start, window_end);

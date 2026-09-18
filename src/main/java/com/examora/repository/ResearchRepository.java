@@ -27,21 +27,22 @@ public class ResearchRepository {
     }
 
     public ResearchExperiment insertExperiment(String name, String description, String algorithmVersion,
-                                               String baselineVersion, String status, String createdBy) {
+                                               String baselineVersion, String datasetVersion, String status,
+                                               String createdBy) {
         String id = UUID.randomUUID().toString();
         Timestamp createdAt = Timestamp.from(Instant.now());
         jdbcTemplate.update(
                 "insert into research_experiments "
-                        + "(id, name, description, algorithm_version, baseline_version, status, created_by, created_at) "
-                        + "values (?, ?, ?, ?, ?, ?, ?, ?)",
-                id, name, description, algorithmVersion, baselineVersion, status, createdBy, createdAt);
-        return new ResearchExperiment(id, name, description, algorithmVersion, baselineVersion, status,
-                createdBy, createdAt.toInstant());
+                        + "(id, name, description, algorithm_version, baseline_version, dataset_version, status, created_by, created_at) "
+                        + "values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, name, description, algorithmVersion, baselineVersion, datasetVersion, status, createdBy, createdAt);
+        return new ResearchExperiment(id, name, description, algorithmVersion, baselineVersion, datasetVersion,
+                status, createdBy, createdAt.toInstant());
     }
 
     public Optional<ResearchExperiment> findExperimentById(String id) {
         List<ResearchExperiment> rows = jdbcTemplate.query(
-                "select id, name, description, algorithm_version, baseline_version, status, created_by, created_at "
+                "select id, name, description, algorithm_version, baseline_version, dataset_version, status, created_by, created_at "
                         + "from research_experiments where id = ?",
                 (rs, rowNum) -> new ResearchExperiment(
                         rs.getString("id"),
@@ -49,6 +50,7 @@ public class ResearchRepository {
                         rs.getString("description"),
                         rs.getString("algorithm_version"),
                         rs.getString("baseline_version"),
+                        rs.getString("dataset_version"),
                         rs.getString("status"),
                         rs.getString("created_by"),
                         toInstant(rs.getTimestamp("created_at"))),
@@ -58,7 +60,7 @@ public class ResearchRepository {
 
     public List<ResearchExperiment> listExperiments() {
         return jdbcTemplate.query(
-                "select id, name, description, algorithm_version, baseline_version, status, created_by, created_at "
+                "select id, name, description, algorithm_version, baseline_version, dataset_version, status, created_by, created_at "
                         + "from research_experiments order by created_at desc",
                 (rs, rowNum) -> new ResearchExperiment(
                         rs.getString("id"),
@@ -66,6 +68,7 @@ public class ResearchRepository {
                         rs.getString("description"),
                         rs.getString("algorithm_version"),
                         rs.getString("baseline_version"),
+                        rs.getString("dataset_version"),
                         rs.getString("status"),
                         rs.getString("created_by"),
                         toInstant(rs.getTimestamp("created_at"))));
@@ -76,38 +79,65 @@ public class ResearchRepository {
     }
 
     public ResearchSample insertSample(String experimentId, String attemptId, String windowStart,
-                                       String windowEnd, String label, Map<String, String> metadata,
-                                       Long rawMediaBytes, Long signalBytes) {
+                                       String windowEnd, String scenario, String label,
+                                       Map<String, String> metadata, Long rawMediaBytes, Long signalBytes,
+                                       Long measuredLatencyMs) {
         String id = UUID.randomUUID().toString();
         Timestamp createdAt = Timestamp.from(Instant.now());
         try {
             jdbcTemplate.update(
                     "insert into research_samples "
-                            + "(id, experiment_id, attempt_id, window_start, window_end, label, metadata, "
-                            + "raw_media_bytes, signal_bytes, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    id, experimentId, attemptId, windowStart, windowEnd, label, writeMetadata(metadata),
-                    rawMediaBytes, signalBytes, createdAt);
+                            + "(id, experiment_id, attempt_id, window_start, window_end, scenario, label, metadata, "
+                            + "raw_media_bytes, signal_bytes, measured_latency_ms, created_at) "
+                            + "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    id, experimentId, attemptId, windowStart, windowEnd, scenario, label, writeMetadata(metadata),
+                    rawMediaBytes, signalBytes, measuredLatencyMs, createdAt);
         } catch (DuplicateKeyException ex) {
             throw new ApiException(HttpStatus.CONFLICT, "a sample already exists for this experiment and window");
         }
-        return new ResearchSample(id, experimentId, attemptId, windowStart, windowEnd, label, metadata,
-                rawMediaBytes, signalBytes, createdAt.toInstant());
+        return new ResearchSample(id, experimentId, attemptId, windowStart, windowEnd, scenario, label, metadata,
+                rawMediaBytes, signalBytes, measuredLatencyMs, createdAt.toInstant());
     }
 
     public Optional<ResearchSample> findSampleById(String id) {
         List<ResearchSample> rows = jdbcTemplate.query(
-                "select id, experiment_id, attempt_id, window_start, window_end, label, metadata, "
-                        + "raw_media_bytes, signal_bytes, created_at from research_samples where id = ?",
+                "select id, experiment_id, attempt_id, window_start, window_end, scenario, label, metadata, "
+                        + "raw_media_bytes, signal_bytes, measured_latency_ms, created_at from research_samples where id = ?",
                 (rs, rowNum) -> mapSample(rs), id);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
     public List<ResearchSample> findSamplesByExperiment(String experimentId, int limit) {
         return jdbcTemplate.query(
-                "select id, experiment_id, attempt_id, window_start, window_end, label, metadata, "
-                        + "raw_media_bytes, signal_bytes, created_at from research_samples "
+                "select id, experiment_id, attempt_id, window_start, window_end, scenario, label, metadata, "
+                        + "raw_media_bytes, signal_bytes, measured_latency_ms, created_at from research_samples "
                         + "where experiment_id = ? order by created_at desc limit ?",
                 (rs, rowNum) -> mapSample(rs), experimentId, limit);
+    }
+
+    /**
+     * Detects a sample whose window overlaps an existing sample of the same experiment and
+     * attempt context (attemptId equal, including both null). Deterministic and bounded.
+     */
+    public boolean hasOverlappingSample(String experimentId, String attemptId, String windowStart, String windowEnd,
+                                        String excludeSampleId) {
+        Integer count;
+        if (attemptId == null) {
+            count = jdbcTemplate.queryForObject(
+                    "select count(*) from research_samples "
+                            + "where experiment_id = ? and attempt_id is null and id <> ? "
+                            + "and window_start < ? and window_end > ?",
+                    Integer.class, experimentId, excludeSampleId == null ? "" : excludeSampleId,
+                    windowEnd, windowStart);
+        } else {
+            count = jdbcTemplate.queryForObject(
+                    "select count(*) from research_samples "
+                            + "where experiment_id = ? and attempt_id = ? and id <> ? "
+                            + "and window_start < ? and window_end > ?",
+                    Integer.class, experimentId, attemptId, excludeSampleId == null ? "" : excludeSampleId,
+                    windowEnd, windowStart);
+        }
+        return count != null && count > 0;
     }
 
     public Map<String, Long> countReviewsByExperiment(String experimentId) {
@@ -159,10 +189,12 @@ public class ResearchRepository {
                 rs.getString("attempt_id"),
                 rs.getString("window_start"),
                 rs.getString("window_end"),
+                rs.getString("scenario"),
                 rs.getString("label"),
                 readMetadata(rs.getString("metadata")),
                 rs.getObject("raw_media_bytes", Long.class),
                 rs.getObject("signal_bytes", Long.class),
+                rs.getObject("measured_latency_ms", Long.class),
                 toInstant(rs.getTimestamp("created_at")));
     }
 
@@ -193,12 +225,14 @@ public class ResearchRepository {
     }
 
     public record ResearchExperiment(String id, String name, String description, String algorithmVersion,
-                                     String baselineVersion, String status, String createdBy, Instant createdAt) {
+                                     String baselineVersion, String datasetVersion, String status,
+                                     String createdBy, Instant createdAt) {
     }
 
     public record ResearchSample(String id, String experimentId, String attemptId, String windowStart,
-                                 String windowEnd, String label, Map<String, String> metadata,
-                                 Long rawMediaBytes, Long signalBytes, Instant createdAt) {
+                                 String windowEnd, String scenario, String label,
+                                 Map<String, String> metadata, Long rawMediaBytes, Long signalBytes,
+                                 Long measuredLatencyMs, Instant createdAt) {
     }
 
     public record ResearchReview(String id, String sampleId, String reviewerId, String label,

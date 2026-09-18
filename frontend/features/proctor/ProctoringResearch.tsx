@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FlaskConical, BarChart3, Clock3, Database, Gauge, Save, Trash2 } from 'lucide-react'
+import { BarChart3, Clock3, Database, FlaskConical, Gauge, Play, Save, ShieldCheck, Trash2 } from 'lucide-react'
 import { Card, Header } from '@/components/shared'
 import { useToast } from '@/components/feedback'
 import { researchApi } from '@/services/researchApi'
@@ -107,6 +107,15 @@ export function ProctoringResearch() {
     onError: () => toast?.error('Unable to create experiment'),
   })
 
+  const runMutation = useMutation({
+    mutationFn: researchApi.runEvaluation,
+    onSuccess: () => {
+      toast?.success('Evaluation refreshed')
+      queryClient.invalidateQueries({ queryKey: ['research-evaluation', experimentId, condition] })
+    },
+    onError: () => toast?.error('Unable to run evaluation'),
+  })
+
   const experiments = useMemo(() => experimentsQuery.data ?? [], [experimentsQuery.data])
   const evaluation = evaluationQuery.data
   const selected = experiments.find(e => e.id === experimentId) ?? null
@@ -173,20 +182,56 @@ export function ProctoringResearch() {
 
       <div className="mt-4 space-y-4">
         {selected && (
-          <Card className="flex flex-wrap items-center gap-4 p-4">
-            <div className="min-w-48">
-              <p className="text-xs text-muted-foreground">Algorithm vs baseline</p>
-              <p className="text-sm font-semibold">
-                {selected.algorithmVersion} <span className="text-muted-foreground">vs</span> {selected.baselineVersion}
-              </p>
-            </div>
-            <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
-              <Metric label="Total samples" value={String(evaluation?.totalSamples ?? 0)} />
-              <Metric label="Evaluated" value={String(evaluation?.evaluatedSamples ?? 0)} />
-              <Metric label="Human-reviewed" value={String(evaluation?.reviewedSamples ?? 0)} />
-              <Metric label="Unevaluable" value={String(evaluation?.unevaluatedSamples ?? 0)} />
-            </div>
-          </Card>
+          <>
+            <Card className="p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-48">
+                  <p className="text-xs text-muted-foreground">Versions</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {selected.datasetVersion}
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {selected.algorithmVersion} vs {selected.baselineVersion}
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {selected.status}
+                    </span>
+                  </div>
+                  {evaluation && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Evaluated {new Date(evaluation.evaluatedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
+                  <Metric label="Total samples" value={String(evaluation?.totalSamples ?? 0)} />
+                  <Metric label="Evaluated" value={String(evaluation?.evaluatedSamples ?? 0)} />
+                  <Metric label="Human-reviewed" value={String(evaluation?.reviewedSamples ?? 0)} />
+                  <Metric label="Unevaluable" value={String(evaluation?.unevaluatedSamples ?? 0)} />
+                </div>
+                <button
+                  onClick={() => runMutation.mutate(experimentId)}
+                  disabled={runMutation.isPending || !selected}
+                  className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                >
+                  <Play size={15} /> {runMutation.isPending ? 'Running…' : 'Evaluate'}
+                </button>
+              </div>
+              {evaluation && evaluation.scenarios.length > 0 && (
+                <div className="mt-3 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">Scenario distribution (controlled dataset)</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {evaluation.scenarios.map(s => (
+                      <span key={s.scenario} className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                        {s.scenario} · {s.sampleCount}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </>
         )}
 
         {evaluation && (evaluation.evaluatedSamples > 0 ? (
@@ -195,6 +240,55 @@ export function ProctoringResearch() {
               <EvaluatorPanel title="Binary baseline" tone="baseline" result={evaluation.baseline} />
               <EvaluatorPanel title="Confidence-aware fusion" tone="fusion" result={evaluation.fusion} />
             </div>
+
+            <Card className="p-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={16} className="text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Data quality & ground truth</h3>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ground truth is the resolved human-review majority; ties and invalid windows are never silently
+                converted or discarded, and counts below are derived from stored research rows.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <Metric label="Registered" value={String(evaluation.dataQuality.registered)} />
+                <Metric label="Evaluable" value={String(evaluation.dataQuality.evaluable)} />
+                <Metric label="Unreviewed" value={String(evaluation.dataQuality.unreviewed)} />
+                <Metric label="Tied" value={String(evaluation.dataQuality.tied)} />
+                <Metric label="Invalid" value={String(evaluation.dataQuality.invalid)} />
+                <Metric label="Scenario agreement" value={String(evaluation.dataQuality.scenarioGroundTruthAgreement)} />
+                <Metric label="Missing signals" value={String(evaluation.dataQuality.missingSignals)} />
+                <Metric label="Missing condition" value={String(evaluation.dataQuality.missingCondition)} />
+                <Metric label="Missing latency" value={String(evaluation.dataQuality.missingMeasuredLatency)} />
+                <Metric label="Missing bandwidth" value={String(evaluation.dataQuality.missingBandwidth)} />
+              </div>
+              {evaluation.scenarios.length > 0 && (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs text-muted-foreground">
+                        <th className="py-2 pr-3">Scenario</th>
+                        <th className="py-2 pr-3">Expected label</th>
+                        <th className="py-2 pr-3">Samples</th>
+                        <th className="py-2 pr-3">Resolved</th>
+                        <th className="py-2 pr-3">Agree</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evaluation.scenarios.map(s => (
+                        <tr key={s.scenario} className="border-b last:border-0">
+                          <td className="py-2 pr-3 font-medium">{s.scenario}{s.label ? ` — ${s.label}` : ''}</td>
+                          <td className="py-2 pr-3">{s.expectedLabel}</td>
+                          <td className="py-2 pr-3">{s.sampleCount}</td>
+                          <td className="py-2 pr-3">{s.resolvedCount}</td>
+                          <td className="py-2 pr-3">{s.agreementCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card className="p-4">

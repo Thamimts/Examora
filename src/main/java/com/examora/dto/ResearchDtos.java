@@ -9,15 +9,19 @@ public final class ResearchDtos {
     private ResearchDtos() {}
 
     public record ExperimentCreateRequest(String name, String description,
-                                          String algorithmVersion, String baselineVersion) {
+                                          String algorithmVersion, String baselineVersion,
+                                          String datasetVersion) {
     }
 
     public record ExperimentStatusRequest(String status) {
     }
 
     public record SampleCreateRequest(String attemptId, String windowStart, String windowEnd,
-                                      String label, Map<String, String> conditions,
-                                      Long rawMediaBytes, Long signalBytes) {
+                                      String startedAt, String endedAt,
+                                      String scenario, String label,
+                                      Map<String, String> conditions,
+                                      Long rawMediaBytes, Long signalBytes,
+                                      Long measuredLatencyMs) {
     }
 
     public record ReviewRequest(String label, Double confidence, String notes) {
@@ -25,13 +29,17 @@ public final class ResearchDtos {
 
     public record ResearchExperimentDto(String id, String name, String description,
                                         String algorithmVersion, String baselineVersion,
-                                        String status, Instant createdAt, String createdBy) {
+                                        String datasetVersion, String status,
+                                        Instant createdAt, String createdBy) {
     }
 
     public record ResearchSampleDto(String id, String experimentId, String attemptId,
-                                    String windowStart, String windowEnd, String label,
+                                    String windowStart, String windowEnd,
+                                    String startedAt, String endedAt,
+                                    String scenario, String label,
                                     Map<String, String> conditions, Long rawMediaBytes,
-                                    Long signalBytes, long reviewCount, Instant createdAt) {
+                                    Long signalBytes, Long measuredLatencyMs,
+                                    long reviewCount, Instant createdAt) {
     }
 
     public record ConfusionDto(long truePositives, long trueNegatives,
@@ -60,10 +68,23 @@ public final class ResearchDtos {
                                          EvaluatorResultDto baseline, EvaluatorResultDto fusion) {
     }
 
+    public record ScenarioOutcomeDto(String scenario, String label, String expectedLabel,
+                                     int sampleCount, int resolvedCount, int agreementCount) {
+    }
+
+    public record DataQualityDto(int registered, int evaluable, int unreviewed, int tied,
+                                 int invalid, int scenarioGroundTruthAgreement,
+                                 int missingSignals, int missingCondition,
+                                 int missingMeasuredLatency, int missingBandwidth,
+                                 List<ScenarioOutcomeDto> scenarios) {
+    }
+
     public record StudyEvaluationDto(String experimentId, int totalSamples, int evaluatedSamples,
                                      int reviewedSamples, int unevaluatedSamples,
                                      EvaluatorResultDto baseline, EvaluatorResultDto fusion,
                                      LatencyStatsDto latency, BandwidthStatsDto bandwidth,
-                                     List<ConditionEvaluationDto> conditions) {
+                                     List<ConditionEvaluationDto> conditions,
+                                     String datasetVersion, String evaluatedAt,
+                                     DataQualityDto dataQuality, List<ScenarioOutcomeDto> scenarios) {
     }
 }

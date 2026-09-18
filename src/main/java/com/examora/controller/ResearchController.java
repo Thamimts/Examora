@@ -91,4 +91,22 @@ public class ResearchController {
         User admin = authService.requireAdmin(authorizationHeader);
         return ApiResponse.ok(researchService.evaluate(admin, experimentId, condition));
     }
+
+    @GetMapping("/experiments/{experimentId}/evaluate")
+    public ApiResponse<StudyEvaluationDto> runEvaluationGet(
+            @PathVariable String experimentId,
+            @RequestParam(required = false) String condition,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchService.evaluate(admin, experimentId, condition));
+    }
+
+    @PostMapping("/experiments/{experimentId}/evaluate")
+    public ApiResponse<StudyEvaluationDto> runEvaluationPost(
+            @PathVariable String experimentId,
+            @RequestBody(required = false) String ignored,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchService.evaluate(admin, experimentId, null));
+    }
 }

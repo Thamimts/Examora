@@ -1,6 +1,6 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
-import type { ResearchCondition, ResearchConditionKey, ResearchEvaluation, ResearchExperiment, ResearchSample } from '@/types/research'
+import type { ResearchCondition, ResearchConditionKey, ResearchEvaluation, ResearchExperiment, ResearchScenario, ResearchSample } from '@/types/research'
 
 export const researchApi = {
   listExperiments: () =>
@@ -11,10 +11,14 @@ export const researchApi = {
     attemptId?: string
     windowStart: string
     windowEnd: string
+    startedAt?: string
+    endedAt?: string
+    scenario?: ResearchScenario
     label?: string
     conditions?: ResearchCondition
     rawMediaBytes?: number
     signalBytes?: number
+    measuredLatencyMs?: number
   }) =>
     api.post<ApiResponse<ResearchSample>>(`/proctor/research/experiments/${experimentId}/samples`, body),
   addReview: (sampleId: string, body: { label: string; confidence?: number; notes?: string }) =>
@@ -23,4 +27,6 @@ export const researchApi = {
     api.get<ApiResponse<ResearchEvaluation>>(`/proctor/research/experiments/${experimentId}/evaluation`, {
       params: condition ? { condition } : undefined,
     }),
+  runEvaluation: (experimentId: string) =>
+    api.post<ApiResponse<ResearchEvaluation>>(`/proctor/research/experiments/${experimentId}/evaluate`),
 }

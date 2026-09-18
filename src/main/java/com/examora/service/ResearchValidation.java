@@ -5,6 +5,9 @@ import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -119,6 +122,80 @@ public final class ResearchValidation {
         if (status == null || !ResearchConfig.EXPERIMENT_STATUSES.contains(status)) {
             throw badRequest("status must be one of: " + String.join(", ", ResearchConfig.EXPERIMENT_STATUSES));
         }
+    }
+
+    public static void validateScenario(String scenario) {
+        if (scenario == null) {
+            return;
+        }
+        if (!ResearchConfig.SCENARIOS.contains(scenario)) {
+            throw badRequest("scenario must be one of: " + String.join(", ", ResearchConfig.SCENARIOS));
+        }
+    }
+
+    public static String scenarioLabel(String scenario) {
+        return scenario == null ? null : ResearchConfig.SCENARIO_LABELS.get(scenario);
+    }
+
+    public static String scenarioExpectedLabel(String scenario) {
+        return scenario;
+    }
+
+    public static boolean scenarioAgrees(String scenario, String resolvedLabel) {
+        return scenario != null && scenario.equals(resolvedLabel);
+    }
+
+    public static void validateMeasuredLatency(Long measuredLatencyMs) {
+        if (measuredLatencyMs != null && measuredLatencyMs < 0) {
+            throw badRequest("measuredLatencyMs must be non-negative");
+        }
+    }
+
+    public static void validateDatasetVersion(String datasetVersion) {
+        if (datasetVersion == null) {
+            return;
+        }
+        if (datasetVersion.isBlank()) {
+            throw badRequest("dataset version must not be blank");
+        }
+    }
+
+    /**
+     * Pure overlap check for two bounded windows: window A overlaps window B when
+     * A.start < B.end and A.end > B.start. Used both directly (validations) and by the
+     * repository query so semantics stay in one place.
+     */
+    public static boolean hasOverlap(Instant aStart, Instant aEnd, Instant bStart, Instant bEnd) {
+        return aStart != null && aEnd != null && bStart != null && bEnd != null
+                && aStart.isBefore(bEnd) && aEnd.isAfter(bStart);
+    }
+
+    /**
+     * Effective label for a set of review labels: the strict majority, or null when there
+     * is no resolved majority (empty reviews or a tie). A tie is never silently converted.
+     */
+    public static String majorityLabel(List<String> labels) {
+        if (labels == null || labels.isEmpty()) {
+            return null;
+        }
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String label : labels) {
+            if (label == null) {
+                continue;
+            }
+            counts.merge(label, 1, Integer::sum);
+        }
+        if (counts.isEmpty()) {
+            return null;
+        }
+        int max = counts.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        List<String> leaders = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            if (entry.getValue() == max) {
+                leaders.add(entry.getKey());
+            }
+        }
+        return leaders.size() == 1 ? leaders.getFirst() : null;
     }
 
     public static void validateExperimentVersions(String algorithmVersion, String baselineVersion) {

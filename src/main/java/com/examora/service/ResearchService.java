@@ -1,12 +1,6 @@
 package com.examora.service;
 
-import com.examora.dto.ResearchDtos.BandwidthStatsDto;
-import com.examora.dto.ResearchDtos.ConditionEvaluationDto;
-import com.examora.dto.ResearchDtos.ConfusionDto;
-import com.examora.dto.ResearchDtos.EvaluatorMetricsDto;
-import com.examora.dto.ResearchDtos.EvaluatorResultDto;
 import com.examora.dto.ResearchDtos.ExperimentCreateRequest;
-import com.examora.dto.ResearchDtos.LatencyStatsDto;
 import com.examora.dto.ResearchDtos.ResearchExperimentDto;
 import com.examora.dto.ResearchDtos.ResearchSampleDto;
 import com.examora.dto.ResearchDtos.ReviewRequest;
@@ -16,45 +10,36 @@ import com.examora.exception.ApiException;
 import com.examora.model.ExamAttempt;
 import com.examora.model.User;
 import com.examora.repository.ExamAttemptRepository;
-import com.examora.repository.ProctorRepository;
 import com.examora.repository.ResearchRepository;
 import com.examora.repository.ResearchRepository.ResearchExperiment;
+import com.examora.repository.ResearchRepository.ResearchReview;
 import com.examora.repository.ResearchRepository.ResearchSample;
-import com.examora.service.ProctorFusionService.FusionSignal;
-import com.examora.service.ResearchEvaluationEngine.ConditionGroup;
-import com.examora.service.ResearchEvaluationEngine.EvaluatorResult;
-import com.examora.service.ResearchEvaluationEngine.SampleEvaluation;
-import com.examora.service.ResearchEvaluationEngine.StudyEvaluation;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Orchestrates the research evaluation framework: experiments, staged samples,
- * human reviews, and pure baseline/fusion evaluation. It never alters
- * enforcement state and never fabricates data — every metric derives from
- * stored signals and human-reviewed labels.
+ * Orchestrates the controlled research dataset and its experiment runner:
+ * experiments, staged samples, human reviews, data-quality accounting, and
+ * pure baseline/fusion evaluation. It never alters enforcement state and never
+ * fabricates data — every metric derives from stored signals and
+ * human-reviewed labels. All operations require an administrator.
  */
 @Service
 public class ResearchService {
 
     private final ResearchRepository researchRepository;
-    private final ProctorRepository proctorRepository;
     private final ExamAttemptRepository examAttemptRepository;
-    private final ResearchEvaluationEngine engine;
+    private final ResearchExperimentRunner runner;
 
     public ResearchService(ResearchRepository researchRepository,
-                           ProctorRepository proctorRepository,
                            ExamAttemptRepository examAttemptRepository,
-                           ProctorFusionService fusionService) {
+                           ResearchExperimentRunner runner) {
         this.researchRepository = researchRepository;
-        this.proctorRepository = proctorRepository;
         this.examAttemptRepository = examAttemptRepository;
-        this.engine = new ResearchEvaluationEngine(fusionService, ResearchConfig.FUSION_THRESHOLD);
+        this.runner = runner;
     }
 
     public ResearchExperimentDto createExperiment(User actor, ExperimentCreateRequest request) {
@@ -68,9 +53,12 @@ public class ResearchService {
                 ? ResearchConfig.ALGORITHM_VERSION : request.algorithmVersion().trim();
         String baselineVersion = request.baselineVersion() == null || request.baselineVersion().isBlank()
                 ? ResearchConfig.BASELINE_VERSION : request.baselineVersion().trim();
+        String datasetVersion = request.datasetVersion() == null || request.datasetVersion().isBlank()
+                ? ResearchConfig.DATASET_VERSION : request.datasetVersion().trim();
         ResearchValidation.validateExperimentVersions(algorithmVersion, baselineVersion);
+        ResearchValidation.validateDatasetVersion(datasetVersion);
         ResearchExperiment experiment = researchRepository.insertExperiment(
-                name, description, algorithmVersion, baselineVersion, "DRAFT", actor.id());
+                name, description, algorithmVersion, baselineVersion, datasetVersion, "DRAFT", actor.id());
         return toDto(experiment);
     }
 
@@ -94,8 +82,8 @@ public class ResearchService {
         ResearchExperiment experiment = requireExperiment(experimentId);
         researchRepository.updateExperimentStatus(experiment.id(), status);
         return toDto(new ResearchExperiment(experiment.id(), experiment.name(), experiment.description(),
-                experiment.algorithmVersion(), experiment.baselineVersion(), status,
-                experiment.createdBy(), experiment.createdAt()));
+                experiment.algorithmVersion(), experiment.baselineVersion(), experiment.datasetVersion(),
+                status, experiment.createdBy(), experiment.createdAt()));
     }
 
     public ResearchSampleDto createSample(User actor, String experimentId, SampleCreateRequest request) {
@@ -104,8 +92,10 @@ public class ResearchService {
         if ("ARCHIVED".equals(experiment.status()) || "COMPLETED".equals(experiment.status())) {
             throw new ApiException(HttpStatus.CONFLICT, "experiment is not accepting new samples");
         }
-        String windowStart = ResearchValidation.normalizeTimestamp(request.windowStart(), "windowStart");
-        String windowEnd = ResearchValidation.normalizeTimestamp(request.windowEnd(), "windowEnd");
+        String windowStart = ResearchValidation.normalizeTimestamp(
+                nullableFirst(request.windowStart(), request.startedAt()), "windowStart");
+        String windowEnd = ResearchValidation.normalizeTimestamp(
+                nullableFirst(request.windowEnd(), request.endedAt()), "windowEnd");
         Instant start = ResearchValidation.parseTimestamp(windowStart, "windowStart");
         Instant end = ResearchValidation.parseTimestamp(windowEnd, "windowEnd");
         ResearchValidation.validateWindow(start, end, Instant.now());
@@ -119,12 +109,20 @@ public class ResearchService {
             }
         }
 
+        if (researchRepository.hasOverlappingSample(experiment.id(), attemptId, windowStart, windowEnd, null)) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "window overlaps an existing sample of the same experiment and attempt");
+        }
+
+        ResearchValidation.validateScenario(request.scenario());
         ResearchValidation.validateLabel(request.label());
         ResearchValidation.validateConditionMetadata(request.conditions());
         ResearchValidation.validateByteCounts(request.rawMediaBytes(), request.signalBytes());
+        ResearchValidation.validateMeasuredLatency(request.measuredLatencyMs());
 
         ResearchSample sample = researchRepository.insertSample(experiment.id(), attemptId, windowStart,
-                windowEnd, request.label(), request.conditions(), request.rawMediaBytes(), request.signalBytes());
+                windowEnd, request.scenario(), request.label(), request.conditions(),
+                request.rawMediaBytes(), request.signalBytes(), request.measuredLatencyMs());
         return toDto(sample, 0);
     }
 
@@ -144,8 +142,10 @@ public class ResearchService {
 
         researchRepository.upsertReview(sampleId, actor.id(), request.label(),
                 request.confidence(), trimToNull(request.notes()));
-        List<ResearchRepository.ResearchReview> reviews = researchRepository.findReviewsBySampleId(sampleId);
-        researchRepository.updateSampleLabel(sampleId, majorityLabel(reviews));
+        List<ResearchReview> reviews = researchRepository.findReviewsBySampleId(sampleId);
+        String majority = ResearchValidation.majorityLabel(
+                reviews.stream().map(ResearchReview::label).toList());
+        researchRepository.updateSampleLabel(sampleId, majority);
         return toDto(requireSample(sampleId), reviews.size());
     }
 
@@ -155,68 +155,7 @@ public class ResearchService {
         if (conditionKey != null && !ResearchConfig.CONDITION_KEYS.containsKey(conditionKey)) {
             throw badRequest("condition key must be one of: " + String.join(", ", ResearchConfig.CONDITION_KEYS.keySet()));
         }
-        List<ResearchSample> samples = researchRepository.findSamplesByExperiment(
-                experiment.id(), ResearchConfig.MAX_SAMPLES_PER_EXPERIMENT);
-        Map<String, Long> reviewCounts = researchRepository.countReviewsByExperiment(experiment.id());
-
-        List<SampleEvaluation> inputs = new ArrayList<>();
-        for (ResearchSample sample : samples) {
-            long reviewCount = reviewCounts.getOrDefault(sample.id(), 0L);
-            String label = sample.label();
-            boolean reviewed = reviewCount > 0;
-            Boolean actualPositive = reviewed && label != null
-                    ? !ResearchValidation.isNegativeLabel(label) : null;
-            String conditionValue = conditionKey == null ? null : sample.metadata().get(conditionKey);
-            inputs.add(new SampleEvaluation(sample.id(),
-                    ResearchValidation.parseTimestamp(sample.windowStart(), "windowStart"),
-                    ResearchValidation.parseTimestamp(sample.windowEnd(), "windowEnd"),
-                    actualPositive, reviewed, windowSignals(sample), sample.rawMediaBytes(),
-                    sample.signalBytes(), conditionValue));
-        }
-
-        StudyEvaluation study = engine.evaluate(inputs, experiment.baselineVersion(), experiment.algorithmVersion());
-        List<ConditionEvaluationDto> conditions = null;
-        if (conditionKey != null) {
-            conditions = new ArrayList<>();
-            for (ConditionGroup group : engine.evaluateByCondition(inputs,
-                    experiment.baselineVersion(), experiment.algorithmVersion())) {
-                conditions.add(new ConditionEvaluationDto(group.conditionValue(), group.sampleCount(),
-                        toDto(group.baseline()), toDto(group.fusion())));
-            }
-        }
-        return new StudyEvaluationDto(experiment.id(), study.totalSamples(), study.evaluatedSamples(),
-                study.reviewedSamples(), study.unevaluatedSamples(),
-                toDto(study.baseline()), toDto(study.fusion()),
-                toDto(study.latency()), toDto(study.bandwidth()), conditions);
-    }
-
-    private List<FusionSignal> windowSignals(ResearchSample sample) {
-        if (sample.attemptId() == null) {
-            return List.of();
-        }
-        Instant start = ResearchValidation.parseTimestamp(sample.windowStart(), "windowStart");
-        Instant end = ResearchValidation.parseTimestamp(sample.windowEnd(), "windowEnd");
-        String from = start.minusMillis(ResearchConfig.WINDOW_SLACK_MS).toString();
-        String to = end.plusMillis(ResearchConfig.WINDOW_SLACK_MS).toString();
-        return ProctorFusionCoordinator.toFusionSignals(
-                proctorRepository.findByAttemptIdWithin(sample.attemptId(), from, to,
-                        ResearchConfig.MAX_WINDOW_SIGNALS));
-    }
-
-    private String majorityLabel(List<ResearchRepository.ResearchReview> reviews) {
-        if (reviews.isEmpty()) {
-            return null;
-        }
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        for (ResearchRepository.ResearchReview review : reviews) {
-            counts.merge(review.label(), 1, Integer::sum);
-        }
-        int max = counts.values().stream().mapToInt(Integer::intValue).max().orElse(0);
-        List<String> leaders = counts.entrySet().stream()
-                .filter(entry -> entry.getValue() == max)
-                .map(Map.Entry::getKey)
-                .toList();
-        return leaders.size() == 1 ? leaders.getFirst() : null;
+        return runner.evaluate(experiment, conditionKey);
     }
 
     private void requireAdmin(User actor) {
@@ -252,6 +191,13 @@ public class ResearchService {
         return trimmed;
     }
 
+    private static String nullableFirst(String primary, String alias) {
+        if (primary != null && !primary.isBlank()) {
+            return primary;
+        }
+        return alias;
+    }
+
     private static String trimToNull(String value) {
         if (value == null) {
             return null;
@@ -266,33 +212,15 @@ public class ResearchService {
 
     private ResearchExperimentDto toDto(ResearchExperiment experiment) {
         return new ResearchExperimentDto(experiment.id(), experiment.name(), experiment.description(),
-                experiment.algorithmVersion(), experiment.baselineVersion(), experiment.status(),
-                experiment.createdAt(), experiment.createdBy());
+                experiment.algorithmVersion(), experiment.baselineVersion(), experiment.datasetVersion(),
+                experiment.status(), experiment.createdAt(), experiment.createdBy());
     }
 
     private ResearchSampleDto toDto(ResearchSample sample, long reviewCount) {
         return new ResearchSampleDto(sample.id(), sample.experimentId(), sample.attemptId(),
-                sample.windowStart(), sample.windowEnd(), sample.label(), sample.metadata(),
-                sample.rawMediaBytes(), sample.signalBytes(), reviewCount, sample.createdAt());
-    }
-
-    private EvaluatorResultDto toDto(EvaluatorResult result) {
-        ResearchMetrics.Confusion c = result.confusion();
-        ConfusionDto confusion = new ConfusionDto(c.truePositives(), c.trueNegatives(),
-                c.falsePositives(), c.falseNegatives());
-        ResearchMetrics.EvaluatorMetrics m = result.metrics();
-        EvaluatorMetricsDto metrics = new EvaluatorMetricsDto(m.precision(), m.recall(), m.specificity(),
-                m.accuracy(), m.falsePositiveRate(), m.falseNegativeRate(), m.f1(), m.wrongfulWarningRate());
-        return new EvaluatorResultDto(result.version(), confusion, metrics);
-    }
-
-    private LatencyStatsDto toDto(ResearchMetrics.LatencyStats stats) {
-        return new LatencyStatsDto(stats.measuredCount(), stats.meanMs(), stats.medianMs(),
-                stats.minMs(), stats.maxMs());
-    }
-
-    private BandwidthStatsDto toDto(ResearchMetrics.BandwidthStats stats) {
-        return new BandwidthStatsDto(stats.measuredCount(), stats.meanSignalBytes(),
-                stats.meanRawMediaBytes(), stats.meanDataMinimizationRatio());
+                sample.windowStart(), sample.windowEnd(), sample.windowStart(), sample.windowEnd(),
+                sample.scenario(), sample.label(), sample.metadata(),
+                sample.rawMediaBytes(), sample.signalBytes(), sample.measuredLatencyMs(),
+                reviewCount, sample.createdAt());
     }
 }
