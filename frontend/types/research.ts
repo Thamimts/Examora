@@ -1,5 +1,18 @@
 export type ResearchExperimentStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
 
+export type ResearchRunStatus = 'PLANNED' | 'RUNNING' | 'COMPLETED' | 'CANCELLED'
+
+export type ResearchRunSampleStatus = 'PLANNED' | 'CAPTURING' | 'CAPTURED'
+
+export type ControlledConditionKey = 'lighting' | 'cameraQuality' | 'network' | 'cameraAngle'
+
+export type ControlledConditions = {
+  lighting: 'GOOD' | 'LOW'
+  cameraQuality: 'HD' | 'LOW'
+  network: 'STABLE' | 'INTERRUPTED'
+  cameraAngle: 'FRONT' | 'OFF_ANGLE'
+}
+
 export type ResearchScenario =
   | 'NORMAL'
   | 'WINDOW_BLUR'
@@ -49,6 +62,133 @@ export interface ResearchExperiment {
   status: ResearchExperimentStatus
   createdAt: string
   createdBy: string | null
+  examId: string | null
+}
+
+export interface ResearchRun {
+  id: string
+  experimentId: string
+  runCode: string
+  startedAt: string | null
+  endedAt: string | null
+  operatorId: string | null
+  operatorName: string | null
+  status: ResearchRunStatus
+  datasetVersion: string
+  notes: string | null
+  createdAt: string
+}
+
+export interface ResearchRunMatrixRow {
+  scenario: ResearchScenario
+  expectedLabel: string
+  planned: number
+  captured: number
+  reviewed: number
+  evaluable: number
+  conditionsKey: string[] | null
+}
+
+export interface ResearchRunDataQuality {
+  planned: number
+  capturing: number
+  captured: number
+  reviewed: number
+  evaluable: number
+  unreviewed: number
+  tied: number
+  invalid: number
+  missingSignals: number
+  unexpectedSignals: number
+  scenarioGroundTruthAgreement: number
+  scenarioGroundTruthDisagreement: number
+  missingMeasuredLatency: number
+  missingBandwidth: number
+}
+
+export interface ResearchRunSample {
+  id: string
+  runId: string
+  attemptId: string
+  scenario: ResearchScenario
+  condition: Partial<ControlledConditions>
+  status: ResearchRunSampleStatus
+  startedAt: string | null
+  endedAt: string | null
+  measuredLatencyMs: number | null
+  rawMediaBytes: number | null
+  signalBytes: number | null
+  researchSampleId: string | null
+  signalCount: number
+  reviewed: boolean
+  evaluated: boolean
+  tied: boolean
+  createdAt: string
+}
+
+export interface ResearchRunDetail {
+  run: ResearchRun
+  dataQuality: ResearchRunDataQuality
+  samples: ResearchRunSample[]
+  matrix: ResearchRunMatrixRow[]
+  scenarios: ResearchScenarioOutcome[]
+}
+
+export interface ScenarioInstruction {
+  scenario: ResearchScenario
+  label: string
+  description: string
+  expectedAction: string
+  durationGuidance: string
+  reviewerObservation: string
+  expectedSignals: string[]
+}
+
+export interface ConditionOption {
+  value: string
+  description: string
+}
+
+export interface ConditionCatalogEntry {
+  key: ControlledConditionKey
+  label: string
+  values: string[]
+  options: ConditionOption[]
+}
+
+export interface SignalTypeCount {
+  type: string
+  count: number
+}
+
+export interface SignalSourceCount {
+  source: string
+  count: number
+}
+
+export interface ResearchRunSampleDetail {
+  id: string
+  runId: string
+  attemptId: string
+  scenario: ResearchScenario
+  condition: Partial<ControlledConditions>
+  status: ResearchRunSampleStatus
+  startedAt: string | null
+  endedAt: string | null
+  measuredLatencyMs: number | null
+  rawMediaBytes: number | null
+  signalBytes: number | null
+  signalCount: number
+  signalTypes: SignalTypeCount[]
+  signalSources: SignalSourceCount[]
+  minConfidence: number | null
+  maxConfidence: number | null
+  meanConfidence: number | null
+  maxDurationMs: number | null
+  groundTruthLabel: string | null
+  baselinePositive: boolean | null
+  fusionPositive: boolean | null
+  scenarioAgreement: boolean
 }
 
 export interface ResearchSample {

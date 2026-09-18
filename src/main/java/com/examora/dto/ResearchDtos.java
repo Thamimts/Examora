@@ -10,7 +10,7 @@ public final class ResearchDtos {
 
     public record ExperimentCreateRequest(String name, String description,
                                           String algorithmVersion, String baselineVersion,
-                                          String datasetVersion) {
+                                          String datasetVersion, String examId) {
     }
 
     public record ExperimentStatusRequest(String status) {
@@ -24,13 +24,24 @@ public final class ResearchDtos {
                                       Long measuredLatencyMs) {
     }
 
+    public record RunCreateRequest(String runCode, String datasetVersion, String notes) {
+    }
+
+    public record RunSampleCreateRequest(String attemptId, String scenario,
+                                         Map<String, String> conditions) {
+    }
+
+    public record SampleCaptureRequest(String startedAt, String endedAt, Long measuredLatencyMs,
+                                       Long rawMediaBytes, Long signalBytes) {
+    }
+
     public record ReviewRequest(String label, Double confidence, String notes) {
     }
 
     public record ResearchExperimentDto(String id, String name, String description,
                                         String algorithmVersion, String baselineVersion,
                                         String datasetVersion, String status,
-                                        Instant createdAt, String createdBy) {
+                                        String examId, Instant createdAt, String createdBy) {
     }
 
     public record ResearchSampleDto(String id, String experimentId, String attemptId,
@@ -86,5 +97,64 @@ public final class ResearchDtos {
                                      List<ConditionEvaluationDto> conditions,
                                      String datasetVersion, String evaluatedAt,
                                      DataQualityDto dataQuality, List<ScenarioOutcomeDto> scenarios) {
+    }
+
+    public record ResearchRunDto(String id, String experimentId, String runCode, String startedAt,
+                                 String endedAt, String operatorId, String operatorName, String status,
+                                 String datasetVersion, String notes, Instant createdAt) {
+    }
+
+    public record RunMatrixSummaryDto(String scenario, String expectedLabel, int planned, int captured,
+                                      int reviewed, int evaluable, List<String> conditionsKey) {
+    }
+
+    public record RunDataQualityDto(int planned, int capturing, int captured, int reviewed,
+                                    int evaluable, int unreviewed, int tied, int invalid,
+                                    int missingSignals, int unexpectedSignals,
+                                    int scenarioGroundTruthAgreement, int scenarioGroundTruthDisagreement,
+                                    int missingMeasuredLatency, int missingBandwidth) {
+    }
+
+    public record RunSampleDto(String id, String runId, String attemptId, String scenario,
+                               Map<String, String> condition, String status,
+                               String startedAt, String endedAt, Long measuredLatencyMs,
+                               Long rawMediaBytes, Long signalBytes, String researchSampleId,
+                               long signalCount, boolean reviewed, boolean evaluated,
+                               boolean tied, Instant createdAt) {
+    }
+
+    public record RunDetailDto(ResearchRunDto run, RunDataQualityDto dataQuality,
+                               List<RunSampleDto> samples, List<RunMatrixSummaryDto> matrix,
+                               List<ScenarioOutcomeDto> scenarios) {
+    }
+
+    public record ScenarioInstructionDto(String scenario, String label, String description,
+                                         String expectedAction, String durationGuidance,
+                                         String reviewerObservation, List<String> expectedSignals) {
+    }
+
+    public record ConditionOptionDto(String value, String description) {
+    }
+
+    public record ConditionCatalogDto(String key, String label, List<String> values,
+                                      List<ConditionOptionDto> options) {
+    }
+
+    public record SignalTypeCountDto(String type, int count) {
+    }
+
+    public record SignalSourceCountDto(String source, int count) {
+    }
+
+    public record RunSampleDetailDto(String id, String runId, String attemptId, String scenario,
+                                     Map<String, String> condition, String status,
+                                     String startedAt, String endedAt, Long measuredLatencyMs,
+                                     Long rawMediaBytes, Long signalBytes,
+                                     long signalCount, List<SignalTypeCountDto> signalTypes,
+                                     List<SignalSourceCountDto> signalSources,
+                                     Double minConfidence, Double maxConfidence, Double meanConfidence,
+                                     Long maxDurationMs, String groundTruthLabel,
+                                     Boolean baselinePositive, Boolean fusionPositive,
+                                     boolean scenarioAgreement) {
     }
 }

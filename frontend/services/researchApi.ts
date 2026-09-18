@@ -1,11 +1,25 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
-import type { ResearchCondition, ResearchConditionKey, ResearchEvaluation, ResearchExperiment, ResearchScenario, ResearchSample } from '@/types/research'
+import type {
+  ConditionCatalogEntry,
+  ControlledConditions,
+  ResearchCondition,
+  ResearchConditionKey,
+  ResearchEvaluation,
+  ResearchExperiment,
+  ResearchRun,
+  ResearchRunDetail,
+  ResearchRunSample,
+  ResearchRunSampleDetail,
+  ResearchSample,
+  ResearchScenario,
+  ScenarioInstruction,
+} from '@/types/research'
 
 export const researchApi = {
   listExperiments: () =>
     api.get<ApiResponse<ResearchExperiment[]>>('/proctor/research/experiments'),
-  createExperiment: (body: { name: string; description?: string }) =>
+  createExperiment: (body: { name: string; description?: string; examId?: string }) =>
     api.post<ApiResponse<ResearchExperiment>>('/proctor/research/experiments', body),
   createSample: (experimentId: string, body: {
     attemptId?: string
@@ -29,4 +43,38 @@ export const researchApi = {
     }),
   runEvaluation: (experimentId: string) =>
     api.post<ApiResponse<ResearchEvaluation>>(`/proctor/research/experiments/${experimentId}/evaluate`),
+  listRuns: (experimentId: string) =>
+    api.get<ApiResponse<ResearchRun[]>>(`/proctor/research/experiments/${experimentId}/runs`),
+  createRun: (experimentId: string, body: { runCode: string; datasetVersion?: string; notes?: string }) =>
+    api.post<ApiResponse<ResearchRun>>(`/proctor/research/experiments/${experimentId}/runs`, body),
+  getRun: (runId: string) =>
+    api.get<ApiResponse<ResearchRunDetail>>(`/proctor/research/runs/${runId}`),
+  startRun: (runId: string) =>
+    api.post<ApiResponse<ResearchRun>>(`/proctor/research/runs/${runId}/start`),
+  completeRun: (runId: string) =>
+    api.post<ApiResponse<ResearchRun>>(`/proctor/research/runs/${runId}/complete`),
+  cancelRun: (runId: string) =>
+    api.post<ApiResponse<ResearchRun>>(`/proctor/research/runs/${runId}/cancel`),
+  createRunSample: (runId: string, body: {
+    attemptId: string
+    scenario: ResearchScenario
+    conditions: Partial<ControlledConditions>
+  }) =>
+    api.post<ApiResponse<ResearchRunSample>>(`/proctor/research/runs/${runId}/samples`, body),
+  observeRunSample: (runId: string, sampleId: string) =>
+    api.post<ApiResponse<ResearchRunSample>>(`/proctor/research/runs/${runId}/samples/${sampleId}/observe`),
+  captureRunSample: (runId: string, sampleId: string, body: {
+    startedAt?: string
+    endedAt: string
+    measuredLatencyMs?: number
+    rawMediaBytes?: number
+    signalBytes?: number
+  }) =>
+    api.post<ApiResponse<ResearchRunSample>>(`/proctor/research/runs/${runId}/samples/${sampleId}/capture`, body),
+  getRunSampleDetail: (runSampleId: string) =>
+    api.get<ApiResponse<ResearchRunSampleDetail>>(`/proctor/research/run-samples/${runSampleId}/detail`),
+  scenarioInstructions: () =>
+    api.get<ApiResponse<ScenarioInstruction[]>>('/proctor/research/scenarios'),
+  conditionCatalog: () =>
+    api.get<ApiResponse<ConditionCatalogEntry[]>>('/proctor/research/conditions'),
 }

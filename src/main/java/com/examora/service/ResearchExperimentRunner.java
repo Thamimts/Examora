@@ -9,7 +9,6 @@ import com.examora.dto.ResearchDtos.EvaluatorResultDto;
 import com.examora.dto.ResearchDtos.LatencyStatsDto;
 import com.examora.dto.ResearchDtos.ScenarioOutcomeDto;
 import com.examora.dto.ResearchDtos.StudyEvaluationDto;
-import com.examora.model.ExamAttempt;
 import com.examora.repository.ExamAttemptRepository;
 import com.examora.repository.ProctorRepository;
 import com.examora.repository.ResearchRepository;
@@ -63,7 +62,8 @@ public class ResearchExperimentRunner {
                     reviewCounts.getOrDefault(sample.id(), 0L) > 0));
         }
 
-        boolean[] invalid = markInvalid(samples);
+        boolean[] invalid = ResearchSampleValidity.markInvalid(samples,
+                    id -> examAttemptRepository.findById(id).orElse(null));
 
         List<SampleEvaluation> inputs = new ArrayList<>();
         List<ResearchDataQuality.Entry> qualityEntries = new ArrayList<>();
@@ -120,53 +120,24 @@ public class ResearchExperimentRunner {
     }
 
     /**
-     * Flags samples that fail post-hoc integrity checks: a window outside its attempt's
-     * span, or an overlapping window with another sample in the same experiment and same
-     * attempt context. Deterministic and bounded (pairwise over the experiment's samples).
+     * Per-sample baseline-v1 and fusion-v1 prediction for a captured research sample,
+     * reusing the exact engine inputs (same widened signal query and precise in-window
+     * filtering as the study-level evaluation). Pure and read-only.
      */
-    private boolean[] markInvalid(List<ResearchSample> samples) {
-        boolean[] invalid = new boolean[samples.size()];
-        for (int i = 0; i < samples.size(); i++) {
-            ResearchSample sample = samples.get(i);
-            if (sample.attemptId() != null) {
-                ExamAttempt attempt = examAttemptRepository.findById(sample.attemptId()).orElse(null);
-                if (attempt == null || attempt.startedAt() == null || attempt.expiresAt() == null
-                        || outsideAttemptSpan(sample, attempt)) {
-                    invalid[i] = true;
-                }
-            }
-        }
-        for (int i = 0; i < samples.size(); i++) {
-            for (int j = i + 1; j < samples.size(); j++) {
-                ResearchSample a = samples.get(i);
-                ResearchSample b = samples.get(j);
-                boolean sameContext = a.attemptId() == null
-                        ? b.attemptId() == null : a.attemptId().equals(b.attemptId());
-                if (sameContext && ResearchValidation.hasOverlap(
-                        ResearchValidation.parseTimestamp(a.windowStart(), "windowStart"),
-                        ResearchValidation.parseTimestamp(a.windowEnd(), "windowEnd"),
-                        ResearchValidation.parseTimestamp(b.windowStart(), "windowStart"),
-                        ResearchValidation.parseTimestamp(b.windowEnd(), "windowEnd"))) {
-                    invalid[i] = true;
-                    invalid[j] = true;
-                }
-            }
-        }
-        return invalid;
+    public ResearchEvaluationEngine.PerSamplePrediction predict(ResearchSample sample) {
+        List<FusionSignal> signals = windowSignals(sample);
+        SampleEvaluation eval = new SampleEvaluation(sample.id(),
+                ResearchValidation.parseTimestamp(sample.windowStart(), "windowStart"),
+                ResearchValidation.parseTimestamp(sample.windowEnd(), "windowEnd"),
+                null, false, signals, sample.rawMediaBytes(), sample.signalBytes(), null);
+        return engine.predict(eval);
     }
 
-    private boolean outsideAttemptSpan(ResearchSample sample, ExamAttempt attempt) {
-        Instant start = ResearchValidation.parseTimestamp(sample.windowStart(), "windowStart");
-        Instant end = ResearchValidation.parseTimestamp(sample.windowEnd(), "windowEnd");
-        try {
-            ResearchValidation.validateAttemptWindow(start, end, attempt.startedAt(), attempt.expiresAt());
-            return false;
-        } catch (RuntimeException ex) {
-            return true;
-        }
-    }
-
-    private List<FusionSignal> windowSignals(ResearchSample sample) {
+    /**
+     * Loads the in-window proctor signals for a sample using the same widened query
+     * and precise in-window filtering as the engine, so detail and evaluation agree.
+     */
+    public List<FusionSignal> windowSignals(ResearchSample sample) {
         if (sample.attemptId() == null) {
             return List.of();
         }

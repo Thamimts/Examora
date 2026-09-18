@@ -94,6 +94,35 @@ public class ProctorRepository {
                 examId);
     }
 
+    /**
+     * Exact number of proctor events within the given inclusive bound for an attempt.
+     * Used by run data-quality and matrix signal counts; precise, not capped.
+     */
+    public long countByAttemptIdWithin(String attemptId, String fromOccurredAt, String toOccurredAt) {
+        Long count = jdbcTemplate.queryForObject(
+                "select count(*) from proctor_events "
+                        + "where attempt_id = ? and occurred_at >= ? and occurred_at <= ?",
+                Long.class, attemptId, fromOccurredAt, toOccurredAt);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * Aggregated signal types within the inclusive bound for an attempt, ordered by
+     * descending count. Bounded by the number of distinct signal types.
+     */
+    public java.util.LinkedHashMap<String, Integer> signalTypeCountsByAttemptIdWithin(
+            String attemptId, String fromOccurredAt, String toOccurredAt) {
+        java.util.LinkedHashMap<String, Integer> counts = new java.util.LinkedHashMap<>();
+        jdbcTemplate.query(
+                "select type, count(*) as type_count from proctor_events "
+                        + "where attempt_id = ? and occurred_at >= ? and occurred_at <= ? "
+                        + "group by type order by type_count desc, type asc",
+                (org.springframework.jdbc.core.RowCallbackHandler) rs ->
+                        counts.put(rs.getString("type"), rs.getInt("type_count")),
+                attemptId, fromOccurredAt, toOccurredAt);
+        return counts;
+    }
+
     private String writeMetadata(Map<String, Object> metadata) {
         if (metadata == null || metadata.isEmpty()) {
             return null;

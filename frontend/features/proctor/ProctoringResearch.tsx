@@ -4,6 +4,7 @@ import { BarChart3, Clock3, Database, FlaskConical, Gauge, Play, Save, ShieldChe
 import { Card, Header } from '@/components/shared'
 import { useToast } from '@/components/feedback'
 import { researchApi } from '@/services/researchApi'
+import { ResearchRunsPanel } from './ResearchRunsPanel'
 import type { ResearchConditionKey, ResearchEvaluatorResult } from '@/types/research'
 
 const CONDITION_KEYS: { key: ResearchConditionKey; label: string }[] = [
@@ -231,6 +232,8 @@ export function ProctoringResearch() {
                 </div>
               )}
             </Card>
+
+            <ResearchRunsPanel experimentId={experimentId} />
           </>
         )}
 

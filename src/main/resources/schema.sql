@@ -213,3 +213,44 @@ alter table research_experiments add column if not exists dataset_version varcha
 alter table research_samples add column if not exists scenario varchar(40);
 alter table research_samples add column if not exists measured_latency_ms bigint;
 create index if not exists idx_research_samples_experiment_attempt on research_samples (experiment_id, attempt_id, window_start, window_end);
+
+alter table research_experiments add column if not exists exam_id varchar(36);
+create index if not exists idx_research_experiments_exam on research_experiments (exam_id);
+
+create table if not exists research_runs (
+ id varchar(36) primary key,
+ experiment_id varchar(36) not null,
+ run_code varchar(60) not null,
+ started_at timestamp,
+ ended_at timestamp,
+ operator_id varchar(36) not null,
+ status varchar(20) not null default 'PLANNED',
+ dataset_version varchar(40) not null default 'dataset-v1',
+ notes varchar(1000),
+ created_at timestamp not null default current_timestamp,
+ constraint fk_research_run_experiment foreign key (experiment_id) references research_experiments(id) on delete cascade,
+ constraint fk_research_run_operator foreign key (operator_id) references users(id) on delete set null,
+ constraint uq_research_run_code unique (experiment_id, run_code)
+);
+create index if not exists idx_research_runs_experiment on research_runs (experiment_id, created_at desc);
+
+create table if not exists research_run_samples (
+ id varchar(36) primary key,
+ run_id varchar(36) not null,
+ attempt_id varchar(36) not null,
+ scenario varchar(40) not null,
+ conditions_json varchar(1000),
+ conditions_key varchar(255) not null,
+ status varchar(20) not null default 'PLANNED',
+ started_at varchar(40),
+ ended_at varchar(40),
+ measured_latency_ms bigint,
+ raw_media_bytes bigint,
+ signal_bytes bigint,
+ research_sample_id varchar(36),
+ created_at timestamp not null default current_timestamp,
+ constraint fk_run_sample_run foreign key (run_id) references research_runs(id) on delete cascade,
+ constraint fk_run_sample_attempt foreign key (attempt_id) references exam_attempts(id),
+ constraint uq_run_sample unique (run_id, attempt_id, scenario, conditions_key)
+);
+create index if not exists idx_run_samples_run on research_run_samples (run_id, created_at desc);

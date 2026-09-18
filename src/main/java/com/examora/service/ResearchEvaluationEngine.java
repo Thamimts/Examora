@@ -48,6 +48,23 @@ public final class ResearchEvaluationEngine {
                                  EvaluatorResult baseline, EvaluatorResult fusion) {
     }
 
+    /**
+     * Per-sample baseline-v1 and fusion-v1 predictions together with the precise in-window
+     * signals used. Exposes the exact same decision inputs as {@link #accumulate} so that
+     * sample detail and the study-level evaluation never diverge. Pure, no side effects.
+     */
+    public record PerSamplePrediction(boolean baselinePositive, boolean fusionPositive,
+                                      List<ProctorFusionService.FusionSignal> windowSignals) {
+    }
+
+    public PerSamplePrediction predict(SampleEvaluation sample) {
+        List<ProctorFusionService.FusionSignal> windowSignals = windowSignals(sample);
+        boolean baselinePositive = baselineEvaluator.predict(windowSignals);
+        boolean fusionPositive = fusionEvaluator.predict(windowSignals, sample.windowEnd(),
+                sample.windowEnd().toEpochMilli() - sample.windowStart().toEpochMilli());
+        return new PerSamplePrediction(baselinePositive, fusionPositive, windowSignals);
+    }
+
     public StudyEvaluation evaluate(List<SampleEvaluation> samples, String baselineVersion, String algorithmVersion) {
         Bucket bucket = accumulate(samples);
         return new StudyEvaluation(bucket.total, bucket.evaluated, bucket.reviewed, bucket.unevaluated,
@@ -97,19 +114,18 @@ public final class ResearchEvaluationEngine {
                 bucket.unevaluated++;
                 continue;
             }
-            List<ProctorFusionService.FusionSignal> windowSignals = windowSignals(sample);
+            PerSamplePrediction predicted = predict(sample);
             boolean actualPositive = sample.actualPositive();
-            boolean baselinePositive = baselineEvaluator.predict(windowSignals);
-            boolean fusionPositive = fusionEvaluator.predict(windowSignals, sample.windowEnd(),
-                    sample.windowEnd().toEpochMilli() - sample.windowStart().toEpochMilli());
+            boolean baselinePositive = predicted.baselinePositive();
+            boolean fusionPositive = predicted.fusionPositive();
             bucket.baseline = bucket.baseline.accumulate(baselinePositive, actualPositive);
             bucket.fusion = bucket.fusion.accumulate(fusionPositive, actualPositive);
             bucket.evaluated++;
             if (sample.reviewed()) {
                 bucket.reviewed++;
             }
-            if (!windowSignals.isEmpty()) {
-                Instant detection = earliest(windowSignals);
+            if (!predicted.windowSignals().isEmpty()) {
+                Instant detection = earliest(predicted.windowSignals());
                 if (detection != null && !detection.isBefore(sample.windowStart())) {
                     bucket.latencies.add(Duration.between(sample.windowStart(), detection).toMillis());
                 }
