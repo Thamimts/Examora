@@ -9,6 +9,7 @@ import { retestApi } from '@/services/retestApi'
 import { useExamStore } from '@/store/examStore'
 import { useAuthStore } from '@/store/authStore'
 import { useProctorSession } from '@/hooks/useProctorSession'
+import { useFaceCountDetection } from '@/hooks/useFaceCountDetection'
 import { useStudentProctorFeed } from '@/hooks/useStudentProctorFeed'
 import { ExamStatusBar, type CountdownTier } from '@/features/exam/ExamStatusBar'
 import { QuestionPalette } from '@/features/exam/QuestionPalette'
@@ -282,6 +283,7 @@ export function ExamWorkspace({ id }: { id: string }) {
   }, [resumeState, expired, showNotice, index, questions.length, q, review, toggleReview, goTo])
 
   const { status: proctoringStatus } = useProctorSession({ attemptId, active: resumeState === 'ready' && !expired && !showNotice })
+  const faceCountState = useFaceCountDetection({ attemptId, active: resumeState === 'ready' && !expired && !showNotice })
 
   const currentMarked = Boolean(q && review[q.id])
 
@@ -351,6 +353,7 @@ export function ExamWorkspace({ id }: { id: string }) {
         syncKey={syncKey}
         saveLabel={saveStatusLabel}
         proctoringStatus={proctoringStatus}
+        faceAnalysis={faceCountState}
         onCountdownZero={handleCountdownZero}
         onTierChange={handleTierChange}
       />

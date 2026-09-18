@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { Clock3 } from 'lucide-react'
 import { cn, formatRemaining } from '@/lib/utils'
 import { ProctoringBadge } from '@/features/proctor/ProctoringBadge'
+import { FaceCountIndicator } from '@/features/proctor/FaceCountIndicator'
 import type { ProctoringStatus } from '@/lib/proctorClient'
+import type { FaceCountState } from '@/ai/faceCount'
 
 export type CountdownTier = 'normal' | 'low' | 'critical' | 'expired'
 
@@ -14,7 +16,7 @@ function tierFor(seconds: number): CountdownTier {
   return 'normal'
 }
 
-export function ExamStatusBar({ title, index, total, expiresAt, initialSeconds, syncKey, saveLabel, proctoringStatus, onCountdownZero, onTierChange }: {
+export function ExamStatusBar({ title, index, total, expiresAt, initialSeconds, syncKey, saveLabel, proctoringStatus, faceAnalysis, onCountdownZero, onTierChange }: {
   title: string
   index: number
   total: number
@@ -23,6 +25,7 @@ export function ExamStatusBar({ title, index, total, expiresAt, initialSeconds, 
   syncKey: number
   saveLabel: string | null
   proctoringStatus: ProctoringStatus
+  faceAnalysis?: FaceCountState | null
   onCountdownZero: () => void
   onTierChange: (tier: CountdownTier) => void
 }) {
@@ -63,6 +66,7 @@ export function ExamStatusBar({ title, index, total, expiresAt, initialSeconds, 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {saveLabel && <p className="text-xs text-muted-foreground" role="status">{saveLabel}</p>}
         <ProctoringBadge status={proctoringStatus} />
+        {faceAnalysis && <FaceCountIndicator state={faceAnalysis} />}
         <div className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold tabular-nums', timerClasses)} aria-live="polite">
           <Clock3 size={16} />
           {formatRemaining(seconds)}
