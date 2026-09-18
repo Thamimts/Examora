@@ -126,4 +126,8 @@ public class ProctorService {
     public List<ProctorEventDto> events(String attemptId, User actor, int limit) {
         return proctorMonitorService.events(attemptId, actor, limit);
     }
+
+    public com.examora.dto.ProctorDtos.CommandCenterData commandCenter(String examId, User actor) {
+        return proctorMonitorService.commandCenter(examId, actor);
+    }
 }

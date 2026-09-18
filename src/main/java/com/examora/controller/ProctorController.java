@@ -1,10 +1,13 @@
 package com.examora.controller;
 
 import com.examora.dto.ApiResponse;
+import com.examora.dto.ProctorDtos.CommandCenterData;
 import com.examora.dto.ProctorDtos.EventBatchRequest;
 import com.examora.dto.ProctorDtos.ProctorEventDto;
 import com.examora.dto.ProctorDtos.ProctorMonitorData;
 import com.examora.dto.ProctorDtos.ProctorSummary;
+import com.examora.dto.ProctorDtos.SubmitSignalRequest;
+import com.examora.service.ProctorSignalService;
 import com.examora.service.ProctorService;
 import com.examora.service.AuthService;
 import com.examora.service.ExamAttemptService;
@@ -26,12 +29,23 @@ public class ProctorController {
     private final ProctorService proctorService;
     private final AuthService authService;
     private final ExamAttemptService examAttemptService;
+    private final ProctorSignalService proctorSignalService;
 
     public ProctorController(ProctorService proctorService, AuthService authService,
-                             ExamAttemptService examAttemptService) {
+                             ExamAttemptService examAttemptService, ProctorSignalService proctorSignalService) {
         this.proctorService = proctorService;
         this.authService = authService;
         this.examAttemptService = examAttemptService;
+        this.proctorSignalService = proctorSignalService;
+    }
+
+    @PostMapping("/attempts/{attemptId}/signals")
+    public ApiResponse<Map<String, Integer>> signals(@PathVariable String attemptId,
+                                                     @RequestBody SubmitSignalRequest request,
+                                                     @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User user = authService.requireUser(authorizationHeader);
+        int saved = proctorSignalService.submitSignal(attemptId, request, user);
+        return ApiResponse.ok(Map.of("saved", saved));
     }
 
     @PostMapping("/events/batch")
@@ -65,6 +79,12 @@ public class ProctorController {
     public ApiResponse<ProctorSummary> summary(@PathVariable String examId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User user = authService.requireUser(authorizationHeader);
         return ApiResponse.ok(proctorService.summary(examId, user));
+    }
+
+    @GetMapping("/exams/{examId}/command-center")
+    public ApiResponse<CommandCenterData> commandCenter(@PathVariable String examId, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User user = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(proctorService.commandCenter(examId, user));
     }
 
     @GetMapping("/attempts/{attemptId}/events")

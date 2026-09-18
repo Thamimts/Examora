@@ -1,5 +1,7 @@
 package com.examora.dto;
 
+import com.examora.model.ExamAccessStatus;
+import com.examora.model.ExamRoomStatus;
 import com.examora.model.ProctorEvent;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +11,10 @@ public final class ProctorDtos {
     }
 
     public record EventBatchRequest(List<ProctorEvent> events) {
+    }
+
+    public record SubmitSignalRequest(String signalId, String signalType, String source, String occurredAt,
+                                      Double confidence, Long durationMs, Map<String, Object> metadata) {
     }
 
     public enum RiskLevel {
@@ -30,7 +36,8 @@ public final class ProctorDtos {
     }
 
     public record ProctorEventDto(String id, String eventId, String attemptId, String type, String occurredAt,
-                                  String serverReceivedAt, Map<String, Object> metadata) {
+                                  String serverReceivedAt, Map<String, Object> metadata,
+                                  String source, Double confidence, Long durationMs) {
     }
 
     public record ProctorAttemptMonitor(String attemptId, int attemptNumber, String status, String startedAt,
@@ -45,5 +52,65 @@ public final class ProctorDtos {
     public record ProctorSummary(String examId, String examTitle, boolean hasAttempts,
                                  int totalAttempts, int activeAttempts, int eventCount,
                                  RiskLevel riskLevel, Integer riskScore) {
+    }
+
+    public record CommandCenterExam(
+            String examId,
+            String examTitle,
+            String status,
+            int duration,
+            int totalStudents,
+            int joinedStudents,
+            int activeAttempts,
+            int submittedAttempts,
+            int offlineParticipants,
+            int totalWarnings,
+            int terminatedAttempts
+    ) {
+    }
+
+    public record CommandCenterRoom(
+            String roomId,
+            String roomCode,
+            ExamRoomStatus status,
+            int memberCount,
+            String startedAt,
+            String endedAt
+    ) {
+    }
+
+    public record CommandCenterStudent(
+            String studentId,
+            String studentName,
+            String studentEmail,
+            String roomId,
+            String roomCode,
+            ExamRoomStatus roomStatus,
+            String attemptId,
+            Integer attemptNumber,
+            String attemptStatus,
+            boolean activeNow,
+            String startedAt,
+            String expiresAt,
+            int warningCount,
+            WarningLevel warningLevel,
+            ExamAccessStatus accessStatus,
+            RiskLevel riskLevel,
+            double riskScore,
+            int eventCount,
+            ProctorEventDto latestProctorEvent,
+            String lastActivityAt,
+            Boolean cameraOff,
+            Boolean fullscreenExited,
+            int audioSignalCount,
+            int networkInterruptionCount
+    ) {
+    }
+
+    public record CommandCenterData(
+            CommandCenterExam exam,
+            List<CommandCenterRoom> rooms,
+            List<CommandCenterStudent> roster
+    ) {
     }
 }

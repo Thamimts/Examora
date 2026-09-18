@@ -3,7 +3,9 @@ package com.examora.repository;
 import com.examora.model.ExamAccessStatus;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -17,6 +19,14 @@ public class ExamAccessRepository {
     public Optional<ExamAccessStatus> findStatus(String studentId, String examId) {
         return jdbc.query("select status from exam_access_state where student_id = ? and exam_id = ?",
                 (rs, row) -> ExamAccessStatus.valueOf(rs.getString("status")), studentId, examId).stream().findFirst();
+    }
+
+    public Map<String, ExamAccessStatus> findByExamId(String examId) {
+        return jdbc.query("select student_id, status from exam_access_state where exam_id = ?",
+                        (rs, row) -> new AccessRow(rs.getString("student_id"),
+                                ExamAccessStatus.valueOf(rs.getString("status"))), examId)
+                .stream()
+                .collect(Collectors.toMap(AccessRow::studentId, AccessRow::status));
     }
 
     public void suspend(String studentId, String examId, String reason, Instant at) {
@@ -57,5 +67,8 @@ public class ExamAccessRepository {
         return jdbc.update("update exam_access_state set status = 'ELIGIBLE', suspended_at = null, "
                 + "suspended_reason = null, updated_at = current_timestamp "
                 + "where student_id = ? and exam_id = ? and status = 'RETEST_APPROVED'", studentId, examId);
+    }
+
+    private record AccessRow(String studentId, ExamAccessStatus status) {
     }
 }

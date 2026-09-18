@@ -87,6 +87,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/results/me").hasAnyRole("STUDENT", "TEACHER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/answers/**").hasAnyRole("STUDENT", "TEACHER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/proctor/events/batch").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/proctor/attempts/*/signals").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/proctor/**").hasAnyRole("TEACHER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/proctor/**").hasAnyRole("TEACHER", "ADMIN")
                         .requestMatchers("/api/analytics/**").hasAnyRole("TEACHER", "ADMIN")

@@ -87,6 +87,16 @@ public class ExamAttemptRepository {
                 examId);
     }
 
+    public List<AttemptWithWarning> findByExamWithStudentAndWarnings(String examId) {
+        return jdbc.query(
+                "select ea.*, u.name as student_name, u.email as student_email, ea.warning_count "
+                        + "from exam_attempts ea join users u on u.id = ea.student_id "
+                        + "where ea.exam_id = ? order by ea.started_at desc, ea.id desc",
+                (rs, row) -> new AttemptWithWarning(mapAttempt(rs), rs.getString("student_name"),
+                        rs.getString("student_email"), rs.getInt("warning_count")),
+                examId);
+    }
+
     private ExamAttempt map(ResultSet rs, int ignored) throws SQLException {
         return mapAttempt(rs);
     }
@@ -97,6 +107,9 @@ public class ExamAttemptRepository {
     }
 
     public record AttemptWithStudent(ExamAttempt attempt, String studentName, String studentEmail) {
+    }
+
+    public record AttemptWithWarning(ExamAttempt attempt, String studentName, String studentEmail, int warningCount) {
     }
 
     public record SubmittedAttemptRow(String examId, int attemptNumber, Instant submittedAt) {

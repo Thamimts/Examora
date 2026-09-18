@@ -42,6 +42,10 @@ create table if not exists proctor_events (
 );
 alter table proctor_events add column if not exists server_received_at timestamp default current_timestamp;
 create index if not exists idx_proctor_events_attempt on proctor_events (attempt_id, occurred_at desc);
+alter table proctor_events add column if not exists source varchar(30) not null default 'BROWSER';
+alter table proctor_events add column if not exists confidence double;
+alter table proctor_events add column if not exists duration_ms bigint;
+create index if not exists idx_proctor_events_source on proctor_events (source);
 create table if not exists activity_events (
  id varchar(36) primary key, actor_id varchar(36), audience varchar(20) not null,
  type varchar(60) not null, message varchar(300) not null, created_at timestamp not null default current_timestamp,

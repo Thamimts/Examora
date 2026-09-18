@@ -14,6 +14,36 @@ export type ProctorEventType =
 
 export type StudentProctorEventType = ProctorEventType | 'FULLSCREEN_EXIT'
 
+export type ProctorSignalSource =
+  | 'BROWSER'
+  | 'CLIENT_AI'
+  | 'SERVER_AI'
+  | 'HUMAN_INVIGILATOR'
+  | 'SYSTEM'
+
+export type FutureAiSignalType =
+  | 'FACE_COUNT_ANOMALY'
+  | 'PHONE_DETECTED'
+  | 'UNKNOWN_OBJECT'
+  | 'GAZE_ANOMALY'
+  | 'HEAD_POSE_ANOMALY'
+
+export type ProctorSignalType = StudentProctorEventType | FutureAiSignalType
+
+export interface ProctorSignalInput {
+  signalId?: string
+  signalType: ProctorSignalType
+  source?: ProctorSignalSource
+  occurredAt?: string
+  confidence?: number
+  durationMs?: number
+  metadata?: Record<string, unknown>
+}
+
+export interface SubmitSignalResponse {
+  saved: number
+}
+
 export interface StudentProctorEvent {
   eventId: string
   attemptId: string
@@ -36,6 +66,9 @@ export interface ProctorEvent {
   occurredAt: string
   serverReceivedAt: string
   metadata: Record<string, unknown> | null
+  source: ProctorSignalSource
+  confidence: number | null
+  durationMs: number | null
 }
 
 export interface ProctorAttempt {
@@ -84,4 +117,60 @@ export interface ProctorUpdate {
   warningCount: number
   warningLevel: WarningLevel
   accessStatus: ExamAccessStatus
+}
+
+export interface CommandCenterExam {
+  examId: string
+  examTitle: string
+  status: string
+  duration: number
+  totalStudents: number
+  joinedStudents: number
+  activeAttempts: number
+  submittedAttempts: number
+  offlineParticipants: number
+  totalWarnings: number
+  terminatedAttempts: number
+}
+
+export interface CommandCenterRoom {
+  roomId: string
+  roomCode: string
+  status: 'WAITING' | 'ACTIVE' | 'ENDED'
+  memberCount: number
+  startedAt: string | null
+  endedAt: string | null
+}
+
+export interface CommandCenterStudent {
+  studentId: string
+  studentName: string
+  studentEmail: string
+  roomId: string | null
+  roomCode: string | null
+  roomStatus: 'WAITING' | 'ACTIVE' | 'ENDED' | null
+  attemptId: string | null
+  attemptNumber: number | null
+  attemptStatus: string | null
+  activeNow: boolean
+  startedAt: string | null
+  expiresAt: string | null
+  warningCount: number
+  warningLevel: WarningLevel
+  accessStatus: ExamAccessStatus
+  riskLevel: RiskLevel
+  riskScore: number
+  eventCount: number
+  latestProctorEvent: ProctorEvent | null
+  lastActivityAt: string | null
+  cameraOff: boolean | null
+  fullscreenExited: boolean | null
+  audioSignalCount: number
+  networkInterruptionCount: number
+}
+
+export interface CommandCenterData {
+  exam: CommandCenterExam
+  rooms: CommandCenterRoom[]
+  roster: CommandCenterStudent[]
 }

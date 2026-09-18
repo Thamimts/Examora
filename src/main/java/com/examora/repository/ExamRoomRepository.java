@@ -49,6 +49,10 @@ public class ExamRoomRepository {
         return jdbc.query(SELECT_COLUMNS + " where id = ?", this::map, id).stream().findFirst();
     }
 
+    public List<ExamRoom> findByExamId(String examId) {
+        return jdbc.query(SELECT_COLUMNS + " where exam_id = ? order by created_at asc, id asc", this::map, examId);
+    }
+
     public Optional<ExamRoom> findByCode(String roomCode) {
         return jdbc.query(SELECT_COLUMNS + " where room_code = ?", this::map, roomCode).stream().findFirst();
     }

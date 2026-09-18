@@ -43,13 +43,17 @@ public class ProctorRepository {
     private boolean insert(ProctorEvent event) {
         try {
             jdbcTemplate.update(
-                    "insert into proctor_events (id, attempt_id, event_id, type, occurred_at, metadata) values (?, ?, ?, ?, ?, ?)",
+                    "insert into proctor_events (id, attempt_id, event_id, type, occurred_at, metadata, source, confidence, duration_ms) "
+                            + "values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     UUID.randomUUID().toString(),
                     event.attemptId(),
                     blankToNull(event.eventId()),
                     event.type(),
                     event.occurredAt() == null ? Instant.now().toString() : event.occurredAt(),
-                    writeMetadata(event.metadata()));
+                    writeMetadata(event.metadata()),
+                    event.source() == null ? "BROWSER" : event.source(),
+                    event.confidence(),
+                    event.durationMs());
             return true;
         } catch (DuplicateKeyException exception) {
             return false;
@@ -58,7 +62,7 @@ public class ProctorRepository {
 
     public List<ProctorEventRow> findByAttemptId(String attemptId, int limit) {
         return jdbcTemplate.query(
-                "select id, attempt_id, event_id, type, occurred_at, metadata, server_received_at "
+                "select id, attempt_id, event_id, type, occurred_at, metadata, server_received_at, source, confidence, duration_ms "
                         + "from proctor_events where attempt_id = ? "
                         + "order by occurred_at desc, server_received_at desc, id desc limit ?",
                 this::mapRow,
@@ -68,7 +72,8 @@ public class ProctorRepository {
 
     public List<ProctorEventRow> findByExamId(String examId) {
         return jdbcTemplate.query(
-                "select pe.id, pe.attempt_id, pe.event_id, pe.type, pe.occurred_at, pe.metadata, pe.server_received_at "
+                "select pe.id, pe.attempt_id, pe.event_id, pe.type, pe.occurred_at, pe.metadata, pe.server_received_at, "
+                        + "pe.source, pe.confidence, pe.duration_ms "
                         + "from proctor_events pe join exam_attempts ea on ea.id = pe.attempt_id "
                         + "where ea.exam_id = ? "
                         + "order by pe.occurred_at desc, pe.server_received_at desc, pe.id desc",
@@ -112,10 +117,14 @@ public class ProctorRepository {
                 rs.getString("type"),
                 rs.getString("occurred_at"),
                 received == null ? null : received.toInstant().toString(),
-                readMetadata(rs.getString("metadata")));
+                readMetadata(rs.getString("metadata")),
+                rs.getString("source"),
+                rs.getObject("confidence", Double.class),
+                rs.getObject("duration_ms", Long.class));
     }
 
     public record ProctorEventRow(String id, String eventId, String attemptId, String type, String occurredAt,
-                                  String serverReceivedAt, Map<String, Object> metadata) {
+                                  String serverReceivedAt, Map<String, Object> metadata, String source,
+                                  Double confidence, Long durationMs) {
     }
 }

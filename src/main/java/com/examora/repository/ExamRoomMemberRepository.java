@@ -61,6 +61,28 @@ public class ExamRoomMemberRepository {
                 (rs, row) -> rs.getString(1), roomId);
     }
 
+    /** All JOINED members across every room of an exam, with the student display name. */
+    public List<JoinedForExam> findJoinedForExam(String examId) {
+        return jdbc.query(
+                "select m.room_id, m.student_id, u.name as student_name, u.email as student_email, m.joined_at "
+                        + "from exam_room_members m "
+                        + "join exam_rooms r on r.id = m.room_id "
+                        + "join users u on u.id = m.student_id "
+                        + "where r.exam_id = ? and m.status = 'JOINED' "
+                        + "order by m.joined_at asc, m.student_id asc",
+                (rs, row) -> new JoinedForExam(
+                        rs.getString("room_id"),
+                        rs.getString("student_id"),
+                        rs.getString("student_name"),
+                        rs.getString("student_email"),
+                        rs.getTimestamp("joined_at") == null ? null : rs.getTimestamp("joined_at").toInstant()),
+                examId);
+    }
+
+    public record JoinedForExam(String roomId, String studentId, String studentName, String studentEmail,
+                                Instant joinedAt) {
+    }
+
     /** Guarded leave: flips an existing JOINED membership to LEFT. Returns affected row count. */
     public int markLeft(String roomId, String studentId, Instant now) {
         return jdbc.update(

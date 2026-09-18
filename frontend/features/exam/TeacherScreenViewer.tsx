@@ -8,26 +8,36 @@ import type { RoomMember } from '@/types/examRoom'
 import type { ExamRoomStatus } from '@/types/examRoom'
 import type { RtcSignal } from '@/types/webrtc'
 
-type ViewState = 'connecting' | 'live' | 'reconnecting' | 'disconnected' | 'unavailable'
+export type ViewerState = 'connecting' | 'live' | 'reconnecting' | 'disconnected' | 'unavailable'
 
 type ViewEntry = {
   studentId: string
-  state: ViewState
+  state: ViewerState
   peer: RtcPeer | null
   stream: MediaStream | null
 }
 
-export function TeacherScreenViewer({ roomId, members, status }: {
+export function TeacherScreenViewer({ roomId, members, status, defaultSelectedStudentId = null, onViewerState }: {
   roomId: string
   members: RoomMember[]
   status: ExamRoomStatus
+  defaultSelectedStudentId?: string | null
+  onViewerState?: (studentId: string, state: ViewerState) => void
 }) {
   const token = useAuthStore((state) => state.token)
   const selfId = useAuthStore((state) => state.user?.id)
   const [, setTick] = useState(0)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(defaultSelectedStudentId)
   const viewsRef = useRef<Map<string, ViewEntry>>(new Map())
   const sentReadyRef = useRef<Set<string>>(new Set())
+
+  const notify = useCallback((studentId: string, state: ViewerState) => {
+    onViewerState?.(studentId, state)
+  }, [onViewerState])
+
+  useEffect(() => {
+    setSelected(defaultSelectedStudentId)
+  }, [defaultSelectedStudentId])
 
   const bump = useCallback(() => setTick((value) => value + 1), [])
 
@@ -54,6 +64,7 @@ export function TeacherScreenViewer({ roomId, members, status }: {
         } else if (state === 'closed') {
           entry.state = 'disconnected'
         }
+        notify(studentId, entry.state)
         bump()
       },
       onRemoteStream: (stream: MediaStream) => {
@@ -63,9 +74,9 @@ export function TeacherScreenViewer({ roomId, members, status }: {
           bump()
         }
       },
-    }), [signaling.publish, bump])
+    }), [signaling.publish, bump, notify])
 
-  const ensureEntry = useCallback((studentId: string, state: ViewState = 'connecting'): ViewEntry => {
+  const ensureEntry = useCallback((studentId: string, state: ViewerState = 'connecting'): ViewEntry => {
     const existing = viewsRef.current.get(studentId)
     if (existing) return existing
     const entry: ViewEntry = { studentId, state, peer: null, stream: null }
@@ -85,6 +96,7 @@ export function TeacherScreenViewer({ roomId, members, status }: {
         entry.peer = null
         entry.stream = null
         entry.state = 'disconnected'
+        notify(studentId, entry.state)
         bump()
       }
       return
@@ -95,6 +107,7 @@ export function TeacherScreenViewer({ roomId, members, status }: {
       entry.peer = null
       entry.stream = null
       entry.state = 'unavailable'
+      notify(studentId, entry.state)
       bump()
       return
     }
@@ -105,6 +118,7 @@ export function TeacherScreenViewer({ roomId, members, status }: {
       const entry = ensureEntry(studentId, 'connecting')
       entry.peer = peer
       entry.state = 'connecting'
+      notify(studentId, entry.state)
       setSelected((current) => current ?? studentId)
     }
     void peer.handleSignal({
@@ -115,19 +129,21 @@ export function TeacherScreenViewer({ roomId, members, status }: {
       const current = viewsRef.current.get(studentId)
       if (current) {
         current.state = 'reconnecting'
+        notify(studentId, current.state)
         bump()
       }
     })
-  }, [selfId, createPeer, ensureEntry, bump])
+  }, [selfId, createPeer, ensureEntry, notify, bump])
 
   const selectStudent = useCallback((studentId: string) => {
     ensureEntry(studentId, 'connecting')
+    notify(studentId, 'connecting')
     setSelected(studentId)
     if (signaling.connectionState === 'connected') {
       sentReadyRef.current.add(studentId)
       signaling.publish({ peerId: studentId, type: 'viewer_ready' })
     }
-  }, [ensureEntry, signaling.connectionState, signaling.publish])
+  }, [ensureEntry, notify, signaling.connectionState, signaling.publish])
 
   useEffect(() => {
     if (signaling.connectionState !== 'connected') {
@@ -253,7 +269,7 @@ export function TeacherScreenViewer({ roomId, members, status }: {
   )
 }
 
-function dotClass(state: ViewState): string {
+function dotClass(state: ViewerState): string {
   switch (state) {
     case 'live':
       return 'bg-emerald-500'

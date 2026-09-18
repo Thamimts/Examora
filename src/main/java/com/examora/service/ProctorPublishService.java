@@ -118,6 +118,9 @@ public class ProctorPublishService {
             if (event.type() == null || event.type().isBlank()) {
                 continue;
             }
+            if (ProctorSignalTypes.FUTURE_AI_SIGNAL_TYPES.contains(event.type().trim().toUpperCase())) {
+                continue;
+            }
             total += TYPE_SEVERITY.getOrDefault(event.type().trim().toUpperCase(), UNKNOWN_TYPE_SEVERITY);
         }
         int capped = Math.min(MAX_RISK, total);
@@ -129,7 +132,8 @@ public class ProctorPublishService {
 
     private ProctorEventDto toDto(ProctorEventRow row) {
         return new ProctorEventDto(row.id(), row.eventId(), row.attemptId(), row.type(), row.occurredAt(),
-                row.serverReceivedAt(), row.metadata());
+                row.serverReceivedAt(), row.metadata(),
+                row.source() == null ? "BROWSER" : row.source(), row.confidence(), row.durationMs());
     }
 
     private record RiskScore(RiskLevel level, double score) {

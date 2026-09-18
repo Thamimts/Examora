@@ -30,7 +30,7 @@ import { adaptiveApi } from '@/services/adaptiveApi'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
-import { ProctorMonitor } from '@/features/proctor/ProctorMonitor'
+import { ProctoringCommandCenter } from '@/features/proctor/ProctoringCommandCenter'
 import { TeacherCommandCenter } from '@/features/teacher/TeacherCommandCenter'
 import { ExamIntelligenceList } from '@/features/teacher/ExamIntelligenceList'
 import { ExamIntelligence } from '@/features/teacher/ExamIntelligence'
@@ -91,12 +91,15 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Question bank', href: '/admin/question-bank', icon: ListChecks },
     { label: 'Results', href: '/admin/results', icon: BarChart3 },
     { label: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
+    { label: 'Live monitor', href: '/admin/monitor', icon: Activity },
     { label: 'Retests', href: '/admin/retests', icon: RotateCcw },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
 }
 function navActive(itemHref: string, isActive: boolean, pathname: string): boolean {
   if (isActive) return true
+  if (itemHref === '/admin/monitor' && pathname.startsWith('/admin/monitor')) return true
+  if (itemHref === '/admin/monitor' && pathname.startsWith('/teacher/monitor')) return true
   return itemHref === '/student/practice' && pathname.startsWith('/student/adaptive')
 }
 function getMobileItems(role: Role): MobileNavItem[] {
@@ -820,8 +823,10 @@ function App() {
       <Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentPerformance /></Protected>} />
       <Route path="/student/adaptive/:id" element={<Protected roles={['STUDENT']}><PracticeSession /></Protected>} />
       <Route path="/student/practice" element={<Protected roles={['STUDENT']}><StudentPractice /></Protected>} />
-      <Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER', 'ADMIN']}><ProctorMonitor /></Protected>} />
+      <Route path="/teacher/monitor/:id" element={<Protected roles={['TEACHER', 'ADMIN']}><ProctoringCommandCenter /></Protected>} />
       <Route path="/teacher/monitor" element={<Protected roles={['TEACHER', 'ADMIN']}><MonitorPicker /></Protected>} />
+      <Route path="/admin/monitor/:id" element={<Protected roles={['ADMIN']}><ProctoringCommandCenter /></Protected>} />
+      <Route path="/admin/monitor" element={<Protected roles={['ADMIN']}><MonitorPicker /></Protected>} />
       <Route path="/teacher/analytics" element={<Protected roles={['TEACHER', 'ADMIN']}><ExamIntelligenceList /></Protected>} />
       <Route path="/teacher/analytics/:examId" element={<Protected roles={['TEACHER', 'ADMIN']}><ExamIntelligence /></Protected>} />
       <Route path="/admin/analytics" element={<Protected roles={['ADMIN']}><AdminAnalytics /></Protected>} />
