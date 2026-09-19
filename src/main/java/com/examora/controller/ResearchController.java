@@ -1,9 +1,12 @@
 package com.examora.controller;
 
+import com.examora.dto.ResearchDtos.AnalysisReportDto;
 import com.examora.dto.ApiResponse;
 import com.examora.dto.ResearchDtos.ConditionCatalogDto;
 import com.examora.dto.ResearchDtos.ExperimentCreateRequest;
 import com.examora.dto.ResearchDtos.ExperimentStatusRequest;
+import com.examora.dto.ResearchDtos.FailureReportDto;
+import com.examora.dto.ResearchDtos.FailureSamplesPageDto;
 import com.examora.dto.ResearchDtos.ResearchExperimentDto;
 import com.examora.dto.ResearchDtos.ResearchRunDto;
 import com.examora.dto.ResearchDtos.ResearchSampleDto;
@@ -12,6 +15,7 @@ import com.examora.dto.ResearchDtos.RunCreateRequest;
 import com.examora.dto.ResearchDtos.RunDetailDto;
 import com.examora.dto.ResearchDtos.RunSampleCreateRequest;
 import com.examora.dto.ResearchDtos.RunSampleDetailDto;
+import com.examora.dto.ResearchDtos.RunEvaluationDto;
 import com.examora.dto.ResearchDtos.RunSampleDto;
 import com.examora.dto.ResearchDtos.SampleCaptureRequest;
 import com.examora.dto.ResearchDtos.SampleCreateRequest;
@@ -19,6 +23,8 @@ import com.examora.dto.ResearchDtos.ScenarioInstructionDto;
 import com.examora.dto.ResearchDtos.StudyEvaluationDto;
 import com.examora.model.User;
 import com.examora.service.AuthService;
+import com.examora.service.ResearchAnalysisService;
+import com.examora.service.ResearchFailureAnalysisService;
 import com.examora.service.ResearchRunService;
 import com.examora.service.ResearchService;
 import java.util.List;
@@ -37,13 +43,19 @@ public class ResearchController {
 
     private final ResearchService researchService;
     private final ResearchRunService researchRunService;
+    private final ResearchAnalysisService researchAnalysisService;
+    private final ResearchFailureAnalysisService researchFailureAnalysisService;
     private final AuthService authService;
 
     public ResearchController(ResearchService researchService,
                               ResearchRunService researchRunService,
+                              ResearchAnalysisService researchAnalysisService,
+                              ResearchFailureAnalysisService researchFailureAnalysisService,
                               AuthService authService) {
         this.researchService = researchService;
         this.researchRunService = researchRunService;
+        this.researchAnalysisService = researchAnalysisService;
+        this.researchFailureAnalysisService = researchFailureAnalysisService;
         this.authService = authService;
     }
 
@@ -149,6 +161,14 @@ public class ResearchController {
         return ApiResponse.ok(researchRunService.getRun(admin, runId));
     }
 
+    @GetMapping("/runs/{runId}/evaluation")
+    public ApiResponse<RunEvaluationDto> evaluateRun(
+            @PathVariable String runId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchRunService.evaluateRun(admin, runId));
+    }
+
     @PostMapping("/runs/{runId}/start")
     public ApiResponse<ResearchRunDto> startRun(
             @PathVariable String runId,
@@ -233,5 +253,35 @@ public class ResearchController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User admin = authService.requireAdmin(authorizationHeader);
         return ApiResponse.ok(researchRunService.conditionCatalog(admin));
+    }
+
+    @GetMapping("/experiments/{experimentId}/analysis")
+    public ApiResponse<AnalysisReportDto> analysis(
+            @PathVariable String experimentId,
+            @RequestParam(required = false) String runId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchAnalysisService.analyze(admin, experimentId, runId));
+    }
+
+    @GetMapping("/experiments/{experimentId}/failure-analysis")
+    public ApiResponse<FailureReportDto> failureAnalysis(
+            @PathVariable String experimentId,
+            @RequestParam(required = false) String runId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchFailureAnalysisService.failureAnalysis(admin, experimentId, runId));
+    }
+
+    @GetMapping("/experiments/{experimentId}/failure-analysis/samples")
+    public ApiResponse<FailureSamplesPageDto> failureAnalysisSamples(
+            @PathVariable String experimentId,
+            @RequestParam(required = false) String runId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchFailureAnalysisService.failureSamples(
+                admin, experimentId, runId, page, pageSize));
     }
 }

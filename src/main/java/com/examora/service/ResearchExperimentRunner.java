@@ -120,6 +120,28 @@ public class ResearchExperimentRunner {
     }
 
     /**
+     * Evaluates a caller-supplied list of sample inputs (e.g. the captured samples of a single
+     * research run) under baseline-v1 and fusion-v1 through the same pure engine used by the
+     * study-level evaluation, so metrics and latency/bandwidth semantics never diverge.
+     */
+    public ResearchEvaluationEngine.StudyEvaluation evaluateInputs(
+            List<ResearchEvaluationEngine.SampleEvaluation> inputs,
+            String baselineVersion, String algorithmVersion) {
+        return engine.evaluate(inputs, baselineVersion, algorithmVersion);
+    }
+
+    /**
+     * Condition-grouped evaluation of caller-supplied inputs, mirroring
+     * {@link #evaluate(ResearchExperiment, String)}. Inputs must already carry the group value
+     * in {@link ResearchEvaluationEngine.SampleEvaluation#conditionValue()}.
+     */
+    public List<ResearchEvaluationEngine.ConditionGroup> evaluateInputsByCondition(
+            List<ResearchEvaluationEngine.SampleEvaluation> inputs,
+            String baselineVersion, String algorithmVersion) {
+        return engine.evaluateByCondition(inputs, baselineVersion, algorithmVersion);
+    }
+
+    /**
      * Per-sample baseline-v1 and fusion-v1 prediction for a captured research sample,
      * reusing the exact engine inputs (same widened signal query and precise in-window
      * filtering as the study-level evaluation). Pure and read-only.
@@ -159,7 +181,8 @@ public class ResearchExperimentRunner {
                 c.falsePositives(), c.falseNegatives());
         ResearchMetrics.EvaluatorMetrics m = result.metrics();
         EvaluatorMetricsDto metrics = new EvaluatorMetricsDto(m.precision(), m.recall(), m.specificity(),
-                m.accuracy(), m.falsePositiveRate(), m.falseNegativeRate(), m.f1(), m.wrongfulWarningRate());
+                m.accuracy(), m.falsePositiveRate(), m.falseNegativeRate(), m.f1(),
+                m.wrongfulWarningRate(), m.fdr());
         return new EvaluatorResultDto(result.version(), confusion, metrics);
     }
 

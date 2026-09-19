@@ -160,6 +160,96 @@ public final class ResearchValidation {
         }
     }
 
+    public static void validateRunCode(String runCode) {
+        if (runCode == null || runCode.isBlank()) {
+            throw badRequest("runCode is required");
+        }
+        String code = runCode.trim();
+        if (code.length() > ResearchConfig.MAX_RUN_CODE_LENGTH) {
+            throw badRequest("runCode must be at most " + ResearchConfig.MAX_RUN_CODE_LENGTH + " characters");
+        }
+        for (int i = 0; i < code.length(); i++) {
+            char c = code.charAt(i);
+            if (!(Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_')) {
+                throw badRequest("runCode may contain only letters, digits, '.', '-' and '_'");
+            }
+        }
+    }
+
+    public static String normalizeRunCode(String runCode) {
+        validateRunCode(runCode);
+        return runCode.trim();
+    }
+
+    public static void validateRunNotes(String notes) {
+        if (notes != null && notes.length() > ResearchConfig.MAX_RUN_NOTES_LENGTH) {
+            throw badRequest("notes must be at most " + ResearchConfig.MAX_RUN_NOTES_LENGTH + " characters");
+        }
+    }
+
+    public static void validateRunStatus(String status) {
+        if (status == null || !ResearchConfig.RUN_STATUSES.contains(status)) {
+            throw badRequest("run status must be one of: " + String.join(", ", ResearchConfig.RUN_STATUSES));
+        }
+    }
+
+    public static void validateRunSampleStatus(String status) {
+        if (status == null || !ResearchConfig.RUN_SAMPLE_STATUSES.contains(status)) {
+            throw badRequest("run sample status must be one of: " + String.join(", ", ResearchConfig.RUN_SAMPLE_STATUSES));
+        }
+    }
+
+    /**
+     * Validates a controlled-run condition payload strictly against CONTROLLED_CONDITIONS.
+     * Unknown keys and values are rejected up-front so only the allowed environmental
+     * vocabulary can ever be recorded. Demographic keys are structurally impossible to pass.
+     */
+    public static void validateControlledConditions(Map<String, String> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            throw badRequest("condition is required");
+        }
+        for (Map.Entry<String, String> entry : conditions.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            Set<String> allowed = ResearchConfig.CONTROLLED_CONDITIONS.get(key);
+            if (allowed == null) {
+                throw badRequest("condition '" + key + "' is not a supported controlled condition");
+            }
+            if (value == null || !allowed.contains(value)) {
+                throw badRequest("condition value for '" + key + "' must be one of: " + String.join(", ", allowed));
+            }
+        }
+    }
+
+    /**
+     * Canonical, deterministic condition key used for the run-sample uniqueness constraint.
+     * Keys are sorted so equivalent payloads always map to the same key.
+     */
+    public static String conditionsKey(Map<String, String> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
+            throw badRequest("condition is required");
+        }
+        ArrayList<String> parts = new ArrayList<>();
+        for (Map.Entry<String, String> entry : conditions.entrySet()) {
+            parts.add(entry.getKey() + "=" + entry.getValue());
+        }
+        java.util.Collections.sort(parts);
+        return String.join(";", parts);
+    }
+
+    /**
+     * Whether an attempt belongs to the experiment's exam. A missing experiment exam id
+     * means the experiment is not tied to a specific exam, so any valid attempt belongs.
+     */
+    public static boolean attemptBelongsToExperiment(String attemptExamId, String experimentExamId) {
+        return experimentExamId == null || experimentExamId.equals(attemptExamId);
+    }
+
+    public static void validateCaptureRequest(Long measuredLatencyMs, Long rawMediaBytes, Long signalBytes) {
+        validateMeasuredLatency(measuredLatencyMs);
+        validateByteCounts(rawMediaBytes, signalBytes);
+    }
+
     /**
      * Pure overlap check for two bounded windows: window A overlaps window B when
      * A.start < B.end and A.end > B.start. Used both directly (validations) and by the
@@ -205,6 +295,23 @@ public final class ResearchValidation {
         if (baselineVersion != null && baselineVersion.isBlank()) {
             throw badRequest("baseline version must not be blank");
         }
+    }
+
+    /**
+     * Human-review agreement state for a single sample:
+     * UNREVIEWED - no reviews recorded; AGREED - resolved by a unanimous majority (a single
+     * review counts as unanimous); TIED - reviews recorded but no resolved majority; RESOLVED -
+     * a non-unanimous majority resolved the label. TIED is never evaluated and never silently
+     * converted.
+     */
+    public static String agreementState(int reviewCount, String resolvedLabel, boolean unanimous) {
+        if (reviewCount <= 0) {
+            return "UNREVIEWED";
+        }
+        if (resolvedLabel == null) {
+            return "TIED";
+        }
+        return unanimous ? "AGREED" : "RESOLVED";
     }
 
     private static ApiException badRequest(String message) {

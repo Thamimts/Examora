@@ -1,8 +1,11 @@
 import { api } from './api'
 import type { ApiResponse } from '@/types'
 import type {
+  AnalysisReport,
   ConditionCatalogEntry,
   ControlledConditions,
+  FailureReport,
+  FailureSamplesPage,
   ResearchCondition,
   ResearchConditionKey,
   ResearchEvaluation,
@@ -10,6 +13,7 @@ import type {
   ResearchRun,
   ResearchRunDetail,
   ResearchRunSample,
+  ResearchRunEvaluation,
   ResearchRunSampleDetail,
   ResearchSample,
   ResearchScenario,
@@ -49,6 +53,8 @@ export const researchApi = {
     api.post<ApiResponse<ResearchRun>>(`/proctor/research/experiments/${experimentId}/runs`, body),
   getRun: (runId: string) =>
     api.get<ApiResponse<ResearchRunDetail>>(`/proctor/research/runs/${runId}`),
+  evaluateRun: (runId: string) =>
+    api.get<ApiResponse<ResearchRunEvaluation>>(`/proctor/research/runs/${runId}/evaluation`),
   startRun: (runId: string) =>
     api.post<ApiResponse<ResearchRun>>(`/proctor/research/runs/${runId}/start`),
   completeRun: (runId: string) =>
@@ -77,4 +83,17 @@ export const researchApi = {
     api.get<ApiResponse<ScenarioInstruction[]>>('/proctor/research/scenarios'),
   conditionCatalog: () =>
     api.get<ApiResponse<ConditionCatalogEntry[]>>('/proctor/research/conditions'),
+  getExperimentAnalysis: (experimentId: string, runId?: string) =>
+    api.get<ApiResponse<AnalysisReport>>(`/proctor/research/experiments/${experimentId}/analysis`, {
+      params: runId ? { runId } : undefined,
+    }),
+  getFailureAnalysis: (experimentId: string, runId?: string) =>
+    api.get<ApiResponse<FailureReport>>(`/proctor/research/experiments/${experimentId}/failure-analysis`, {
+      params: runId ? { runId } : undefined,
+    }),
+  getFailureSamples: (experimentId: string, params: { runId?: string; page?: number; pageSize?: number }) =>
+    api.get<ApiResponse<FailureSamplesPage>>(
+      `/proctor/research/experiments/${experimentId}/failure-analysis/samples`,
+      { params },
+    ),
 }

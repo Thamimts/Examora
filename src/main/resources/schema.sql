@@ -43,7 +43,7 @@ create table if not exists proctor_events (
 alter table proctor_events add column if not exists server_received_at timestamp default current_timestamp;
 create index if not exists idx_proctor_events_attempt on proctor_events (attempt_id, occurred_at desc);
 alter table proctor_events add column if not exists source varchar(30) not null default 'BROWSER';
-alter table proctor_events add column if not exists confidence double;
+alter table proctor_events add column if not exists confidence double precision;
 alter table proctor_events add column if not exists duration_ms bigint;
 create index if not exists idx_proctor_events_source on proctor_events (source);
 create table if not exists activity_events (
@@ -154,9 +154,9 @@ create table if not exists proctor_fusion_results (
  calculated_at timestamp not null default current_timestamp,
  window_start varchar(40) not null,
  window_end varchar(40) not null,
- baseline_score double not null,
- fused_score double not null,
- fused_confidence double,
+ baseline_score double precision not null,
+ fused_score double precision not null,
+ fused_confidence double precision,
  evidence_count int not null,
  algorithm_version varchar(40) not null,
  constraint fk_fusion_attempt foreign key (attempt_id) references exam_attempts(id) on delete cascade,
@@ -200,7 +200,7 @@ create table if not exists research_reviews (
  sample_id varchar(36) not null,
  reviewer_id varchar(36) not null,
  label varchar(40) not null,
- confidence double,
+ confidence double precision,
  notes varchar(500),
  reviewed_at timestamp not null default current_timestamp,
  constraint fk_research_review_sample foreign key (sample_id) references research_samples(id) on delete cascade,

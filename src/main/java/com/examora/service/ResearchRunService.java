@@ -1,11 +1,25 @@
 package com.examora.service;
 
+import com.examora.dto.ResearchDtos.BandwidthStatsDto;
 import com.examora.dto.ResearchDtos.ConditionCatalogDto;
+import com.examora.dto.ResearchDtos.ConditionDistributionDto;
+import com.examora.dto.ResearchDtos.ConditionGroupEvaluationDto;
 import com.examora.dto.ResearchDtos.ConditionOptionDto;
+import com.examora.dto.ResearchDtos.ConditionValueCountDto;
+import com.examora.dto.ResearchDtos.CompletionSummaryDto;
+import com.examora.dto.ResearchDtos.ConfusionDto;
+import com.examora.dto.ResearchDtos.DisagreementDto;
+import com.examora.dto.ResearchDtos.EvaluationSnapshotDto;
+import com.examora.dto.ResearchDtos.EvaluatorMetricsDto;
+import com.examora.dto.ResearchDtos.EvaluatorResultDto;
+import com.examora.dto.ResearchDtos.LatencyStatsDto;
+import com.examora.dto.ResearchDtos.ReviewStatusDto;
 import com.examora.dto.ResearchDtos.RunCreateRequest;
 import com.examora.dto.ResearchDtos.RunDataQualityDto;
 import com.examora.dto.ResearchDtos.RunDetailDto;
+import com.examora.dto.ResearchDtos.RunEvaluationDto;
 import com.examora.dto.ResearchDtos.RunMatrixSummaryDto;
+import com.examora.dto.ResearchDtos.RunProgressDto;
 import com.examora.dto.ResearchDtos.RunSampleCreateRequest;
 import com.examora.dto.ResearchDtos.RunSampleDetailDto;
 import com.examora.dto.ResearchDtos.RunSampleDto;
@@ -13,6 +27,7 @@ import com.examora.dto.ResearchDtos.ResearchRunDto;
 import com.examora.dto.ResearchDtos.SampleCaptureRequest;
 import com.examora.dto.ResearchDtos.ScenarioInstructionDto;
 import com.examora.dto.ResearchDtos.ScenarioOutcomeDto;
+import com.examora.dto.ResearchDtos.ScenarioProgressDto;
 import com.examora.dto.ResearchDtos.SignalSourceCountDto;
 import com.examora.dto.ResearchDtos.SignalTypeCountDto;
 import com.examora.exception.ApiException;
@@ -26,7 +41,11 @@ import com.examora.repository.ResearchRepository.ResearchRun;
 import com.examora.repository.ResearchRepository.ResearchRunSample;
 import com.examora.repository.ResearchRepository.ResearchSample;
 import com.examora.service.ProctorFusionService.FusionSignal;
+import com.examora.service.ResearchEvaluationEngine.ConditionGroup;
+import com.examora.service.ResearchEvaluationEngine.EvaluatorResult;
 import com.examora.service.ResearchEvaluationEngine.PerSamplePrediction;
+import com.examora.service.ResearchEvaluationEngine.SampleEvaluation;
+import com.examora.service.ResearchEvaluationEngine.StudyEvaluation;
 import com.examora.service.ResearchRunDataQuality.Entry;
 import com.examora.service.ResearchRunDataQuality.MatrixRow;
 import com.examora.service.ResearchRunDataQuality.Report;
@@ -463,6 +482,326 @@ public class ResearchRunService {
                     values, options));
         }
         return result;
+    }
+
+    /**
+     * Run-scoped evaluation for the first controlled experiment: real progress versus the
+     * informational pilot target (80 = 10 x 8 scenarios), scenario progress, per-condition
+     * distribution from stored records, human-review agreement, baseline-v1 vs fusion-v1
+     * metrics (including FDR) for the run's captured samples, disagreement analysis, per-dimension
+     * condition breakdown, latency/bandwidth, completion summary, and a reproducibility snapshot.
+     * Everything derives from persisted rows and pure functions; only {@code evaluatedAt} in the
+     * snapshot varies between invocations. Tied, unreviewed, and invalid samples are never
+     * silently resolved or evaluated.
+     */
+    public RunEvaluationDto evaluateRun(User actor, String runId) {
+        requireAdmin(actor);
+        ResearchRun run = requireRun(runId);
+        ResearchExperiment experiment = requireExperiment(run.experimentId());
+        List<ResearchRunSample> runSamples = researchRepository.listRunSamplesByRun(
+                runId, ResearchConfig.MAX_RUN_SAMPLES);
+        List<ResearchSample> experimentSamples = researchRepository.findSamplesByExperiment(
+                experiment.id(), ResearchConfig.MAX_SAMPLES_PER_EXPERIMENT);
+        Map<String, ResearchSample> sampleById = new HashMap<>();
+        for (ResearchSample sample : experimentSamples) {
+            sampleById.put(sample.id(), sample);
+        }
+        boolean[] invalidMask = ResearchSampleValidity.markInvalid(experimentSamples,
+                id -> examAttemptRepository.findById(id).orElse(null));
+        Set<String> invalidBySampleId = new HashSet<>();
+        for (int i = 0; i < experimentSamples.size(); i++) {
+            if (invalidMask[i]) {
+                invalidBySampleId.add(experimentSamples.get(i).id());
+            }
+        }
+        Map<String, List<String>> reviewLabels = researchRepository.reviewLabelsByExperiment(experiment.id());
+
+        List<Entry> entries = new ArrayList<>();
+        List<RunSampleContext> contexts = new ArrayList<>();
+        for (ResearchRunSample runSample : runSamples) {
+            boolean captured = "CAPTURED".equals(runSample.status());
+            String researchSampleId = runSample.researchSampleId();
+            ResearchSample researchSample = researchSampleId == null ? null : sampleById.get(researchSampleId);
+            boolean linked = researchSample != null;
+            List<String> labels = researchSampleId == null ? List.of()
+                    : reviewLabels.getOrDefault(researchSampleId, List.of());
+            boolean reviewed = !labels.isEmpty();
+            String resolvedLabel = ResearchValidation.majorityLabel(labels);
+            boolean invalid = researchSampleId != null && invalidBySampleId.contains(researchSampleId);
+            long signalCount = captured && runSample.startedAt() != null && runSample.endedAt() != null
+                    ? proctorRepository.countByAttemptIdWithin(runSample.attemptId(), runSample.startedAt(),
+                    runSample.endedAt())
+                    : 0L;
+            Set<String> unexpected = captured
+                    ? unexpectedSignalTypes(runSample, runSample.startedAt(), runSample.endedAt()) : Set.of();
+            boolean hasSignals = captured && signalCount > 0;
+            boolean evaluable = reviewed && resolvedLabel != null && !invalid;
+            boolean latencyPresent = runSample.measuredLatencyMs() != null;
+            boolean bandwidthPresent = runSample.rawMediaBytes() != null && runSample.signalBytes() != null;
+            entries.add(new Entry(runSample.id(), runSample.status(), linked, reviewed, evaluable,
+                    resolvedLabel, runSample.scenario(), invalid, hasSignals, unexpected,
+                    latencyPresent, bandwidthPresent, runSample.conditionsKey()));
+            if (captured && linked) {
+                Boolean actualPositive = evaluable ? !ResearchValidation.isNegativeLabel(resolvedLabel) : null;
+                SampleEvaluation evaluation = new SampleEvaluation(researchSample.id(),
+                        ResearchValidation.parseTimestamp(runSample.startedAt(), "startedAt"),
+                        ResearchValidation.parseTimestamp(runSample.endedAt(), "endedAt"),
+                        actualPositive, reviewed, runner.windowSignals(researchSample),
+                        researchSample.rawMediaBytes(), researchSample.signalBytes(), null);
+                contexts.add(new RunSampleContext(runSample, researchSample, labels, resolvedLabel,
+                        invalid, reviewed, evaluable, evaluation));
+            }
+        }
+        contexts.sort((a, b) -> {
+            int scenarioA = ResearchConfig.SCENARIO_ORDER.indexOf(a.sample().scenario());
+            int scenarioB = ResearchConfig.SCENARIO_ORDER.indexOf(b.sample().scenario());
+            if (scenarioA != scenarioB) {
+                return Integer.compare(scenarioA, scenarioB);
+            }
+            return a.sample().id().compareTo(b.sample().id());
+        });
+
+        StudyEvaluation study = runner.evaluateInputs(
+                contexts.stream().map(RunSampleContext::evaluation).toList(),
+                experiment.baselineVersion(), experiment.algorithmVersion());
+        Report report = ResearchRunDataQuality.compute(entries);
+
+        EvaluationSnapshotDto snapshot = new EvaluationSnapshotDto(run.datasetVersion(),
+                experiment.baselineVersion(), experiment.algorithmVersion(),
+                Instant.now().toString(), report.evaluable());
+        RunProgressDto progress = new RunProgressDto(ResearchConfig.TARGET_EXPERIMENT_SAMPLES,
+                report.planned(), report.capturing(), report.captured(), report.reviewed(), report.evaluable());
+        CompletionSummaryDto completion = completionSummary(contexts, report);
+
+        return new RunEvaluationDto(run.id(), experiment.id(), run.runCode(), progress,
+                scenarioProgress(entries), conditionDistribution(contexts),
+                toDataQualityDto(report), toDto(study.baseline()), toDto(study.fusion()),
+                reviewAgreement(contexts), disagreements(contexts),
+                conditionGroups(contexts, experiment.baselineVersion(), experiment.algorithmVersion()),
+                toDto(study.latency()), toDto(study.bandwidth()), completion, snapshot);
+    }
+
+    private RunDataQualityDto toDataQualityDto(Report report) {
+        return new RunDataQualityDto(report.planned(), report.capturing(), report.captured(),
+                report.reviewed(), report.evaluable(), report.unreviewed(), report.tied(),
+                report.invalid(), report.missingSignals(), report.unexpectedSignals(),
+                report.scenarioGroundTruthAgreement(), report.scenarioGroundTruthDisagreement(),
+                report.missingMeasuredLatency(), report.missingBandwidth());
+    }
+
+    private List<ScenarioProgressDto> scenarioProgress(List<Entry> entries) {
+        Map<String, ScenarioProgressAccumulator> byScenario = new LinkedHashMap<>();
+        for (String scenario : ResearchConfig.SCENARIO_ORDER) {
+            byScenario.put(scenario, new ScenarioProgressAccumulator());
+        }
+        for (Entry entry : entries) {
+            ScenarioProgressAccumulator acc = byScenario.get(entry.scenario());
+            if (acc == null) {
+                acc = byScenario.computeIfAbsent(entry.scenario(), key -> new ScenarioProgressAccumulator());
+            }
+            acc.planned++;
+            if ("CAPTURED".equals(entry.runSampleStatus())) {
+                acc.captured++;
+            }
+            if (entry.reviewed()) {
+                acc.reviewed++;
+                if (entry.evaluable()) {
+                    acc.evaluable++;
+                }
+            }
+        }
+        List<ScenarioProgressDto> result = new ArrayList<>();
+        for (String scenario : ResearchConfig.SCENARIO_ORDER) {
+            ScenarioProgressAccumulator acc = byScenario.get(scenario);
+            result.add(new ScenarioProgressDto(scenario, ResearchValidation.scenarioLabel(scenario),
+                    ResearchConfig.TARGET_SAMPLES_PER_SCENARIO, acc.planned, acc.captured,
+                    acc.reviewed, acc.evaluable));
+        }
+        return result;
+    }
+
+    private List<ConditionDistributionDto> conditionDistribution(List<RunSampleContext> contexts) {
+        List<ConditionDistributionDto> result = new ArrayList<>();
+        for (String key : ResearchConfig.CONTROLLED_CONDITION_ORDER) {
+            Map<String, Integer> counts = new LinkedHashMap<>();
+            for (RunSampleContext context : contexts) {
+                String value = context.sample().conditions().get(key);
+                if (value != null) {
+                    counts.merge(value, 1, Integer::sum);
+                }
+            }
+            List<ConditionValueCountDto> values = new ArrayList<>();
+            for (String value : new java.util.TreeSet<>(counts.keySet())) {
+                values.add(new ConditionValueCountDto(value, counts.get(value)));
+            }
+            result.add(new ConditionDistributionDto(key, CONDITION_LABELS.getOrDefault(key, key), values));
+        }
+        return result;
+    }
+
+    private List<ReviewStatusDto> reviewAgreement(List<RunSampleContext> contexts) {
+        List<ReviewStatusDto> result = new ArrayList<>();
+        for (RunSampleContext context : contexts) {
+            List<String> labels = context.reviewLabels();
+            String resolved = context.resolvedLabel();
+            boolean unanimous = labels.stream().allMatch(label -> label != null && label.equals(resolved));
+            result.add(new ReviewStatusDto(context.sample().id(), context.sample().scenario(),
+                    labels.size(), resolved,
+                    ResearchValidation.agreementState(labels.size(), resolved, unanimous)));
+        }
+        return result;
+    }
+
+    private List<DisagreementDto> disagreements(List<RunSampleContext> contexts) {
+        List<DisagreementDto> result = new ArrayList<>();
+        for (RunSampleContext context : contexts) {
+            PerSamplePrediction prediction = runner.predict(context.researchSample());
+            if (prediction.baselinePositive() == prediction.fusionPositive()) {
+                continue;
+            }
+            SignalProfile profile = signalProfile(context.sample(), context.researchSample());
+            result.add(new DisagreementDto(context.researchSample().id(), context.sample().id(),
+                    context.sample().scenario(), context.sample().conditionsKey(),
+                    context.resolvedLabel(), prediction.baselinePositive(), prediction.fusionPositive(),
+                    profile.types(), profile.sources(), profile.minConfidence(),
+                    profile.maxConfidence(), profile.meanConfidence(), profile.maxDurationMs()));
+        }
+        return result;
+    }
+
+    private List<ConditionGroupEvaluationDto> conditionGroups(List<RunSampleContext> contexts,
+                                                              String baselineVersion, String algorithmVersion) {
+        List<ConditionGroupEvaluationDto> result = new ArrayList<>();
+        for (String key : ResearchConfig.CONTROLLED_CONDITION_ORDER) {
+            List<SampleEvaluation> dimensionInputs = new ArrayList<>();
+            for (RunSampleContext context : contexts) {
+                String value = context.sample().conditions().get(key);
+                if (value == null) {
+                    continue;
+                }
+                SampleEvaluation base = context.evaluation();
+                dimensionInputs.add(new SampleEvaluation(base.sampleId(), base.windowStart(),
+                        base.windowEnd(), base.actualPositive(), base.reviewed(), base.signals(),
+                        base.rawMediaBytes(), base.signalBytes(), value));
+            }
+            List<ConditionGroup> groups = new ArrayList<>(runner.evaluateInputsByCondition(
+                    dimensionInputs, baselineVersion, algorithmVersion));
+            groups.sort(java.util.Comparator.comparing(ConditionGroup::conditionValue));
+            for (ConditionGroup group : groups) {
+                result.add(new ConditionGroupEvaluationDto(key, group.conditionValue(),
+                        group.sampleCount(), toDto(group.baseline()), toDto(group.fusion())));
+            }
+        }
+        return result;
+    }
+
+    private CompletionSummaryDto completionSummary(List<RunSampleContext> contexts, Report report) {
+        int target = ResearchConfig.TARGET_EXPERIMENT_SAMPLES;
+        Set<String> coveredScenarios = new HashSet<>();
+        Map<String, Set<String>> coveredConditionValues = new LinkedHashMap<>();
+        for (String key : ResearchConfig.CONTROLLED_CONDITION_ORDER) {
+            coveredConditionValues.put(key, new HashSet<>());
+        }
+        for (RunSampleContext context : contexts) {
+            coveredScenarios.add(context.sample().scenario());
+            for (String key : ResearchConfig.CONTROLLED_CONDITION_ORDER) {
+                String value = context.sample().conditions().get(key);
+                if (value != null) {
+                    coveredConditionValues.get(key).add(value);
+                }
+            }
+        }
+        int scenarioCells = ResearchConfig.SCENARIO_ORDER.size();
+        int conditionCells = 0;
+        for (String key : ResearchConfig.CONTROLLED_CONDITION_ORDER) {
+            conditionCells += ResearchConfig.CONTROLLED_CONDITIONS.get(key).size();
+        }
+        int conditionCoverage = 0;
+        for (String key : ResearchConfig.CONTROLLED_CONDITION_ORDER) {
+            conditionCoverage += coveredConditionValues.get(key).size();
+        }
+        return new CompletionSummaryDto(target, report.captured(), report.reviewed(),
+                report.evaluable(), coveredScenarios.size(), scenarioCells,
+                conditionCoverage, conditionCells, report.evaluable() >= 1);
+    }
+
+    private SignalProfile signalProfile(ResearchRunSample runSample, ResearchSample researchSample) {
+        Map<String, Integer> typeCounts = proctorRepository.signalTypeCountsByAttemptIdWithin(
+                runSample.attemptId(), runSample.startedAt(), runSample.endedAt());
+        List<FusionSignal> signals = runner.windowSignals(researchSample);
+        Map<String, Integer> sourceCounts = new LinkedHashMap<>();
+        Double minConfidence = null;
+        Double maxConfidence = null;
+        Double meanConfidence = null;
+        Long maxDurationMs = null;
+        double confidenceSum = 0.0;
+        int confidenceCount = 0;
+        for (FusionSignal signal : signals) {
+            sourceCounts.merge(signal.source(), 1, Integer::sum);
+            if (signal.confidence() != null) {
+                confidenceSum += signal.confidence();
+                confidenceCount++;
+                if (minConfidence == null || signal.confidence() < minConfidence) {
+                    minConfidence = signal.confidence();
+                }
+                if (maxConfidence == null || signal.confidence() > maxConfidence) {
+                    maxConfidence = signal.confidence();
+                }
+            }
+            if (signal.durationMs() != null && (maxDurationMs == null || signal.durationMs() > maxDurationMs)) {
+                maxDurationMs = signal.durationMs();
+            }
+        }
+        if (confidenceCount > 0) {
+            meanConfidence = confidenceSum / confidenceCount;
+        }
+        List<SignalTypeCountDto> types = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : typeCounts.entrySet()) {
+            types.add(new SignalTypeCountDto(entry.getKey(), entry.getValue()));
+        }
+        List<SignalSourceCountDto> sources = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : sourceCounts.entrySet()) {
+            sources.add(new SignalSourceCountDto(entry.getKey(), entry.getValue()));
+        }
+        return new SignalProfile(types, sources, minConfidence, maxConfidence, meanConfidence, maxDurationMs);
+    }
+
+    private EvaluatorResultDto toDto(EvaluatorResult result) {
+        ResearchMetrics.Confusion c = result.confusion();
+        ConfusionDto confusion = new ConfusionDto(c.truePositives(), c.trueNegatives(),
+                c.falsePositives(), c.falseNegatives());
+        ResearchMetrics.EvaluatorMetrics m = result.metrics();
+        EvaluatorMetricsDto metrics = new EvaluatorMetricsDto(m.precision(), m.recall(), m.specificity(),
+                m.accuracy(), m.falsePositiveRate(), m.falseNegativeRate(), m.f1(),
+                m.wrongfulWarningRate(), m.fdr());
+        return new EvaluatorResultDto(result.version(), confusion, metrics);
+    }
+
+    private LatencyStatsDto toDto(ResearchMetrics.LatencyStats stats) {
+        return new LatencyStatsDto(stats.measuredCount(), stats.meanMs(), stats.medianMs(),
+                stats.minMs(), stats.maxMs());
+    }
+
+    private BandwidthStatsDto toDto(ResearchMetrics.BandwidthStats stats) {
+        return new BandwidthStatsDto(stats.measuredCount(), stats.meanSignalBytes(),
+                stats.meanRawMediaBytes(), stats.meanDataMinimizationRatio());
+    }
+
+    private record RunSampleContext(ResearchRunSample sample, ResearchSample researchSample,
+                                    List<String> reviewLabels, String resolvedLabel, boolean invalid,
+                                    boolean reviewed, boolean evaluable, SampleEvaluation evaluation) {
+    }
+
+    private record SignalProfile(List<SignalTypeCountDto> types, List<SignalSourceCountDto> sources,
+                                 Double minConfidence, Double maxConfidence, Double meanConfidence,
+                                 Long maxDurationMs) {
+    }
+
+    private static final class ScenarioProgressAccumulator {
+        private int planned;
+        private int captured;
+        private int reviewed;
+        private int evaluable;
     }
 
     private Set<String> unexpectedSignalTypes(ResearchRunSample runSample,

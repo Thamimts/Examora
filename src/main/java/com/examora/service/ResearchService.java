@@ -10,6 +10,7 @@ import com.examora.exception.ApiException;
 import com.examora.model.ExamAttempt;
 import com.examora.model.User;
 import com.examora.repository.ExamAttemptRepository;
+import com.examora.repository.ExamRepository;
 import com.examora.repository.ResearchRepository;
 import com.examora.repository.ResearchRepository.ResearchExperiment;
 import com.examora.repository.ResearchRepository.ResearchReview;
@@ -32,13 +33,16 @@ public class ResearchService {
 
     private final ResearchRepository researchRepository;
     private final ExamAttemptRepository examAttemptRepository;
+    private final ExamRepository examRepository;
     private final ResearchExperimentRunner runner;
 
     public ResearchService(ResearchRepository researchRepository,
                            ExamAttemptRepository examAttemptRepository,
+                           ExamRepository examRepository,
                            ResearchExperimentRunner runner) {
         this.researchRepository = researchRepository;
         this.examAttemptRepository = examAttemptRepository;
+        this.examRepository = examRepository;
         this.runner = runner;
     }
 
@@ -57,8 +61,12 @@ public class ResearchService {
                 ? ResearchConfig.DATASET_VERSION : request.datasetVersion().trim();
         ResearchValidation.validateExperimentVersions(algorithmVersion, baselineVersion);
         ResearchValidation.validateDatasetVersion(datasetVersion);
+        String examId = trimToNull(request.examId());
+        if (examId != null && examRepository.findById(examId).isEmpty()) {
+            throw badRequest("examId does not reference a known exam");
+        }
         ResearchExperiment experiment = researchRepository.insertExperiment(
-                name, description, algorithmVersion, baselineVersion, datasetVersion, "DRAFT", actor.id());
+                name, description, algorithmVersion, baselineVersion, datasetVersion, "DRAFT", examId, actor.id());
         return toDto(experiment);
     }
 
@@ -83,7 +91,7 @@ public class ResearchService {
         researchRepository.updateExperimentStatus(experiment.id(), status);
         return toDto(new ResearchExperiment(experiment.id(), experiment.name(), experiment.description(),
                 experiment.algorithmVersion(), experiment.baselineVersion(), experiment.datasetVersion(),
-                status, experiment.createdBy(), experiment.createdAt()));
+                status, experiment.examId(), experiment.createdBy(), experiment.createdAt()));
     }
 
     public ResearchSampleDto createSample(User actor, String experimentId, SampleCreateRequest request) {
@@ -213,7 +221,7 @@ public class ResearchService {
     private ResearchExperimentDto toDto(ResearchExperiment experiment) {
         return new ResearchExperimentDto(experiment.id(), experiment.name(), experiment.description(),
                 experiment.algorithmVersion(), experiment.baselineVersion(), experiment.datasetVersion(),
-                experiment.status(), experiment.createdAt(), experiment.createdBy());
+                experiment.status(), experiment.examId(), experiment.createdAt(), experiment.createdBy());
     }
 
     private ResearchSampleDto toDto(ResearchSample sample, long reviewCount) {

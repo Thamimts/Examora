@@ -225,6 +225,7 @@ export interface ResearchMetrics {
   falseNegativeRate: number | null
   f1: number | null
   wrongfulWarningRate: number | null
+  fdr: number | null
 }
 
 export interface ResearchEvaluatorResult {
@@ -295,4 +296,400 @@ export interface ResearchEvaluation {
   scenarios: ResearchScenarioOutcome[]
 }
 
+export type ResearchAgreementState = 'UNREVIEWED' | 'TIED' | 'AGREED' | 'RESOLVED'
+
+export interface ResearchRunProgress {
+  target: number
+  planned: number
+  capturing: number
+  captured: number
+  reviewed: number
+  evaluable: number
+}
+
+export interface ResearchScenarioProgress {
+  scenario: ResearchScenario
+  label: string | null
+  target: number
+  planned: number
+  captured: number
+  reviewed: number
+  evaluable: number
+}
+
+export interface ResearchConditionValueCount {
+  value: string
+  count: number
+}
+
+export interface ResearchConditionCount {
+  key: ResearchConditionKey
+  label: string
+  values: ResearchConditionValueCount[]
+}
+
+export interface ResearchReviewStatus {
+  runSampleId: string
+  scenario: ResearchScenario
+  reviewCount: number
+  resolvedLabel: string | null
+  agreementState: ResearchAgreementState
+}
+
+export interface ResearchDisagreement {
+  sampleId: string
+  runSampleId: string
+  scenario: ResearchScenario
+  conditionsKey: string
+  groundTruthLabel: string
+  baselinePositive: boolean
+  fusionPositive: boolean
+  signalTypes: SignalTypeCount[]
+  signalSources: SignalSourceCount[]
+  minConfidence: number | null
+  maxConfidence: number | null
+  meanConfidence: number | null
+  maxDurationMs: number | null
+}
+
+export interface ResearchConditionGroupEvaluation {
+  key: ResearchConditionKey
+  conditionValue: string
+  sampleCount: number
+  baseline: ResearchEvaluatorResult
+  fusion: ResearchEvaluatorResult
+}
+
+export interface ResearchCompletionSummary {
+  targetObservations: number
+  actualCaptured: number
+  reviewed: number
+  evaluable: number
+  scenarioCoverage: number
+  scenarioCells: number
+  conditionCoverage: number
+  conditionCells: number
+  readyForEvaluation: boolean
+}
+
+export interface ResearchSnapshot {
+  datasetVersion: string
+  baselineVersion: string
+  fusionVersion: string
+  evaluatedAt: string | null
+  evaluableSampleCount: number
+}
+
+export interface ResearchRunEvaluation {
+  runId: string
+  experimentId: string
+  runCode: string
+  progress: ResearchRunProgress
+  scenarioProgress: ResearchScenarioProgress[]
+  conditionDistribution: ResearchConditionCount[]
+  dataQuality: ResearchRunDataQuality
+  baseline: ResearchEvaluatorResult
+  fusion: ResearchEvaluatorResult
+  reviewAgreement: ResearchReviewStatus[]
+  disagreements: ResearchDisagreement[]
+  conditions: ResearchConditionGroupEvaluation[]
+  latency: ResearchLatencyStats
+  bandwidth: ResearchBandwidthStats
+  completion: ResearchCompletionSummary
+  snapshot: ResearchSnapshot
+}
+
 export type ResearchConditionKey = keyof ResearchCondition
+
+export interface AnalysisConfusion {
+  truePositives: number
+  trueNegatives: number
+  falsePositives: number
+  falseNegatives: number
+}
+
+export interface AnalysisEvaluatorMetrics {
+  precision: number | null
+  recall: number | null
+  specificity: number | null
+  accuracy: number | null
+  falsePositiveRate: number | null
+  falseNegativeRate: number | null
+  f1: number | null
+  wrongfulWarningRate: number | null
+  fdr: number | null
+}
+
+export interface AnalysisEvaluator {
+  version: string
+  confusion: AnalysisConfusion
+  metrics: AnalysisEvaluatorMetrics
+}
+
+export interface AnalysisMetricDelta {
+  metric: string
+  delta: number | null
+}
+
+export interface AnalysisDisagreementCategory {
+  category: 'AGREE_POSITIVE' | 'AGREE_NEGATIVE' | 'BASELINE_ONLY_POSITIVE' | 'FUSION_ONLY_POSITIVE'
+  count: number
+  percentage: number | null
+}
+
+export interface AnalysisDisagreementSample {
+  sampleId: string
+  scenario: ResearchScenario | null
+  conditions: ResearchCondition | null
+  groundTruthLabel: string | null
+  baselinePositive: boolean
+  fusionPositive: boolean
+  signalSummary: string
+}
+
+export interface AnalysisStratum {
+  value: string
+  sampleCount: number
+  baseline: AnalysisEvaluator
+  fusion: AnalysisEvaluator
+  deltas: AnalysisMetricDelta[]
+}
+
+export interface AnalysisConfidenceDistribution {
+  source: string
+  sampleCount: number
+  measuredCount: number
+  min: number | null
+  max: number | null
+  mean: number | null
+  median: number | null
+}
+
+export interface AnalysisDescriptive {
+  measuredCount: number
+  mean: number | null
+  median: number | null
+  min: number | null
+  max: number | null
+}
+
+export interface AnalysisLatency {
+  measured: AnalysisDescriptive
+  storedWindow: AnalysisDescriptive
+}
+
+export interface AnalysisStratumLatency {
+  value: string
+  sampleCount: number
+  latency: AnalysisLatency
+}
+
+export interface AnalysisBandwidth {
+  rawMedia: AnalysisDescriptive
+  signalBytes: AnalysisDescriptive
+}
+
+export interface AnalysisReviewAgreement {
+  reviewedSamples: number
+  resolvedSamples: number
+  tiedSamples: number
+  agreementRate: number | null
+  singleReviewerDataset: boolean
+  pairwiseAgreementRate: number | null
+}
+
+export interface AnalysisMetricInterval {
+  metric: string
+  interval: {
+    estimate: number
+    lower: number | null
+    upper: number | null
+    confidenceLevel: number
+    method: string
+  }
+}
+
+export interface AnalysisTransitions {
+  baselineErrorCount: number
+  fusionErrorCount: number
+  baselineCorrectCount: number
+  fusionCorrectCount: number
+  changedPredictionCount: number
+  baselineCorrectToFusionWrong: number
+  baselineWrongToFusionCorrect: number
+}
+
+export interface AnalysisReport {
+  experimentId: string
+  runId: string | null
+  registeredSamples: number
+  capturedSamples: number
+  reviewedSamples: number
+  evaluableSamples: number
+  unreviewedSamples: number
+  tiedSamples: number
+  invalidSamples: number
+  missingSignalSamples: number
+  missingConditionSamples: number
+  missingLatencySamples: number
+  missingBandwidthSamples: number
+  evaluableCoverage: number | null
+  baseline: AnalysisEvaluator
+  fusion: AnalysisEvaluator
+  metricDeltas: AnalysisMetricDelta[]
+  disagreementSummary: AnalysisDisagreementCategory[]
+  disagreementSamples: AnalysisDisagreementSample[]
+  scenarios: AnalysisStratum[]
+  conditions: AnalysisStratum[]
+  confidence: AnalysisConfidenceDistribution[]
+  latency: AnalysisLatency
+  latencyByScenario: AnalysisStratumLatency[]
+  latencyByCondition: AnalysisStratumLatency[]
+  bandwidth: AnalysisBandwidth
+  reviewAgreement: AnalysisReviewAgreement
+  confidenceIntervals: AnalysisMetricInterval[]
+  transitions: AnalysisTransitions
+  datasetVersion: string
+  baselineVersion: string
+  fusionVersion: string
+  analysisVersion: string
+  generatedAt: string
+}
+
+export type FailureCategory =
+  | 'BASELINE_FALSE_POSITIVE'
+  | 'BASELINE_FALSE_NEGATIVE'
+  | 'FUSION_FALSE_POSITIVE'
+  | 'FUSION_FALSE_NEGATIVE'
+  | 'BASELINE_ONLY_POSITIVE'
+  | 'FUSION_ONLY_POSITIVE'
+
+export type FailureClassification = 'CORRECT_TO_CORRECT' | 'CORRECT_TO_WRONG' | 'WRONG_TO_CORRECT' | 'WRONG_TO_WRONG'
+
+export interface FailureCounted {
+  value: string
+  count: number
+}
+
+export interface FailureRange {
+  min: number | null
+  max: number | null
+}
+
+export interface FailureSignalProfileRow {
+  category: string
+  source: string
+  signalCount: number
+  sampleCount: number
+  confidence: AnalysisDescriptive
+  duration: AnalysisDescriptive
+}
+
+export interface FailureConfidenceBand {
+  band: string
+  signalCount: number
+  distinctSampleCount: number
+  truePositives: number
+  trueNegatives: number
+  falsePositives: number
+  falseNegatives: number
+  precision: number | null
+  recall: number | null
+  falsePositiveRate: number | null
+  falseNegativeRate: number | null
+  falseDiscoveryRate: number | null
+  evaluator: string
+}
+
+export interface FailureGroup {
+  value: string
+  sampleCount: number
+  smallSample: boolean
+  baselineFalsePositives: number
+  baselineFalseNegatives: number
+  fusionFalsePositives: number
+  fusionFalseNegatives: number
+  baselineFalsePositiveRate: number | null
+  baselineFalseNegativeRate: number | null
+  fusionFalsePositiveRate: number | null
+  fusionFalseNegativeRate: number | null
+  disagreementCount: number
+}
+
+export interface FailureDistribution {
+  value: string
+  count: number
+}
+
+export interface FailureTransitions {
+  changedPredictionCount: number
+  baselineCorrectToFusionWrong: number
+  baselineWrongToFusionCorrect: number
+  baselineCorrectToFusionWrongFraction: number | null
+  baselineWrongToFusionCorrectFraction: number | null
+  byScenario: FailureDistribution[]
+  byCondition: FailureDistribution[]
+  bySignalSource: FailureDistribution[]
+  byConfidenceBand: FailureDistribution[]
+}
+
+export interface FailureSignalAssociation {
+  errorSampleCount: number
+  errorSamplesWithoutSignals: number
+  sources: FailureCounted[]
+}
+
+export interface FailureCase {
+  sampleId: string
+  scenario: string | null
+  groundTruth: string
+  baselinePrediction: boolean
+  fusionPrediction: boolean
+  classification: FailureClassification
+  condition: string
+  signalTypes: string[]
+  signalSources: string[]
+  confidenceRange: FailureRange | null
+  durationRange: FailureRange | null
+}
+
+export interface FailurePattern {
+  text: string
+}
+
+export interface FailureReport {
+  experimentId: string
+  runId: string | null
+  evaluableSampleCount: number
+  failureCaseCount: number
+  disagreementCount: number
+  changedPredictionCount: number
+  categories: FailureCounted[]
+  transitionCategories: FailureCounted[]
+  disagreementCategories: FailureCounted[]
+  signalProfile: FailureSignalProfileRow[]
+  confidenceBands: FailureConfidenceBand[]
+  missingConfidenceSignalCount: number
+  environmentalFailures: FailureGroup[]
+  missingConditionCount: number
+  scenarioFailures: FailureGroup[]
+  signalAssociation: FailureSignalAssociation
+  transitions: FailureTransitions
+  patterns: FailurePattern[]
+  datasetVersion: string
+  baselineVersion: string
+  fusionVersion: string
+  analysisVersion: string
+  failureAnalysisVersion: string
+  generatedAt: string
+}
+
+export interface FailureSamplesPage {
+  experimentId: string
+  runId: string | null
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  samples: FailureCase[]
+}

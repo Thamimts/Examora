@@ -5,6 +5,8 @@ import { Card, Header } from '@/components/shared'
 import { useToast } from '@/components/feedback'
 import { researchApi } from '@/services/researchApi'
 import { ResearchRunsPanel } from './ResearchRunsPanel'
+import { ResearchStatisticalAnalysisPanel } from './ResearchStatisticalAnalysisPanel'
+import { ResearchFailureAnalysisPanel } from './ResearchFailureAnalysisPanel'
 import type { ResearchConditionKey, ResearchEvaluatorResult } from '@/types/research'
 
 const CONDITION_KEYS: { key: ResearchConditionKey; label: string }[] = [
@@ -234,6 +236,8 @@ export function ProctoringResearch() {
             </Card>
 
             <ResearchRunsPanel experimentId={experimentId} />
+            <ResearchStatisticalAnalysisPanel experimentId={experimentId} />
+            <ResearchFailureAnalysisPanel experimentId={experimentId} />
           </>
         )}
 

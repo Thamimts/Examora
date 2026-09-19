@@ -31,7 +31,7 @@ public final class ResearchMetrics {
 
     public record EvaluatorMetrics(Double precision, Double recall, Double specificity, Double accuracy,
                                    Double falsePositiveRate, Double falseNegativeRate, Double f1,
-                                   Double wrongfulWarningRate) {
+                                   Double wrongfulWarningRate, Double fdr) {
     }
 
     public record LatencyStats(int measuredCount, Double meanMs, Double medianMs, Double minMs, Double maxMs) {
@@ -61,7 +61,7 @@ public final class ResearchMetrics {
         Double wrongfulWarningRate = ratio(c.falsePositives(), predictedPositives);
 
         return new EvaluatorMetrics(precision, recall, specificity, accuracy,
-                falsePositiveRate, falseNegativeRate, f1, wrongfulWarningRate);
+                falsePositiveRate, falseNegativeRate, f1, wrongfulWarningRate, wrongfulWarningRate);
     }
 
     public static LatencyStats latency(List<Long> latenciesMs) {

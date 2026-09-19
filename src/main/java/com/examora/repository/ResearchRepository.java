@@ -408,6 +408,23 @@ public class ResearchRepository {
         return result;
     }
 
+    /** Full review rows of an experiment's samples (reviewer id, label), for pairwise agreement. */
+    public List<ResearchReview> findReviewsByExperiment(String experimentId) {
+        return jdbcTemplate.query(
+                "select r.id, r.sample_id, r.reviewer_id, r.label, r.confidence, r.notes, r.reviewed_at "
+                        + "from research_reviews r join research_samples s on s.id = r.sample_id "
+                        + "where s.experiment_id = ? order by r.sample_id asc, r.reviewed_at asc",
+                (rs, rowNum) -> new ResearchReview(
+                        rs.getString("id"),
+                        rs.getString("sample_id"),
+                        rs.getString("reviewer_id"),
+                        rs.getString("label"),
+                        rs.getObject("confidence", Double.class),
+                        rs.getString("notes"),
+                        toInstant(rs.getTimestamp("reviewed_at"))),
+                experimentId);
+    }
+
     private ResearchRun mapRun(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new ResearchRun(
                 rs.getString("id"),

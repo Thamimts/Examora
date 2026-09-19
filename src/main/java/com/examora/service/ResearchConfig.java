@@ -98,6 +98,23 @@ public final class ResearchConfig {
             "AUDIO_DETECTED", "FULLSCREEN_EXIT", "NETWORK_INTERRUPTION");
 
     /**
+     * First controlled experiment pilot target: 10 intent-per-scenario observations across the
+     * 8 controlled scenarios = 80 observations. This is an informational target reported
+     * alongside real, persisted counts — it is never fabricated research data and never gates
+     * evaluation.
+     */
+    public static final int TARGET_SAMPLES_PER_SCENARIO = 10;
+    public static final int TARGET_EXPERIMENT_SAMPLES =
+            SCENARIO_ORDER.size() * TARGET_SAMPLES_PER_SCENARIO;
+
+    /**
+     * Deterministic ordering of the controlled condition dimensions used by run evaluation and
+     * the condition breakdown, matching the run-sample condition vocabulary.
+     */
+    public static final List<String> CONTROLLED_CONDITION_ORDER = List.of(
+            "lighting", "cameraQuality", "network", "cameraAngle");
+
+    /**
      * The signal types legitimately expected from each controlled scenario. The expected set
      * is metadata used for data-quality reporting (unexpected signals), never a substitute for
      * human review. NORMAL expects no signals, so any in-window signal is flagged as unexpected.
