@@ -81,6 +81,10 @@ class OAuthIntegrationTest {
 
     @Test
     void unconfiguredProviderStartIsNotImplemented() throws Exception {
+        // Developer-local .env credentials must never leak into the test environment.
+        // Pins the config-level guarantee: github is configured in NO automated test,
+        // so its /start endpoint must stay 501 Not-Implemented.
+        assertThat(oauthService.isEnabled(OAuthProvider.GITHUB)).isFalse();
         mockMvc.perform(get("/api/auth/oauth/github/start"))
                 .andExpect(status().isNotImplemented());
     }
