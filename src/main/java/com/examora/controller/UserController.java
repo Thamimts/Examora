@@ -2,7 +2,10 @@ package com.examora.controller;
 
 import com.examora.dto.ApiResponse;
 import com.examora.dto.UserDtos.CreateUserRequest;
+import com.examora.dto.UserDtos.ResetStudentCredentialsRequest;
+import com.examora.dto.UserDtos.UpdateProfileRequest;
 import com.examora.model.User;
+import com.examora.model.UserProfile;
 import com.examora.security.Permission;
 import com.examora.service.ActivityService;
 import com.examora.service.AuthService;
@@ -48,8 +51,18 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<User> me(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        return ApiResponse.ok(authService.requireUser(authorizationHeader));
+    public ApiResponse<UserProfile> me(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User actor = authService.requireUser(authorizationHeader);
+        return ApiResponse.ok(userService.findProfileById(actor.id()));
+    }
+
+    @PutMapping("/me")
+    public ApiResponse<UserProfile> updateMe(@RequestBody UpdateProfileRequest request,
+                                             @RequestHeader("Authorization") String authorizationHeader) {
+        User actor = authorizationService.requirePermission(authorizationHeader, Permission.ACCOUNT_SELF);
+        UserProfile updated = userService.updateProfile(actor, request);
+        activityService.admin(actor, "PROFILE_UPDATED", actor.name() + " updated their profile.");
+        return ApiResponse.ok("Updated", updated);
     }
 
     @PostMapping
@@ -58,6 +71,17 @@ public class UserController {
         User created = userService.create(request);
         activityService.admin(actor, "USER_CREATED", actor.name() + " created " + created.name() + "'s account.");
         return ApiResponse.ok("Created", created);
+    }
+
+    @PostMapping("/{id}/reset-credentials")
+    public ApiResponse<UserProfile> resetCredentials(@PathVariable String id,
+                                                     @RequestBody ResetStudentCredentialsRequest request,
+                                                     @RequestHeader("Authorization") String authorizationHeader) {
+        User actor = authorizationService.requirePermission(authorizationHeader, Permission.USER_MANAGE);
+        UserProfile updated = userService.resetStudentCredentials(actor, id, request);
+        activityService.admin(actor, "STUDENT_CREDENTIALS_RESET",
+                actor.name() + " reset " + updated.name() + "'s academic credentials.");
+        return ApiResponse.ok("Reset", updated);
     }
 
     @PutMapping("/{id}")

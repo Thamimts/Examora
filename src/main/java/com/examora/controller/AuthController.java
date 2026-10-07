@@ -54,18 +54,22 @@ public class AuthController {
 
     @PostMapping("/login")
     public ApiResponse<LoginResult> login(@RequestBody LoginRequest request, HttpServletRequest http) {
-        String email = request.email() == null ? "" : request.email().trim().toLowerCase();
+        boolean academic = request.rollNumber() != null && !request.rollNumber().isBlank();
+        String key = academic ? request.rollNumber().trim().toUpperCase() : (request.email() == null ? "" : request.email().trim().toLowerCase());
         String ip = clientIpResolver.resolve(http);
-        if (!loginRateLimiter.isAllowed(ip, email)) {
-            int retryAfter = loginRateLimiter.retryAfterSeconds(ip, email).orElse(1);
+        if (!loginRateLimiter.isAllowed(ip, key)) {
+            int retryAfter = loginRateLimiter.retryAfterSeconds(ip, key).orElse(1);
             throw new TooManyRequestsException("Too many login attempts. Please try again later.", retryAfter);
         }
-        loginRateLimiter.recordAttempt(ip, email);
+        loginRateLimiter.recordAttempt(ip, key);
         try {
+            if (academic) {
+                return ApiResponse.ok(authService.academicFirstLogin(request.rollNumber(), request.dateOfBirth()));
+            }
             return ApiResponse.ok(authService.login(request.email(), request.password()));
         } catch (ApiException exception) {
             if (exception.status() == HttpStatus.UNAUTHORIZED) {
-                loginRateLimiter.recordFailure(ip, email);
+                loginRateLimiter.recordFailure(ip, key);
             }
             throw exception;
         }

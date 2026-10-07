@@ -13,6 +13,7 @@ export const examApi = {
   update: (id: string, payload: Partial<Exam>) => api.put<ApiResponse<Exam>>(`/exams/${id}`, payload),
   remove: (id: string) => api.delete(`/exams/${id}`),
   publish: (id: string) => api.post<ApiResponse<Exam>>(`/exams/${id}/publish`),
+  setCentre: (id: string, centreId: string | null) => api.put<ApiResponse<Exam>>(`/exams/${id}/centre`, { centreId }),
   activeAttempts: () => api.get<ApiResponse<ActiveAttemptInfo[]>>('/exams/attempts/active'),
   start: (id: string) => api.post<ApiResponse<StartExamResponse>>(`/exams/${id}/start`),
   submit: (id: string, answers: SubmittedAnswer[]) => api.post<ApiResponse<ExamSubmissionResponse>>(`/exams/${id}/submit`, { answers }),

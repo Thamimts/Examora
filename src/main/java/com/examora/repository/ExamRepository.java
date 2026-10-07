@@ -18,13 +18,13 @@ public class ExamRepository {
 
     public List<Exam> findAll() {
         return jdbcTemplate.query(
-                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams order by date",
+                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at, centre_id from exams order by date",
                 this::mapExam);
     }
 
     public Optional<Exam> findById(String id) {
         return jdbcTemplate.query(
-                        "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams where id = ?",
+                        "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at, centre_id from exams where id = ?",
                         this::mapExam,
                         id)
                 .stream()
@@ -37,7 +37,7 @@ public class ExamRepository {
         }
         String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
         return jdbcTemplate.query(
-                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at "
+                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at, centre_id "
                         + "from exams where id in (" + placeholders + ")",
                 this::mapExam,
                 ids.toArray());
@@ -45,7 +45,7 @@ public class ExamRepository {
 
     public List<Exam> findAvailable() {
         return jdbcTemplate.query(
-                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at from exams where status <> 'DRAFT' order by date",
+                "select id, title, subject, date, duration, status, participants, average_score, start_at, end_at, centre_id from exams where status <> 'DRAFT' order by date",
                 this::mapExam);
     }
 
@@ -72,6 +72,20 @@ public class ExamRepository {
 
     public Optional<String> findOwnerId(String id) {
         return jdbcTemplate.query("select created_by from exams where id = ?", (rs, row) -> rs.getString(1), id).stream().findFirst();
+    }
+
+    public Optional<String> centreIdFor(String id) {
+        java.util.List<String> values = jdbcTemplate.query(
+                "select centre_id from exams where id = ?", (rs, row) -> rs.getString(1), id);
+        return values.isEmpty() ? Optional.empty() : Optional.ofNullable(values.get(0));
+    }
+
+    public int setCentre(String id, String centreId) {
+        return jdbcTemplate.update("update exams set centre_id = ? where id = ?", centreId, id);
+    }
+
+    public int clearCentre(String centreId) {
+        return jdbcTemplate.update("update exams set centre_id = null where centre_id = ?", centreId);
     }
 
     public List<String> findIdsByOwner(String ownerId) {
@@ -125,6 +139,7 @@ public class ExamRepository {
                 rs.getInt("participants"),
                 averageScore,
                 rs.getTimestamp("start_at") == null ? null : rs.getTimestamp("start_at").toInstant(),
-                rs.getTimestamp("end_at") == null ? null : rs.getTimestamp("end_at").toInstant());
+                rs.getTimestamp("end_at") == null ? null : rs.getTimestamp("end_at").toInstant(),
+                rs.getString("centre_id"));
     }
 }

@@ -4,6 +4,7 @@ import com.examora.model.ExamRoom;
 import com.examora.model.ExamRoomMemberStatus;
 import com.examora.model.Role;
 import com.examora.model.User;
+import com.examora.repository.ExamCentreRoomRepository;
 import com.examora.repository.ExamRepository;
 import com.examora.repository.ExamRoomMemberRepository;
 import com.examora.repository.ExamRoomRepository;
@@ -41,6 +42,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final ExamRepository examRepository;
     private final ExamRoomRepository examRoomRepository;
     private final ExamRoomMemberRepository examRoomMemberRepository;
+    private final ExamCentreRoomRepository centreRoomRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final LoginRateLimiter connectRateLimiter;
     private final String[] allowedOrigins;
@@ -49,6 +51,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                            ExamRepository examRepository,
                            ExamRoomRepository examRoomRepository,
                            ExamRoomMemberRepository examRoomMemberRepository,
+                           ExamCentreRoomRepository centreRoomRepository,
                            ApplicationEventPublisher eventPublisher,
                            LoginRateLimiter connectRateLimiter,
                            @Value("${examora.cors.allowed-origins:}") List<String> allowedOrigins) {
@@ -57,6 +60,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         this.examRepository = examRepository;
         this.examRoomRepository = examRoomRepository;
         this.examRoomMemberRepository = examRoomMemberRepository;
+        this.centreRoomRepository = centreRoomRepository;
         this.eventPublisher = eventPublisher;
         this.connectRateLimiter = connectRateLimiter;
         this.allowedOrigins = allowedOrigins.toArray(new String[0]);
@@ -120,7 +124,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new SubscriptionGuard(jwtService, userRepository, examRepository,
-                examRoomRepository, examRoomMemberRepository, eventPublisher));
+                examRoomRepository, examRoomMemberRepository, centreRoomRepository, eventPublisher));
     }
 
     private static final class SubscriptionGuard implements ChannelInterceptor {
@@ -129,16 +133,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         private final ExamRepository exams;
         private final ExamRoomRepository examRooms;
         private final ExamRoomMemberRepository examRoomMembers;
+        private final ExamCentreRoomRepository centreRooms;
         private final ApplicationEventPublisher eventPublisher;
 
         SubscriptionGuard(JwtService jwt, UserRepository users, ExamRepository exams,
                           ExamRoomRepository examRooms, ExamRoomMemberRepository examRoomMembers,
+                          ExamCentreRoomRepository centreRooms,
                           ApplicationEventPublisher eventPublisher) {
             this.jwt = jwt;
             this.users = users;
             this.exams = exams;
             this.examRooms = examRooms;
             this.examRoomMembers = examRoomMembers;
+            this.centreRooms = centreRooms;
             this.eventPublisher = eventPublisher;
         }
 
@@ -188,6 +195,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 }
                 if (destination != null && destination.startsWith("/topic/exam-rooms/") && destination.endsWith("/webrtc")) {
                     guardWebRtcSubscription(extractRoomId(destination), account);
+                }
+                if (destination != null && destination.startsWith("/topic/rooms/") && destination.endsWith("/activity")) {
+                    guardCentreRoomSubscription(extractCentreRoomId(destination), account);
                 }
             }
             return accessor.getUser() == null ? message : rebuild(message, accessor);
@@ -259,6 +269,32 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             if (!joined) {
                 throw new AccessDeniedException("You have not joined this exam room.");
             }
+        }
+
+        private void guardCentreRoomSubscription(String roomId, User account) {
+            if (roomId == null || roomId.isBlank()) {
+                throw new AccessDeniedException("Invalid room topic destination.");
+            }
+            com.examora.model.ExamCentreRoom room = centreRooms.findById(roomId)
+                    .orElseThrow(() -> new AccessDeniedException("Room not found."));
+            if (account.role() == Role.ADMIN) {
+                return;
+            }
+            if (account.role() == Role.TEACHER
+                    && room.invigilatorId() != null
+                    && room.invigilatorId().equals(account.id())) {
+                return;
+            }
+            throw new AccessDeniedException("Only the room invigilator may monitor this room.");
+        }
+
+        private String extractCentreRoomId(String destination) {
+            String prefix = "/topic/rooms/";
+            String suffix = "/activity";
+            if (!destination.startsWith(prefix) || !destination.endsWith(suffix)) {
+                return null;
+            }
+            return destination.substring(prefix.length(), destination.length() - suffix.length());
         }
 
         private void guardWebRtcSubscription(String roomId, User account) {

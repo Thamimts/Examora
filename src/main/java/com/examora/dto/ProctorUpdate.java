@@ -20,6 +20,7 @@ public record ProctorUpdate(
         Instant occurredAt,
         int warningCount,
         WarningLevel warningLevel,
-        ExamAccessStatus accessStatus
+        ExamAccessStatus accessStatus,
+        String roomId
 ) {
 }

@@ -23,6 +23,8 @@ export interface CameraVideoLike {
   currentTime: number
   play: () => Promise<void> | void
   pause: () => void
+  videoWidth?: number | null
+  videoHeight?: number | null
 }
 
 export interface FaceCountControllerOptions {
@@ -53,6 +55,15 @@ export class FaceCountController {
   private lastVideoTime = -1
   private lastFaceCount: number | null = null
   private lastConfidence: number | null = null
+
+  /**
+   * Bytes of raw video frames actually handed to the local detector. Each fully
+   * decoded frame (width x height x 4 bytes RGBA) that is analyzed counts once.
+   * Only counted when a real video surface reports dimensions, so test mocks and
+   * not-yet-loaded surfaces produce zero (an honest "no frames analyzed").
+   */
+  private rawMediaBytes = 0
+  private emittedMediaBytes = 0
 
   private readonly stats: FaceCountControllerStats = {
     initialized: true,
@@ -125,6 +136,11 @@ export class FaceCountController {
     return { ...this.stats }
   }
 
+  /** Total raw video bytes analyzed since the controller started. */
+  getRawMediaBytes(): number {
+    return this.rawMediaBytes
+  }
+
   private tick(): void {
     if (this.disposed || this.paused) return
     const video = this.deps.video
@@ -133,6 +149,15 @@ export class FaceCountController {
 
     const startedAt = this.now()
     try {
+      const videoWidth = typeof (video as HTMLVideoElement).videoWidth === 'number'
+          ? (video as HTMLVideoElement).videoWidth ?? 0
+          : 0
+      const videoHeight = typeof (video as HTMLVideoElement).videoHeight === 'number'
+          ? (video as HTMLVideoElement).videoHeight ?? 0
+          : 0
+      if (videoWidth > 0 && videoHeight > 0) {
+        this.rawMediaBytes += videoWidth * videoHeight * 4
+      }
       const detection = this.deps.detector.detect(video as HTMLVideoElement)
       const durationMs = Math.max(0, this.now() - startedAt)
       this.trackDetectionDuration(durationMs)
@@ -153,12 +178,18 @@ export class FaceCountController {
   }
 
   private emitSignal(signal: { faceCount: number; confidence: number | null; occurredAt: number; durationMs: number }): void {
+    const metadata: Record<string, unknown> = { faceCount: signal.faceCount }
+    const mediaDelta = this.rawMediaBytes - this.emittedMediaBytes
+    if (mediaDelta > 0) {
+      metadata.rawMediaBytesDelta = mediaDelta
+      this.emittedMediaBytes = this.rawMediaBytes
+    }
     const payload: ProctorSignalInput = {
       signalType: FACE_COUNT_ANOMALY_SIGNAL_TYPE,
       source: CLIENT_AI_SOURCE,
       occurredAt: new Date(signal.occurredAt).toISOString(),
       durationMs: Math.round(signal.durationMs),
-      metadata: { faceCount: signal.faceCount },
+      metadata,
     }
     if (signal.confidence !== null && Number.isFinite(signal.confidence)) {
       payload.confidence = Math.min(1, Math.max(0, signal.confidence))

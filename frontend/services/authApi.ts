@@ -2,6 +2,7 @@ import api from './api'
 import type { ApiResponse, AuthResponse, LoginResult, OAuthProviderInfo, RecoveryCodes, TwoFactorSetup, TwoFactorStatus } from '@/types'
 export const authApi = {
   login: (payload: { email: string; password: string }) => api.post<ApiResponse<LoginResult>>('/auth/login', payload),
+  academicFirstLogin: (payload: { rollNumber: string; dateOfBirth: string }) => api.post<ApiResponse<LoginResult>>('/auth/login', payload),
   register: (payload: { name: string; email: string; password: string }) => api.post<ApiResponse<AuthResponse>>('/auth/register', payload),
   logout: () => api.post('/auth/logout'),
   verifyTwoFactor: (payload: { challengeToken: string; code: string }) => api.post<ApiResponse<AuthResponse>>('/auth/2fa/verify', payload),

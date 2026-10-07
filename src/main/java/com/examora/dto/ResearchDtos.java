@@ -147,6 +147,14 @@ public final class ResearchDtos {
                                   String resolvedLabel, String agreementState) {
     }
 
+    public record RunSampleReviewDto(String reviewerId, String reviewerName, String reviewerEmail,
+                                     String label, Double confidence, String notes, String reviewedAt) {
+    }
+
+    public record RunSampleReviewsDto(String runSampleId, String sampleId, String scenario,
+                                      List<RunSampleReviewDto> reviews, boolean currentUserReviewed) {
+    }
+
     public record DisagreementDto(String sampleId, String runSampleId, String scenario,
                                   String conditionsKey, String groundTruthLabel,
                                   boolean baselinePositive, boolean fusionPositive,

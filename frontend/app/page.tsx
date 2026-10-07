@@ -1,12 +1,12 @@
 'use client'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Activity, AlertCircle, BarChart3, BookOpen, Award, Check, ChevronLeft, ChevronRight, Clock3, DoorOpen, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, X, KeyRound } from 'lucide-react'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Activity, AlertCircle, BarChart3, BookOpen, Award, Building2, Check, ChevronLeft, ChevronRight, Clock3, DoorOpen, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard, ListChecks, LogOut, MinusCircle, MoreHorizontal, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Target, Timer, Trash2, TrendingUp, Users, UserRound, X, KeyRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuthStore } from '@/store/authStore'
-import type { ActivityEvent, LoginRole, OAuthProviderInfo, Result, Role, User } from '@/types'
+import type { ActivityEvent, Exam, LoginRole, OAuthProviderInfo, Result, Role, User } from '@/types'
 import type { ActiveAttemptInfo, ExamResultReview, QuestionReview } from '@/types/exam'
 import type { ExamAccessStatus } from '@/types/proctor'
 import type { ExamRoom } from '@/types/examRoom'
@@ -18,7 +18,13 @@ import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient
 import { authApi } from '@/services/authApi'
 import { resolveApiBaseUrl } from '@/services/api'
 import { userApi } from '@/services/userApi'
+import type { CreateUserPayload } from '@/services/userApi'
+import { buildCreateUserPayload } from '@/lib/createUserPayload'
 import { examApi } from '@/services/examApi'
+import { centreApi } from '@/services/centreApi'
+import type { Centre } from '@/types/enrolment'
+import { enrolmentApi } from '@/services/enrolmentApi'
+import type { EnrollmentDetail } from '@/types/enrolment'
 import { questionApi } from '@/services/questionApi'
 import { resultApi } from '@/services/resultApi'
 import { examRoomApi } from '@/services/examRoomApi'
@@ -30,6 +36,7 @@ import { adaptiveApi } from '@/services/adaptiveApi'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { QuestionBank } from '@/features/admin/QuestionBank'
 import { ProctoringResearch } from '@/features/proctor/ProctoringResearch'
+import { ResearchPilot } from '@/features/proctor/ResearchPilot'
 import { PracticeSession } from '@/features/adaptive/PracticeSession'
 import { ProctoringCommandCenter } from '@/features/proctor/ProctoringCommandCenter'
 import { TeacherCommandCenter } from '@/features/teacher/TeacherCommandCenter'
@@ -42,12 +49,17 @@ import { StudentPerformance } from '@/features/analytics/StudentPerformance'
 import { DashboardLearning } from '@/features/analytics/DashboardLearning'
 import { ConfirmDialog, ToastProvider, useToast } from '@/components/feedback'
 import { OAuthCallback } from '@/components/auth/OAuthCallback'
+import { LandingPage } from '@/features/landing/LandingPage'
 import SecuritySettings from '@/components/security/SecuritySettings'
 import { Preflight } from '@/features/exam/Preflight'
 import { ExamWorkspace } from '@/features/exam/ExamWorkspace'
 import { ExamRoomJoin } from '@/features/exam/ExamRoomJoin'
 import { ExamRoomWaiting } from '@/features/exam/ExamRoomWaiting'
 import { ExamRoomManager } from '@/features/exam/ExamRoomManager'
+import StudentProfile from '@/features/student/StudentProfile'
+import FirstLoginSetup from '@/features/student/FirstLoginSetup'
+import InvigilatorRooms from '@/features/rooms/InvigilatorRooms'
+import Centres from '@/features/admin/Centres'
 
 function OAuthProviderIcon({ provider }: { provider: string }) {
   if (provider.toUpperCase() === 'GOOGLE') {
@@ -69,6 +81,7 @@ const studentNavItems: NavItem[] = [
   { label: 'History', href: '/student/history', icon: HistoryIcon },
   { label: 'Retests', href: '/student/retest-requests', icon: RotateCcw },
   { label: 'Security', href: '/settings/security', icon: KeyRound },
+  { label: 'My Profile', href: '/student/profile', icon: UserRound },
 ]
 const studentNavSections: NavSection[] = [
   { label: 'Main', items: studentNavItems.slice(0, 2) },
@@ -83,6 +96,7 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Create exam', href: '/teacher/exams/create', icon: FileText },
     { label: 'Analytics', href: '/teacher/analytics', icon: BarChart3 },
     { label: 'Live monitor', href: '/teacher/monitor', icon: Activity },
+    { label: 'Exam rooms', href: '/teacher/rooms', icon: DoorOpen },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
   ADMIN: [
@@ -93,8 +107,11 @@ const nav: Record<Role, NavItem[]> = {
     { label: 'Results', href: '/admin/results', icon: BarChart3 },
     { label: 'Analytics', href: '/admin/analytics', icon: TrendingUp },
     { label: 'Live monitor', href: '/admin/monitor', icon: Activity },
+    { label: 'Exam rooms', href: '/admin/rooms', icon: DoorOpen },
+    { label: 'Centres', href: '/admin/centres', icon: Building2 },
     { label: 'Retests', href: '/admin/retests', icon: RotateCcw },
     { label: 'Proctoring research', href: '/admin/research', icon: FlaskConical },
+    { label: 'Research pilot', href: '/admin/research/pilot', icon: Activity },
     { label: 'Security', href: '/settings/security', icon: KeyRound },
   ],
 }
@@ -162,6 +179,13 @@ function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => voi
 function Shell({ children }: { children: React.ReactNode }) { const { user, logout } = useAuthStore(); const navigate = useNavigate(); const location = useLocation(); const [confirmLogout, setConfirmLogout] = useState(false); const [loggingOut, setLoggingOut] = useState(false); const [moreOpen, setMoreOpen] = useState(false); const toast = useToast(); if (!user) return <Navigate to="/login" replace />; const initials = user.name ? user.name.trim().split(/\s+/).map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() : 'S'; const signOut = async () => { setLoggingOut(true); try { await authApi.logout(); toast.success('You have been signed out.'); } catch { toast.error('Signed out locally; the server could not be reached.') } finally { logout(); navigate('/login'); setLoggingOut(false) } }; return <div className="min-h-screen bg-background"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card p-5 lg:flex lg:flex-col"><div className="flex items-center gap-3 px-2 pb-10"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><nav className="mt-2 flex-1 overflow-y-auto px-1"><SidebarNav role={user.role} /></nav><div className="mt-auto border-t border-border pt-3"><div className="flex items-center gap-3 rounded-xl px-2 py-2"><div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-medium">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p></div></div><button className="mt-1 flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground" onClick={() => setConfirmLogout(true)}><LogOut size={16}/> Sign out</button></div></aside><main className="min-h-screen pb-20 lg:pl-64 lg:pb-0"><div className="mx-auto max-w-7xl p-4 sm:p-5 md:p-8">{children}</div></main><nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 p-2 backdrop-blur lg:hidden">{getMobileItems(user.role).map(item => item.more ? <button key={item.label} type="button" onClick={() => setMoreOpen(true)} className="min-w-0 rounded-lg px-1 py-2 text-center text-[11px] text-muted-foreground transition hover:text-foreground active:scale-[.97]"><MoreHorizontal className="mx-auto" size={18}/><span className="mt-1 block truncate">{item.label}</span></button> : <NavLink key={item.href} to={item.href!} className={({isActive}) => `min-w-0 rounded-lg px-1 py-2 text-center text-[11px] ${navActive(item.href!, isActive, location.pathname) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><item.icon className="mx-auto" size={18}/><span className="mt-1 block truncate">{item.label}</span></NavLink>)}</nav>{moreOpen ? <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="More menu"><div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)}/><div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-border bg-card p-4 pb-8"><div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold">Menu</p><button type="button" aria-label="Close menu" className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted" onClick={() => setMoreOpen(false)}><X size={18}/></button></div><div className="mb-4 flex items-center gap-3 rounded-xl bg-muted p-3"><div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{initials}</div><div className="min-w-0"><p className="truncate text-sm font-medium">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p></div></div><div className="space-y-1">{getDrawerItems(user.role).map(item => <DrawerLink key={item.href} item={item} onNavigate={() => setMoreOpen(false)} />)}</div><button type="button" onClick={() => { setMoreOpen(false); setConfirmLogout(true) }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"><LogOut size={16}/> Sign out</button></div></div> : null}<ConfirmDialog open={confirmLogout} title="Sign out?" description="Any in-progress work should be submitted before you leave." confirmLabel="Sign out" busy={loggingOut} onCancel={() => setConfirmLogout(false)} onConfirm={signOut}/></div> }
 function Header({ title, description }: { title: string; description: string }) { const role = useAuthStore((state) => state.user?.role); return <header className="mb-8"><p className="text-xs font-semibold uppercase tracking-widest text-primary">{role} workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p></header> }
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) { return <section className={`rounded-2xl border border-border bg-card p-5 ${className}`}>{children}</section> }
+
+function AttemptStatusPill({ status }: { status?: string | null }) {
+  if (!status) return <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Not started</span>
+  const tone = status === 'STARTED' ? 'bg-emerald-500/10 text-emerald-600' : status === 'SUBMITTED' ? 'bg-sky-500/10 text-sky-600' : status === 'EXPIRED' ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive'
+  const label = status === 'STARTED' ? 'In progress' : status.replaceAll('_', ' ').toLowerCase()
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${tone}`}>{label}</span>
+}
 function StudentExams() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -172,6 +196,12 @@ function StudentExams() {
   const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 })
   const retestsQuery = useQuery({ queryKey: ['my-retests'], queryFn: async () => (await retestApi.mine()).data.data, retry: 1 })
   const roomsQuery = useQuery({ queryKey: ['my-exam-rooms'], queryFn: async () => (await examRoomApi.mine()).data.data, retry: 1 })
+  const enrolmentsQuery = useQuery({ queryKey: ['my-enrolments'], queryFn: async () => (await enrolmentApi.my()).data.data, retry: 1 })
+  const enrollMutation = useMutation({
+    mutationFn: (examId: string) => enrolmentApi.enroll({ examId }),
+    onSuccess: (response) => { toast.success(`Enrolled. Seated at ${response.data.data.roomName ?? 'your exam centre'} · Seat ${response.data.data.seatNumber ?? '—'}.`); enrolmentsQuery.refetch() },
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'Unable to enrol in this exam.'),
+  })
 
   const retestMutation = useMutation({
     mutationFn: (examId: string) => retestApi.request(examId),
@@ -205,6 +235,12 @@ function StudentExams() {
     }
     return map
   }, [roomsQuery.data])
+
+  const enrollmentByExam = useMemo(() => {
+    const map = new Map<string, EnrollmentDetail>()
+    for (const enrolment of enrolmentsQuery.data ?? []) map.set(enrolment.examId, enrolment)
+    return map
+  }, [enrolmentsQuery.data])
 
   const statusIds = useMemo(() => {
     const ids: string[] = []
@@ -243,18 +279,20 @@ function StudentExams() {
         duration: number
         startAt?: string
         endAt?: string
+        status: Exam['status']
         isCompleted: boolean
         result: Result | undefined
         percentage: number | null
         retestStatus: string | null
         room: ExamRoom | null
         accessStatus: ExamAccessStatus
+        enrolment: EnrollmentDetail | null
       }>(exam => {
         const result = completedByExam.get(exam.id)
         const retestStatus = retestByExam.get(exam.id) ?? null
         const isCompleted = Boolean(result)
         const percentage = result && result.total > 0 ? Math.round((result.score * 10000) / result.total) / 100 : null
-        return { ...exam, isCompleted, result, percentage, retestStatus, room: roomByExam.get(exam.id) ?? null, accessStatus: statusesQuery.data?.[exam.id] ?? 'ELIGIBLE' }
+        return { ...exam, isCompleted, result, percentage, retestStatus, room: roomByExam.get(exam.id) ?? null, accessStatus: statusesQuery.data?.[exam.id] ?? 'ELIGIBLE', enrolment: enrollmentByExam.get(exam.id) ?? null }
       })
       .filter(exam => {
         const matchesSearch = !search || exam.title.toLowerCase().includes(search.toLowerCase()) || exam.subject.toLowerCase().includes(search.toLowerCase())
@@ -262,7 +300,7 @@ function StudentExams() {
         return matchesSearch && matchesFilter
       })
       .sort((a, b) => (a.isCompleted ? 1 : 0) - (b.isCompleted ? 1 : 0))
-  }, [examsQuery.data, completedByExam, roomByExam, retestByExam, statusesQuery.data, search, filter])
+  }, [examsQuery.data, completedByExam, roomByExam, retestByExam, statusesQuery.data, enrollmentByExam, search, filter])
 
   return (
     <>
@@ -330,9 +368,29 @@ function StudentExams() {
                     {exam.percentage !== null && <span className="ml-1.5 text-muted-foreground">({exam.percentage}%)</span>}
                   </div>
                 )}
+                {!exam.isCompleted && exam.enrolment && exam.enrolment.roomName && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm">
+                    <span className="inline-flex items-center gap-1.5 font-medium text-primary"><DoorOpen size={14} />Seat assigned</span>
+                    <span className="text-muted-foreground">Room {exam.enrolment.roomName}</span>
+                    {exam.enrolment.roomCode && <span className="text-muted-foreground">({exam.enrolment.roomCode})</span>}
+                    <span className="font-medium">Seat {exam.enrolment.seatNumber ?? '—'}</span>
+                    {exam.enrolment.centreName && <span className="text-muted-foreground">· {exam.enrolment.centreName}</span>}
+                    <AttemptStatusPill status={exam.enrolment.attemptStatus} />
+                  </div>
+                )}
+                {!exam.isCompleted && !exam.enrolment && exam.status !== 'DRAFT' && (
+                  <div className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">Not enrolled yet — enrol to reserve your seat.</div>
+                )}
                 <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
                   {!exam.isCompleted ? (
                     <>
+                      {!exam.enrolment && (
+                        <button type="button" disabled={enrollMutation.isPending && enrollMutation.variables === exam.id}
+                          className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 active:scale-[.98] disabled:opacity-50"
+                          onClick={() => enrollMutation.mutate(exam.id)}>
+                          <Plus size={14} />{enrollMutation.isPending && enrollMutation.variables === exam.id ? 'Enrolling...' : 'Enroll'}
+                        </button>
+                      )}
                       <button type="button" className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted active:scale-[.98]"
                         onClick={() => navigate(`/student/exams/${exam.id}/instructions`)}>View Instructions</button>
                       {exam.retestStatus === 'PENDING' || exam.accessStatus === 'RETEST_PENDING' ? (
@@ -527,11 +585,86 @@ function ResultPage() {
   )
 }
 function History() { const resultsQuery = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 }); return <><Header title="Exam history" description="Review your completed attempts and results."/><Card>{resultsQuery.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-muted"/>)}</div> : resultsQuery.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load your results.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => resultsQuery.refetch()}>Retry</button></div> : resultsQuery.data?.length ? <div className="divide-y divide-border">{resultsQuery.data.map(r => { const percentage = r.total > 0 ? Math.round((r.score * 10000) / r.total) / 100 : 0; return <div key={r.id} className="flex items-center justify-between gap-4 py-4 first:pt-0"><div><p className="font-medium">{r.examTitle}</p><p className="mt-1 text-sm text-muted-foreground">{r.subject} · {r.date} · {r.score}/{r.total}</p></div><span className="font-semibold text-emerald-600">{percentage}%</span></div> })}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No completed exams yet.</p>}</Card></> }
-function TeacherExams() { const navigate = useNavigate(); const queryClient = useQueryClient(); const examsQuery = useQuery({ queryKey: ['teacher-exams'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); const publishMutation = useMutation({ mutationFn: (id: string) => examApi.publish(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }) }); const deleteMutation = useMutation({ mutationFn: (id: string) => examApi.remove(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }) }); return <><Header title="Exam management" description="Create, edit, validate, and publish assessments."/><div className="mb-5 flex justify-end"><button onClick={() => navigate('/teacher/exams/create')} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground"><Plus size={16}/> Create exam</button></div><Card>{examsQuery.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-16 animate-pulse rounded-xl bg-muted"/>)}</div> : examsQuery.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div> : examsQuery.data?.length ? <div className="divide-y divide-border">{examsQuery.data.map(e => <div key={e.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0"><div><p className="font-medium">{e.title}</p><p className="mt-1 text-sm text-muted-foreground">{e.subject} · {e.duration} min · {e.status} · {e.participants} participants</p></div><div className="flex gap-2"><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/teacher/exams/${e.id}/room`)}>Room</button><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/teacher/exams/${e.id}/questions`)}>Questions</button><button disabled={e.status === 'DRAFT'} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-50" onClick={() => navigate(`/teacher/monitor/${e.id}`)}>Monitor</button><button disabled={publishMutation.isPending || e.status !== 'DRAFT'} className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary disabled:opacity-50" onClick={() => publishMutation.mutate(e.id)}>Publish</button><button className="rounded-lg p-2 text-muted-foreground" onClick={() => deleteMutation.mutate(e.id)}><Trash2 size={15}/></button></div></div>)}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No exams created yet.</p>}</Card></> }
+function toLocalDateTimeInput(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+function fromLocalDateTimeInput(value: string): string | undefined {
+  if (!value) return undefined
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
+}
+function ExamWindowEditor({ exam, queryClient }: { exam: Exam; queryClient: QueryClient }) {
+  const [startValue, setStartValue] = useState(toLocalDateTimeInput(exam.startAt))
+  const [endValue, setEndValue] = useState(toLocalDateTimeInput(exam.endAt))
+  const [saved, setSaved] = useState(false)
+  const updateMutation = useMutation({
+    mutationFn: () => examApi.update(exam.id, { startAt: fromLocalDateTimeInput(startValue), endAt: fromLocalDateTimeInput(endValue) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }); setSaved(true) },
+  })
+  return <div className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 p-3"><label className="text-xs">Starts<input type="datetime-local" value={startValue} onChange={event => { setStartValue(event.target.value); setSaved(false) }} className="field mt-1"/></label><label className="text-xs">Ends<input type="datetime-local" value={endValue} onChange={event => { setEndValue(event.target.value); setSaved(false) }} className="field mt-1"/></label><button disabled={updateMutation.isPending} onClick={() => updateMutation.mutate()} className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary disabled:opacity-50">{updateMutation.isPending ? 'Saving...' : 'Save window'}</button>{saved && <span className="text-xs text-emerald-600">Saved</span>}{updateMutation.isError && <span className="text-xs text-destructive">Unable to save window</span>}</div>
+}
+function CentrePicker({ exam, queryClient }: { exam: Exam; queryClient: QueryClient }) {
+  const toast = useToast()
+  const centresQuery = useQuery({ queryKey: ['centres-picker'], queryFn: async () => (await centreApi.list()).data.data, retry: 1 })
+  const mutation = useMutation({
+    mutationFn: (centreId: string | null) => examApi.setCentre(exam.id, centreId),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }); toast.success('Exam centre assigned.') },
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'Unable to assign centre.'),
+  })
+  return <select className="field h-9 w-auto" value={exam.centreId ?? ''} onChange={e => mutation.mutate(e.target.value || null)} aria-label="Assign exam centre" disabled={mutation.isPending}>
+    <option value="">No centre</option>
+    {centresQuery.data?.filter((centre: Centre) => centre.status === 'ACTIVE').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+  </select>
+}
+function ExamSeatingPage() {
+  const { id = '' } = useParams()
+  const query = useQuery({ queryKey: ['exam-seating', id], queryFn: async () => (await enrolmentApi.examRooms(id)).data.data, enabled: Boolean(id), retry: 1 })
+  const occupied = (query.data ?? []).reduce((sum, room) => sum + room.students.length, 0)
+  const total = (query.data ?? []).reduce((sum, room) => sum + room.capacity, 0)
+  return <>
+    <Header title="Seating plan" description="Physical room and seat allocation for this exam. Assigned at enrolment and fixed until changed." />
+    <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <Card><p className="text-sm text-muted-foreground">Rooms</p><p className="mt-2 text-3xl font-semibold">{query.data?.length ?? '—'}</p></Card>
+      <Card><p className="text-sm text-muted-foreground">Seated students</p><p className="mt-2 text-3xl font-semibold">{query.isPending ? '—' : occupied}</p></Card>
+      <Card><p className="text-sm text-muted-foreground">Total capacity</p><p className="mt-2 text-3xl font-semibold">{query.isPending ? '—' : total}</p></Card>
+      <Card><p className="text-sm text-muted-foreground">Seats free</p><p className="mt-2 text-3xl font-semibold">{query.isPending ? '—' : Math.max(0, total - occupied)}</p></Card>
+    </div>
+    {query.isPending ? <div className="h-40 animate-pulse rounded-2xl bg-muted" aria-busy="true" /> : query.isError ? <Card><p className="py-8 text-center text-sm text-destructive">Unable to load the seating plan.</p></Card> : (query.data ?? []).length ? (query.data ?? []).map(room => (
+      <Card key={room.roomId} className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{room.roomName} <span className="ml-1 text-sm font-normal text-muted-foreground">{room.roomCode} · {room.centreName || room.centreId}</span></h2><span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{room.students.length}/{room.capacity} seated</span></div>
+        {room.students.length ? <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[480px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="p-3">Seat</th><th className="p-3">Student</th><th className="p-3">Roll number</th></tr></thead><tbody className="divide-y divide-border">{room.students.map(s => <tr key={s.assignmentId}><td className="p-3 font-medium">{s.seatNumber}</td><td className="p-3">{s.studentName}</td><td className="p-3 text-muted-foreground">{s.rollNumber || '—'}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-muted-foreground">No students seated in this room yet.</p>}
+      </Card>
+    )) : <Card><p className="py-8 text-center text-sm text-muted-foreground">No rooms are set up for this exam's centre yet. Enrolment will seat students as they join.</p></Card>}
+  </>
+}
+function TeacherExams() { const navigate = useNavigate(); const queryClient = useQueryClient(); const examsQuery = useQuery({ queryKey: ['teacher-exams'], queryFn: async () => (await examApi.list()).data.data, retry: 1 }); const publishMutation = useMutation({ mutationFn: (id: string) => examApi.publish(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }) }); const deleteMutation = useMutation({ mutationFn: (id: string) => examApi.remove(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }) }); return <><Header title="Exam management" description="Create, edit, validate, and publish assessments."/><div className="mb-5 flex justify-end"><button onClick={() => navigate('/teacher/exams/create')} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground"><Plus size={16}/> Create exam</button></div><Card>{examsQuery.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-16 animate-pulse rounded-xl bg-muted"/>)}</div> : examsQuery.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load exams.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => examsQuery.refetch()}>Retry</button></div> : examsQuery.data?.length ? <div className="divide-y divide-border">{examsQuery.data.map(e => <div key={e.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0"><div><p className="font-medium">{e.title}</p><p className="mt-1 text-sm text-muted-foreground">{e.subject} · {e.duration} min · {e.status} · {e.participants} participants{e.startAt && e.endAt ? ` · ${new Date(e.startAt).toLocaleString()} – ${new Date(e.endAt).toLocaleString()}` : ''}</p>{(e.status === 'DRAFT' || e.status === 'UPCOMING') && <div className="mt-3"><ExamWindowEditor exam={e} queryClient={queryClient}/></div>}</div><div className="flex gap-2"><CentrePicker exam={e} queryClient={queryClient}/><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/teacher/exams/${e.id}/room`)}>Room</button><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/teacher/exams/${e.id}/seating`)}>Seating</button><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/teacher/exams/${e.id}/questions`)}>Questions</button><button disabled={e.status === 'DRAFT'} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-50" onClick={() => navigate(`/teacher/monitor/${e.id}`)}>Monitor</button><button disabled={publishMutation.isPending || e.status !== 'DRAFT'} className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary disabled:opacity-50" onClick={() => publishMutation.mutate(e.id)}>Publish</button><button className="rounded-lg p-2 text-muted-foreground" onClick={() => deleteMutation.mutate(e.id)}><Trash2 size={15}/></button></div></div>)}</div> : <p className="py-8 text-center text-sm text-muted-foreground">No exams created yet.</p>}</Card></> }
 function CreateExam() { const navigate = useNavigate(); const queryClient = useQueryClient(); const schema = z.object({ title: z.string().min(3), subject: z.string().min(2), date: z.string().min(1), duration: z.coerce.number().min(1).max(300) }); const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema), defaultValues: { date: new Date().toISOString().slice(0, 10), duration: 60 } }); const createMutation = useMutation({ mutationFn: (values: { title: string; subject: string; date: string; duration: number }) => examApi.create(values), onSuccess: response => { queryClient.invalidateQueries({ queryKey: ['teacher-exams'] }); navigate(`/teacher/exams/${response.data.data.id}/questions`) } }); return <><Header title="Create an exam" description="Set the assessment details, then add and validate questions."/><Card className="max-w-2xl"><form className="space-y-5" onSubmit={handleSubmit(values => createMutation.mutate(values))}><label className="block text-sm font-medium">Title<input className="field mt-2" {...register('title')} placeholder="e.g. Biology midterm"/>{errors.title && <span className="text-xs text-destructive">Enter a title</span>}</label><label className="block text-sm font-medium">Subject<input className="field mt-2" {...register('subject')} placeholder="Biology"/>{errors.subject && <span className="text-xs text-destructive">Enter a subject</span>}</label><label className="block text-sm font-medium">Exam date<input className="field mt-2" type="date" {...register('date')} /></label><label className="block text-sm font-medium">Duration in minutes<input className="field mt-2" type="number" {...register('duration')} />{errors.duration && <span className="text-xs text-destructive">Enter a valid duration</span>}</label>{createMutation.isError && <p className="text-sm text-destructive">Unable to create this exam.</p>}<button disabled={createMutation.isPending} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm text-primary-foreground disabled:opacity-60"><Save size={16}/> {createMutation.isPending ? 'Saving...' : 'Save draft'}</button></form></Card></> }
 function QuestionsPage() { const { id = '' } = useParams(); const queryClient = useQueryClient(); const [text, setText] = useState(''); const [options, setOptions] = useState(['', '', '', '']); const [correctIndex, setCorrectIndex] = useState(0); const questionsQuery = useQuery({ queryKey: ['exam-questions', id], queryFn: async () => (await questionApi.list(id)).data.data, enabled: Boolean(id), retry: 1 }); const createMutation = useMutation({ mutationFn: () => { const cleanedOptions = options.map(option => option.trim()).filter(Boolean); const answer = options[correctIndex]?.trim(); return questionApi.create(id, { text, options: cleanedOptions, answer }) }, onSuccess: () => { setText(''); setOptions(['', '', '', '']); setCorrectIndex(0); queryClient.invalidateQueries({ queryKey: ['exam-questions', id] }) } }); const deleteMutation = useMutation({ mutationFn: (questionId: string) => questionApi.remove(questionId), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exam-questions', id] }) }); const cleanedOptions = options.map(option => option.trim()).filter(Boolean); const canAdd = text.trim().length > 0 && cleanedOptions.length >= 2 && Boolean(options[correctIndex]?.trim()); return <><Header title="Question authoring" description="Build multiple-choice questions and mark the correct answer."/><Card><div className="grid gap-4"><label className="block text-sm font-medium">Question text<input className="field mt-2" value={text} onChange={e => setText(e.target.value)} placeholder="Question text"/></label><div className="grid gap-3 md:grid-cols-2">{options.map((option, optionIndex) => <label key={optionIndex} className="block text-sm font-medium">Option {optionIndex + 1}<div className="mt-2 flex gap-2"><input className="field" value={option} onChange={e => setOptions(current => current.map((item, i) => i === optionIndex ? e.target.value : item))} placeholder={`Option ${optionIndex + 1}`}/><button type="button" aria-label={`Mark option ${optionIndex + 1} correct`} onClick={() => setCorrectIndex(optionIndex)} className={`grid size-11 shrink-0 place-items-center rounded-xl border ${correctIndex === optionIndex ? 'border-primary bg-primary text-primary-foreground' : 'border-border'}`}><Check size={17}/></button></div></label>)}</div>{createMutation.isError && <p className="text-sm text-destructive">Unable to add this question. Check the options and correct answer.</p>}<button disabled={!canAdd || createMutation.isPending} className="w-fit rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50" onClick={() => createMutation.mutate()}>Add question</button></div><div className="mt-6 space-y-3">{questionsQuery.isPending ? <div className="h-24 animate-pulse rounded-xl bg-muted"/> : questionsQuery.isError ? <p className="text-sm text-destructive">Unable to load questions.</p> : questionsQuery.data?.length ? questionsQuery.data.map((q, i) => <div key={q.id} className="flex items-start justify-between rounded-xl bg-muted p-4"><div><p className="text-xs text-primary">Question {i + 1} · MCQ</p><p className="mt-1 text-sm font-medium">{q.text}</p><p className="mt-2 text-xs text-muted-foreground">Options: {q.options.join(', ')}</p>{q.answer && <p className="mt-1 text-xs font-medium text-emerald-700">Correct answer: {q.answer}</p>}</div><button onClick={() => deleteMutation.mutate(q.id)} className="text-muted-foreground"><Trash2 size={16}/></button></div>) : <p className="rounded-xl bg-muted p-6 text-center text-sm text-muted-foreground">No questions added yet.</p>}</div></Card></> }
 function Protected({ roles, children }: { roles: Role[]; children: React.ReactNode }) { const user = useAuthStore(s => s.user); const hydrated = useAuthStore(s => s.hydrated); useEffect(() => { if (!hydrated) useAuthStore.persist.rehydrate() }, [hydrated]); if (!hydrated) return <div className="grid min-h-screen place-items-center bg-background p-6"><p className="text-sm text-muted-foreground" role="status">Loading your session...</p></div>; if (!user) return <Navigate to="/login" replace/>; if (!roles.includes(user.role)) return <Navigate to={`/${user.role.toLowerCase()}/dashboard`} replace/>; return <Shell>{children}</Shell> }
-function AdminUsers() { const query = useQuery({ queryKey: ['admin-users'], queryFn: async () => (await userApi.list()).data.data, retry: 1 }); return <><Header title="User management" description="Review users provisioned by the examination service."/><Card>{query.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-muted"/>)}</div> : query.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load users from the API.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}>Retry</button></div> : query.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-3 py-3">Name</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Role</th></tr></thead><tbody className="divide-y divide-border">{query.data.map(user => <tr key={user.id}><td className="px-3 py-4 font-medium">{user.name}</td><td className="px-3 py-4 text-muted-foreground">{user.email}</td><td className="px-3 py-4">{user.role}</td></tr>)}</tbody></table></div> : <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>}</Card></> }
+function adminUserCreateErrorMessage(error: unknown): string | null {
+  const status = (error as { response?: { status?: number } } | null)?.response?.status
+  if (status === 409) return 'Email is already registered.'
+  return null
+}
+function AdminUsers() {
+  const query = useQuery({ queryKey: ['admin-users'], queryFn: async () => (await userApi.list()).data.data, retry: 1 })
+  const queryClient = useQueryClient()
+  const [role, setRole] = useState<Role>('STUDENT')
+  const createUserSchema = z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) })
+  const { register, handleSubmit, reset, formState: { errors }, setError } = useForm({ resolver: zodResolver(createUserSchema) })
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateUserPayload) => userApi.create(payload),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-users'] }); reset() },
+    onError: (error: unknown) => {
+      const message = adminUserCreateErrorMessage(error)
+      setError('email', { message: message ?? 'Unable to create this user.' })
+    },
+  })
+  return <><Header title="User management" description="Provision and review users of the examination service."/><div className="mb-5 grid gap-5 lg:grid-cols-[1.2fr_1fr]"><Card><h2 className="mb-4 font-semibold">Create a user</h2><form className="space-y-4" onSubmit={handleSubmit(values => { const built = buildCreateUserPayload({ ...values, role }); if (built.ok) createMutation.mutate(built.payload) })}><label className="block text-sm font-medium">Full name<input className="field mt-2" {...register('name')} placeholder="e.g. Ada Lovelace"/>{errors.name && <span className="text-xs text-destructive">Enter a name</span>}</label><label className="block text-sm font-medium">Email<input className="field mt-2" type="email" {...register('email')} placeholder="ada@example.com"/>{errors.email && <span className="text-xs text-destructive">{errors.email.message}</span>}</label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" {...register('password')} placeholder="At least 8 characters"/>{errors.password && <span className="text-xs text-destructive">Password must be at least 8 characters</span>}</label><label className="block text-sm font-medium">Role<select className="field mt-2" value={role} onChange={event => setRole(event.target.value as Role)}>{['STUDENT', 'TEACHER', 'ADMIN'].map(option => <option key={option} value={option}>{option}</option>)}</select></label>{createMutation.isError && !errors.email && <p className="text-sm text-destructive">Unable to create this user.</p>}{createMutation.isSuccess && <p className="text-sm text-emerald-600">User created.</p>}<button disabled={createMutation.isPending} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground disabled:opacity-60"><Save size={16}/> {createMutation.isPending ? 'Creating...' : 'Create user'}</button></form></Card><Card>{query.isPending ? <div className="space-y-3" aria-busy="true">{[1,2,3].map(item => <div key={item} className="h-14 animate-pulse rounded-xl bg-muted"/>)}</div> : query.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">Unable to load users from the API.</p><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}>Retry</button></div> : query.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-3 py-3">Name</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Role</th></tr></thead><tbody className="divide-y divide-border">{query.data.map(user => <tr key={user.id}><td className="px-3 py-4 font-medium">{user.name}</td><td className="px-3 py-4 text-muted-foreground">{user.email}</td><td className="px-3 py-4">{user.role}</td></tr>)}</tbody></table></div> : <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>}</Card></div></> }
 function AdminResults() { const [search, setSearch] = useState(''); const [status, setStatus] = useState('ALL'); const resultsQuery = useQuery({ queryKey: ['admin-results'], queryFn: async () => (await resultApi.list()).data.data, retry: 1 }); const results = useMemo(() => (resultsQuery.data ?? []).filter(result => { const percentage = result.total ? (result.score / result.total) * 100 : 0; const label = percentage >= 50 ? 'PASS' : 'FAIL'; return `${result.examTitle} ${result.subject}`.toLowerCase().includes(search.toLowerCase()) && (status === 'ALL' || label === status) }), [resultsQuery.data, search, status]); return <><Header title="Results" description="Review performance across submitted examination attempts."/><Card><div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><Search size={16} className="pointer-events-none absolute left-3 top-3 text-muted-foreground"/><input className="field pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search exam or subject"/></label><select className="field sm:w-36" value={status} onChange={e => setStatus(e.target.value)}><option value="ALL">All status</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div>{resultsQuery.isPending ? <div className="mt-5 space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted"/>)}</div> : resultsQuery.isError ? <div className="py-8 text-center"><p className="text-sm text-destructive">Unable to load results.</p><button className="mt-3 rounded-lg border border-border px-3 py-2 text-sm" onClick={() => resultsQuery.refetch()}>Retry</button></div> : results.length ? <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="p-3">Exam</th><th className="p-3">Subject</th><th className="p-3">Score</th><th className="p-3">Status</th><th className="p-3">Date</th></tr></thead><tbody className="divide-y divide-border">{results.map(r => { const pct = r.total ? Math.round(r.score * 100 / r.total) : 0; return <tr key={r.id}><td className="p-3 font-medium">{r.examTitle}</td><td className="p-3 text-muted-foreground">{r.subject}</td><td className="p-3">{r.score}/{r.total} · {pct}%</td><td className={`p-3 font-medium ${pct >= 50 ? 'text-emerald-600' : 'text-destructive'}`}>{pct >= 50 ? 'PASS' : 'FAIL'}</td><td className="p-3 text-muted-foreground">{r.date}</td></tr> })}</tbody></table></div> : <p className="py-10 text-center text-sm text-muted-foreground">No results match these filters.</p>}</Card></> }
 function HistoryEnhanced() { const navigate = useNavigate(); const [search, setSearch] = useState(''); const [outcome, setOutcome] = useState('ALL'); const query = useQuery({ queryKey: ['my-results'], queryFn: async () => (await resultApi.mine()).data.data, retry: 1 }); const results = useMemo(() => (query.data ?? []).filter(r => { const passed = r.total ? r.score / r.total >= .5 : false; return `${r.examTitle} ${r.subject}`.toLowerCase().includes(search.toLowerCase()) && (outcome === 'ALL' || (outcome === 'PASS') === passed) }), [query.data, search, outcome]); return <><Header title="Exam history" description="Search completed assessments and revisit each saved result."/><Card><div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><Search size={16} className="pointer-events-none absolute left-3 top-3 text-muted-foreground"/><input className="field pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search exams or subjects"/></label><select className="field sm:w-36" value={outcome} onChange={e => setOutcome(e.target.value)}><option value="ALL">All results</option><option value="PASS">Passed</option><option value="FAIL">Not passed</option></select></div>{query.isPending ? <div className="mt-5 space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted"/>)}</div> : query.isError ? <div className="py-8 text-center"><p className="text-sm text-destructive">Unable to load your results.</p><button className="mt-3 rounded-lg border border-border px-3 py-2 text-sm" onClick={() => query.refetch()}>Retry</button></div> : results.length ? <div className="mt-5 divide-y divide-border">{results.map(r => { const pct = r.total ? Math.round(r.score * 100 / r.total) : 0; return <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-medium">{r.examTitle}</p><p className="mt-1 text-sm text-muted-foreground">{r.subject} · {r.date} · {r.score}/{r.total}</p></div><div className="flex flex-wrap items-center gap-2"><span className={pct >= 50 ? 'font-semibold text-emerald-600' : 'font-semibold text-destructive'}>{pct}%</span><button className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => navigate(`/student/exams/${r.examId}/result`)}>View result</button><button className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground" onClick={() => navigate(`/student/ai-analysis?exam=${r.examId}`)}><Sparkles size={12} /> Review with AI</button></div></div> })}</div> : <p className="py-10 text-center text-sm text-muted-foreground">No completed exams match these filters.</p>}</Card></> }
 function Dashboard() {
@@ -710,12 +843,16 @@ function DashboardV2() {
   </>
 }
 function RealAuth({ mode }: { mode: 'login' | 'register' }) {
-  const { setAuth } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [loginRole, setLoginRole] = useState<LoginRole>('STUDENT'); const [challengeToken, setChallengeToken] = useState(''); const [code, setCode] = useState(''); const [recoveryMode, setRecoveryMode] = useState(false); const [providers, setProviders] = useState<OAuthProviderInfo[]>([])
+  const { setAuth, logout } = useAuthStore(); const navigate = useNavigate(); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [loginRole, setLoginRole] = useState<LoginRole>('STUDENT'); const [challengeToken, setChallengeToken] = useState(''); const [setupRequired, setSetupRequired] = useState(false); const [setupUri, setSetupUri] = useState(''); const [setupSecret, setSetupSecret] = useState(''); const [setupCode, setSetupCode] = useState(''); const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null); const [code, setCode] = useState(''); const [recoveryMode, setRecoveryMode] = useState(false); const [providers, setProviders] = useState<OAuthProviderInfo[]>([])
   useEffect(() => { if (mode !== 'login') return; let active = true; authApi.oauthProviders().then(response => { if (active) setProviders(response.data.data) }).catch(() => { if (active) setProviders([]) }); return () => { active = false } }, [mode])
   const schema = mode === 'login' ? z.object({ email: z.string().email(), password: z.string().min(1) }) : z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(8) })
   const { register, handleSubmit, formState: { errors } } = useForm<any>({ resolver: zodResolver(schema) })
-  const submit = async (values: any) => { setLoading(true); setError(''); try { let user: User; let token: string; if (mode === 'login') { const response = await authApi.login({ email: values.email, password: values.password }); const auth = response.data.data; if (auth.requiresTwoFactor || auth.challengeToken) { setChallengeToken(auth.challengeToken || ''); setCode(''); return } if (!auth.token || !auth.user) throw new Error('incomplete login'); token = auth.token; user = auth.user; setAuth({ token, user }) } else { const auth = (await authApi.register(values)).data.data; token = auth.token; user = auth.user; setAuth({ token, user }) } navigate(`/${user.role.toLowerCase()}/dashboard`) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'Unable to reach the examination service. Confirm that the backend is running and try again.') } finally { setLoading(false) } }
+  const submit = async (values: any) => { setLoading(true); setError(''); try { let user: User; let token: string; if (mode === 'login') { const response = await authApi.login({ email: values.email, password: values.password }); const auth = response.data.data; if (auth.setupRequired && auth.setupToken && auth.user) { setAuth({ token: auth.setupToken, user: auth.user }); setSetupRequired(true); setRecoveryCodes(null); return } if (auth.requiresTwoFactor || auth.challengeToken) { setChallengeToken(auth.challengeToken || ''); setCode(''); return } if (!auth.token || !auth.user) throw new Error('incomplete login'); token = auth.token; user = auth.user; setAuth({ token, user }); if (auth.requiresPasswordChange) { navigate('/account/first-login'); return } } else { const auth = (await authApi.register(values)).data.data; token = auth.token; user = auth.user; setAuth({ token, user }) } navigate(`/${user.role.toLowerCase()}/dashboard`) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'Unable to reach the examination service. Confirm that the backend is running and try again.') } finally { setLoading(false) } }
+  const beginSetup = async () => { setLoading(true); setError(''); try { const response = await authApi.twoFactorSetup(); setSetupUri(response.data.data.otpauthUri); setSetupSecret(response.data.data.secret) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'Unable to start two-factor setup.') } finally { setLoading(false) } }
+  const confirmSetup = async (event: React.FormEvent) => { event.preventDefault(); setLoading(true); setError(''); try { const response = await authApi.twoFactorConfirm(setupCode); setRecoveryCodes(response.data.data.recoveryCodes); setSetupCode('') } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'That code could not be verified.') } finally { setLoading(false) } }
+  const finishSetup = () => { logout(); setSetupRequired(false); setSetupUri(''); setSetupSecret(''); setRecoveryCodes(null); setError('Two-factor authentication is enabled. Sign in again to continue.') }
   const verifyTwoFactor = async (event: React.FormEvent) => { event.preventDefault(); setLoading(true); setError(''); try { const response = recoveryMode ? await authApi.recoverTwoFactor({ challengeToken, recoveryCode: code }) : await authApi.verifyTwoFactor({ challengeToken, code }); const auth = response.data.data; setAuth(auth); navigate(`/${auth.user.role.toLowerCase()}/dashboard`) } catch (cause: unknown) { const message = (cause as { response?: { data?: { message?: string } } })?.response?.data?.message; setError(message || 'That code could not be verified.') } finally { setLoading(false) } }
+  if (setupRequired) return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">Secure administrator sign-in</h1>{recoveryCodes ? <><p className="mt-2 text-sm text-muted-foreground">Save these recovery codes before continuing. Each code can be used once if you lose your authenticator.</p><div className="mt-5 grid grid-cols-2 gap-2 rounded-xl bg-muted p-3">{recoveryCodes.map(item => <code key={item} className="text-sm">{item}</code>)}</div><button type="button" className="mt-5 w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground" onClick={finishSetup}>I saved my codes</button></> : !setupUri ? <><p className="mt-2 text-sm text-muted-foreground">Administrators must enable two-factor authentication before accessing the workspace.</p><button type="button" disabled={loading} onClick={beginSetup} className="mt-6 w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60">{loading ? 'Preparing...' : 'Set up authenticator'}</button></> : <><p className="mt-2 text-sm text-muted-foreground">Scan this URI with your authenticator app, then enter the current 6-digit code.</p><p className="mt-4 overflow-x-auto rounded-xl bg-muted p-3 text-xs break-all">{setupUri}</p><p className="mt-3 overflow-x-auto rounded-xl bg-muted p-3 text-xs break-all font-mono">Secret: {setupSecret}</p><form className="mt-5 space-y-4" onSubmit={confirmSetup}><input className="field" inputMode="numeric" autoComplete="one-time-code" value={setupCode} onChange={event => setSetupCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit code"/><button type="submit" disabled={loading || setupCode.length !== 6} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-60">{loading ? 'Verifying...' : 'Confirm and enable'}</button></form></>}{error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}</Card></div>
   if (challengeToken) return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">Two-factor authentication</h1><p className="mt-2 text-sm text-muted-foreground">{recoveryMode ? 'Enter one of the recovery codes you saved when enabling two-factor authentication.' : 'Enter the 6-digit code from your authenticator app.'}</p><form className="mt-6 space-y-4" onSubmit={verifyTwoFactor}><label className="block text-sm font-medium">{recoveryMode ? 'Recovery code' : 'Authenticator code'}<input className="field mt-2" inputMode={recoveryMode ? 'text' : 'numeric'} autoComplete="one-time-code" value={code} onChange={e => setCode(recoveryMode ? e.target.value.trim().toUpperCase() : e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder={recoveryMode ? 'XXXX-XXXX' : '6-digit code'}/></label><button type="submit" disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] disabled:opacity-60">{loading ? 'Verifying...' : 'Verify'}</button></form><button type="button" className="mt-5 w-full text-center text-sm text-primary hover:underline" onClick={() => { setRecoveryMode(value => !value); setCode(''); setError('') }}>{recoveryMode ? 'Use my authenticator app instead' : 'Use a recovery code instead'}</button>{error && <p className="mt-4 text-sm text-destructive">{error}</p>}</Card></div>
   return <div className="grid min-h-screen place-items-center p-6"><Card className="w-full max-w-md"><div className="mb-8 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck size={20}/></div><b>Examwise</b></div><h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your student account'}</h1><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? 'Choose your sign-in area, then use your examination account.' : 'Registration creates a student account. Administrator accounts are provisioned separately.'}</p><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? <>New here? <NavLink className="font-medium text-primary hover:underline" to="/register">Create a student account</NavLink></> : <>Already have an account? <NavLink className="font-medium text-primary hover:underline" to="/login">Sign in</NavLink></>}</p>{error && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}<form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)}>{mode === 'login' && <fieldset><legend className="text-sm font-medium">Sign in as</legend><div className="mt-2 grid grid-cols-2 gap-3"><button type="button" onClick={() => setLoginRole('STUDENT')} aria-pressed={loginRole === 'STUDENT'} className={`rounded-xl border p-3 text-left text-sm ${loginRole === 'STUDENT' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><span className="block font-medium">Student</span><span className="mt-1 block text-xs">Take exams and view results</span></button><button type="button" onClick={() => setLoginRole('ADMIN')} aria-pressed={loginRole === 'ADMIN'} className={`rounded-xl border p-3 text-left text-sm ${loginRole === 'ADMIN' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><span className="block font-medium">Administrator</span><span className="mt-1 block text-xs">Open the admin panel</span></button></div></fieldset>}{mode === 'register' && <label className="block text-sm font-medium">Full name<input className="field mt-2" {...register('name')} placeholder="Your name"/>{errors.name && <span className="text-xs text-destructive">Enter your name</span>}</label>}<label className="block text-sm font-medium">Email<input className="field mt-2" type="email" autoComplete="email" {...register('email')} placeholder="you@school.edu"/>{errors.email && <span className="text-xs text-destructive">Enter a valid email</span>}</label><label className="block text-sm font-medium">Password<input className="field mt-2" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} {...register('password')} placeholder={mode === 'login' ? 'Your password' : 'At least 8 characters'}/>{errors.password && <span className="text-xs text-destructive">{mode === 'login' ? 'Enter your password' : 'Use at least 8 characters'}</span>}</label><button type="submit" disabled={loading} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 active:scale-[.98] disabled:opacity-60">{loading ? 'Signing in...' : mode === 'login' ? 'Sign in' : 'Create account'}</button>  </form>{mode === 'login' && providers.length > 0 && <div className="mt-6 border-t border-border pt-5"><p className="text-center text-xs uppercase tracking-widest text-muted-foreground">Or continue with</p><div className="mt-3 grid gap-2">{providers.map(provider => <a key={provider.provider} className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-border bg-white px-4 text-sm font-medium text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.98]" href={`${resolveApiBaseUrl()}/auth/oauth/${provider.provider}/start`}><OAuthProviderIcon provider={provider.provider}/>  <span>Continue with {provider.provider.toUpperCase() === 'GITHUB' ? 'GitHub' : 'Google'}</span></a>)}</div></div>}</Card></div>
 }
@@ -803,23 +940,19 @@ function RetestRequests({ admin = false }: { admin?: boolean }) {
   </>
 }
 
-function AuthGateway() {
-  const [searchParams] = useSearchParams()
-  const user = useAuthStore(state => state.user)
-  const hasHashToken = typeof window !== 'undefined' && new URLSearchParams(window.location.hash.slice(1)).has('token')
-  if (searchParams.get('token') || hasHashToken) return <OAuthCallback />
-  if (user) return <Navigate to={`/${user.role.toLowerCase()}/dashboard`} replace />
-  return <Navigate to="/login" replace />
-}
-
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<AuthGateway />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<RealAuth mode="login" />} />
       <Route path="/register" element={<RealAuth mode="register" />} />
       <Route path="/oauth/callback" element={<OAuthCallback />} />
+      <Route path="/account/first-login" element={<Protected roles={['STUDENT', 'TEACHER', 'ADMIN']}><FirstLoginSetup /></Protected>} />
       <Route path="/settings/security" element={<Protected roles={['STUDENT', 'TEACHER', 'ADMIN']}><SecuritySettings /></Protected>} />
+      <Route path="/student/profile" element={<Protected roles={['STUDENT']}><StudentProfile /></Protected>} />
+      <Route path="/teacher/rooms" element={<Protected roles={['TEACHER', 'ADMIN']}><InvigilatorRooms /></Protected>} />
+      <Route path="/admin/rooms" element={<Protected roles={['ADMIN']}><InvigilatorRooms /></Protected>} />
+      <Route path="/admin/centres" element={<Protected roles={['ADMIN']}><Centres /></Protected>} />
       <Route path="/student/ai-analysis" element={<Protected roles={['STUDENT']}><StudentAICoach /></Protected>} />
       <Route path="/student/ai-practice/:id" element={<Protected roles={['STUDENT']}><StudentAIPractice /></Protected>} />
       <Route path="/student/analysis" element={<Protected roles={['STUDENT']}><StudentPerformance /></Protected>} />
@@ -848,12 +981,15 @@ function App() {
       <Route path="/teacher/exams" element={<Protected roles={['TEACHER', 'ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/teacher/exams/create" element={<Protected roles={['TEACHER', 'ADMIN']}><CreateExam /></Protected>} />
       <Route path="/teacher/exams/:id/questions" element={<Protected roles={['TEACHER', 'ADMIN']}><QuestionsPage /></Protected>} />
+      <Route path="/teacher/exams/:id/seating" element={<Protected roles={['TEACHER', 'ADMIN']}><ExamSeatingPage /></Protected>} />
+      <Route path="/admin/exams/:id/seating" element={<Protected roles={['ADMIN']}><ExamSeatingPage /></Protected>} />
       <Route path="/teacher/exams/:id/room" element={<Protected roles={['TEACHER', 'ADMIN']}><ExamRoomManagerPage /></Protected>} />
       <Route path="/admin/dashboard" element={<Protected roles={['ADMIN']}><DashboardV2 /></Protected>} />
       <Route path="/admin/users" element={<Protected roles={['ADMIN']}><AdminUsers /></Protected>} />
       <Route path="/admin/exams" element={<Protected roles={['ADMIN']}><TeacherExams /></Protected>} />
       <Route path="/admin/question-bank" element={<Protected roles={['ADMIN']}><QuestionBank /></Protected>} />
       <Route path="/admin/research" element={<Protected roles={['ADMIN']}><ProctoringResearch /></Protected>} />
+      <Route path="/admin/research/pilot" element={<Protected roles={['ADMIN']}><ResearchPilot /></Protected>} />
       <Route path="/admin/results" element={<Protected roles={['ADMIN']}><AdminResults /></Protected>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

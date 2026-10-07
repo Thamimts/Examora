@@ -3,8 +3,9 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Examwise | Online Examination System',
-  description: 'A connected workspace for modern online assessments.',
+  title: 'Examora — Smart Online Exams & AI-Powered Learning',
+  description:
+    'Take online exams, understand your performance, and get AI-powered guidance for what to study and practice next.',
   generator: 'v0.app',
   icons: {
     icon: [

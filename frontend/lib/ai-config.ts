@@ -21,8 +21,18 @@ export function hasAiKey(): boolean {
   return Boolean(process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY)
 }
 
+const DEV_FALLBACK_BACKEND_URL = 'http://localhost:8080/api'
+
 export function backendUrl(): string {
-  return process.env.EXAMORA_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api'
+  const configured = (process.env.EXAMORA_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? '').trim() || undefined
+  if (configured) return configured
+  const message =
+    '[Examora] EXAMORA_API_URL (or NEXT_PUBLIC_API_URL) is not configured. Set EXAMORA_API_URL to the backend API base URL for server-side AI routes.'
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(message)
+  }
+  console.warn(`${message} Using development fallback http://localhost:8080/api`)
+  return DEV_FALLBACK_BACKEND_URL
 }
 
 export function createAiProvider() {
@@ -36,7 +46,7 @@ export function aiErrorResponse(error: unknown, feature: string): Response {
   if (error instanceof APICallError) {
     const status = error.statusCode
     if (status === 401 || status === 403) {
-      return Response.json({ error: 'The AI provider rejected the request. Check the configured API key.' }, { status: 503 })
+      return Response.json({ error: 'The AI provider rejected the request. Check the configured API key and account permissions.' }, { status: 503 })
     }
     if (typeof status === 'number' && status >= 429) {
       return Response.json({ error: 'The AI provider is rate limited or temporarily unavailable. Try again shortly.' }, { status: 503 })

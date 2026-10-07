@@ -59,6 +59,11 @@ public class ExamService {
     public Exam update(String id, Exam exam, User actor) {
         Exam existing = findById(id);
         requireOwner(id, actor);
+        Instant startAt = exam.startAt() != null ? exam.startAt() : existing.startAt();
+        Instant endAt = exam.endAt() != null ? exam.endAt() : existing.endAt();
+        if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "endAt must be after startAt.");
+        }
         Exam editable = new Exam(
                 existing.id(),
                 required(exam.title(), "Title"),
@@ -68,8 +73,8 @@ public class ExamService {
                 existing.status(),
                 existing.participants(),
                 existing.averageScore(),
-                existing.startAt(),
-                existing.endAt());
+                startAt,
+                endAt);
         examRepository.update(id, editable);
         return findById(id);
     }
@@ -98,6 +103,20 @@ public class ExamService {
         if (ownerId == null || !ownerId.equals(actor.id())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "You do not own this exam.");
         }
+    }
+
+    public Exam setCentre(String examId, String centreId, User actor) {
+        requireOwner(examId, actor);
+        Exam exam = findById(examId);
+        String normalizedCentre = centreId == null || centreId.isBlank() ? null : centreId.trim();
+        if (normalizedCentre != null && examRepository.centreIdFor(examId).map(c -> c.equals(normalizedCentre)).orElse(false)) {
+            return findById(examId);
+        }
+        int updated = examRepository.setCentre(examId, normalizedCentre);
+        if (updated == 0) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Exam not found.");
+        }
+        return findById(examId);
     }
 
     public List<String> findOwnedExamIds(String ownerId) {

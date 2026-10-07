@@ -15,6 +15,7 @@ import com.examora.dto.ResearchDtos.RunCreateRequest;
 import com.examora.dto.ResearchDtos.RunDetailDto;
 import com.examora.dto.ResearchDtos.RunSampleCreateRequest;
 import com.examora.dto.ResearchDtos.RunSampleDetailDto;
+import com.examora.dto.ResearchDtos.RunSampleReviewsDto;
 import com.examora.dto.ResearchDtos.RunEvaluationDto;
 import com.examora.dto.ResearchDtos.RunSampleDto;
 import com.examora.dto.ResearchDtos.SampleCaptureRequest;
@@ -239,6 +240,14 @@ public class ResearchController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User admin = authService.requireAdmin(authorizationHeader);
         return ApiResponse.ok(researchRunService.getRunSampleDetail(admin, runSampleId));
+    }
+
+    @GetMapping("/run-samples/{runSampleId}/reviews")
+    public ApiResponse<RunSampleReviewsDto> getRunSampleReviews(
+            @PathVariable String runSampleId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User admin = authService.requireAdmin(authorizationHeader);
+        return ApiResponse.ok(researchRunService.runSampleReviews(admin, runSampleId));
     }
 
     @GetMapping("/scenarios")

@@ -158,8 +158,10 @@ public class ResearchRepository {
 
     public List<ResearchReview> findReviewsBySampleId(String sampleId) {
         return jdbcTemplate.query(
-                "select id, sample_id, reviewer_id, label, confidence, notes, reviewed_at "
-                        + "from research_reviews where sample_id = ? order by reviewed_at asc",
+                "select r.id, r.sample_id, r.reviewer_id, r.label, r.confidence, r.notes, r.reviewed_at, "
+                        + "u.name as reviewer_name, u.email as reviewer_email "
+                        + "from research_reviews r join users u on u.id = r.reviewer_id "
+                        + "where r.sample_id = ? order by r.reviewed_at asc",
                 (rs, rowNum) -> new ResearchReview(
                         rs.getString("id"),
                         rs.getString("sample_id"),
@@ -167,7 +169,9 @@ public class ResearchRepository {
                         rs.getString("label"),
                         rs.getObject("confidence", Double.class),
                         rs.getString("notes"),
-                        toInstant(rs.getTimestamp("reviewed_at"))),
+                        toInstant(rs.getTimestamp("reviewed_at")),
+                        rs.getString("reviewer_name"),
+                        rs.getString("reviewer_email")),
                 sampleId);
     }
 
@@ -240,7 +244,8 @@ public class ResearchRepository {
     }
 
     public record ResearchReview(String id, String sampleId, String reviewerId, String label,
-                                 Double confidence, String notes, Instant reviewedAt) {
+                                 Double confidence, String notes, Instant reviewedAt,
+                                 String reviewerName, String reviewerEmail) {
     }
 
     public record ResearchRun(String id, String experimentId, String runCode, Instant startedAt,
@@ -411,8 +416,10 @@ public class ResearchRepository {
     /** Full review rows of an experiment's samples (reviewer id, label), for pairwise agreement. */
     public List<ResearchReview> findReviewsByExperiment(String experimentId) {
         return jdbcTemplate.query(
-                "select r.id, r.sample_id, r.reviewer_id, r.label, r.confidence, r.notes, r.reviewed_at "
+                "select r.id, r.sample_id, r.reviewer_id, r.label, r.confidence, r.notes, r.reviewed_at, "
+                        + "u.name as reviewer_name, u.email as reviewer_email "
                         + "from research_reviews r join research_samples s on s.id = r.sample_id "
+                        + "join users u on u.id = r.reviewer_id "
                         + "where s.experiment_id = ? order by r.sample_id asc, r.reviewed_at asc",
                 (rs, rowNum) -> new ResearchReview(
                         rs.getString("id"),
@@ -421,7 +428,9 @@ public class ResearchRepository {
                         rs.getString("label"),
                         rs.getObject("confidence", Double.class),
                         rs.getString("notes"),
-                        toInstant(rs.getTimestamp("reviewed_at"))),
+                        toInstant(rs.getTimestamp("reviewed_at")),
+                        rs.getString("reviewer_name"),
+                        rs.getString("reviewer_email")),
                 experimentId);
     }
 

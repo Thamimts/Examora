@@ -115,7 +115,7 @@ class ProctorMonitorWebSocketTest {
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
                         com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
-                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE, null));
         assertThat(updates.poll(5, TimeUnit.SECONDS)).isNotNull();
         disconnectQuietly(session);
     }
@@ -132,7 +132,7 @@ class ProctorMonitorWebSocketTest {
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
                         com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
-                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE, null));
         assertThat(updates.poll(2, TimeUnit.SECONDS)).isNull();
         disconnectQuietly(session);
     }
@@ -149,7 +149,7 @@ class ProctorMonitorWebSocketTest {
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
                         com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
-                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE, null));
         assertThat(updates.poll(2, TimeUnit.SECONDS)).isNull();
         disconnectQuietly(session);
     }
@@ -166,7 +166,7 @@ class ProctorMonitorWebSocketTest {
                 new ProctorUpdate(EXAM_ID, "att-1", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
                         com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
-                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE, null));
         assertThat(updates.poll(5, TimeUnit.SECONDS)).isNotNull();
         disconnectQuietly(session);
     }
@@ -183,7 +183,7 @@ class ProctorMonitorWebSocketTest {
                 new ProctorUpdate(EXAM_ID_OTHER, "att-2", "STARTED",
                         new com.examora.dto.ProctorDtos.ProctorStudentDto("s1", "S", "s@e.com"),
                         com.examora.dto.ProctorDtos.RiskLevel.LOW, 0.0, null, 0, 1, Instant.now(),
-                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE));
+                        0, com.examora.dto.ProctorDtos.WarningLevel.NONE, com.examora.model.ExamAccessStatus.ELIGIBLE, null));
         assertThat(updates.poll(5, TimeUnit.SECONDS)).isNotNull();
         disconnectQuietly(session);
     }

@@ -41,7 +41,24 @@ public class JwtService {
         this.expirationHours = expirationHours;
     }
 
+    private static final long TWO_FACTOR_SETUP_TTL_SECONDS = 600;
+
     public String generateToken(User user) {
+        return generateToken(user, null, expirationHours * 3600);
+    }
+
+    /**
+     * Short-lived token limited to the two-factor setup endpoints. Issued only when an
+     * administrator (2FA is mandatory for that role) signs in without two-factor
+     * authentication enabled, so the account can be secured before any normal access is
+     * granted. Carries a {@code scope} claim that the authentication filter and the
+     * authorization facade refuse to treat as a normal session.
+     */
+    public String generateSetupToken(User user) {
+        return generateToken(user, "2FA_SETUP", TWO_FACTOR_SETUP_TTL_SECONDS);
+    }
+
+    private String generateToken(User user, String scope, long ttlSeconds) {
         try {
             Map<String, Object> header = Map.of("alg", "HS256", "typ", "JWT");
             Map<String, Object> claims = new LinkedHashMap<>();
@@ -50,7 +67,10 @@ public class JwtService {
             claims.put("role", user.role().name());
             claims.put("name", user.name());
             claims.put("iat", Instant.now().getEpochSecond());
-            claims.put("exp", Instant.now().plusSeconds(expirationHours * 3600).getEpochSecond());
+            claims.put("exp", Instant.now().plusSeconds(ttlSeconds).getEpochSecond());
+            if (scope != null) {
+                claims.put("scope", scope);
+            }
 
             String encodedHeader = encodeJson(header);
             String encodedPayload = encodeJson(claims);
@@ -82,10 +102,11 @@ public class JwtService {
             }
             String email = stringClaim(claims.get("sub"));
             String role = stringClaim(claims.get("role"));
+            String scope = stringClaim(claims.get("scope"));
             if (email == null || role == null) {
                 throw unauthorized();
             }
-            return new JwtClaims(email, role);
+            return new JwtClaims(email, role, scope);
         } catch (ApiException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -127,6 +148,9 @@ public class JwtService {
         return new ApiException(HttpStatus.UNAUTHORIZED, "Session is invalid or expired.");
     }
 
-    public record JwtClaims(String email, String role) {
+    public record JwtClaims(String email, String role, String scope) {
+        public JwtClaims(String email, String role) {
+            this(email, role, null);
+        }
     }
 }

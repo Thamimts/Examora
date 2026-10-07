@@ -33,6 +33,9 @@ public class ExamController {
     private final ExamAttemptService examAttemptService;
     private final AuthService authService;
 
+    public record AssignCentreRequest(String centreId) {
+    }
+
     public ExamController(ExamService examService, ExamAttemptService examAttemptService, AuthService authService) {
         this.examService = examService;
         this.examAttemptService = examAttemptService;
@@ -77,6 +80,15 @@ public class ExamController {
     public ApiResponse<StartExamResponse> start(@PathVariable String id, @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         User student = authService.requireUser(authorizationHeader);
         return ApiResponse.ok("Started", examAttemptService.start(id, student));
+    }
+
+    @PutMapping("/{id}/centre")
+    public ApiResponse<Exam> setCentre(@PathVariable String id,
+                                       @RequestBody(required = false) AssignCentreRequest request,
+                                       @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        User actor = authService.requireUser(authorizationHeader);
+        String centreId = request == null ? null : request.centreId();
+        return ApiResponse.ok("Updated", examService.setCentre(id, centreId, actor));
     }
 
     @GetMapping("/attempts/active")

@@ -23,6 +23,8 @@ import com.examora.dto.ResearchDtos.RunProgressDto;
 import com.examora.dto.ResearchDtos.RunSampleCreateRequest;
 import com.examora.dto.ResearchDtos.RunSampleDetailDto;
 import com.examora.dto.ResearchDtos.RunSampleDto;
+import com.examora.dto.ResearchDtos.RunSampleReviewDto;
+import com.examora.dto.ResearchDtos.RunSampleReviewsDto;
 import com.examora.dto.ResearchDtos.ResearchRunDto;
 import com.examora.dto.ResearchDtos.SampleCaptureRequest;
 import com.examora.dto.ResearchDtos.ScenarioInstructionDto;
@@ -39,6 +41,7 @@ import com.examora.repository.ResearchRepository;
 import com.examora.repository.ResearchRepository.ResearchExperiment;
 import com.examora.repository.ResearchRepository.ResearchRun;
 import com.examora.repository.ResearchRepository.ResearchRunSample;
+import com.examora.repository.ResearchRepository.ResearchReview;
 import com.examora.repository.ResearchRepository.ResearchSample;
 import com.examora.service.ProctorFusionService.FusionSignal;
 import com.examora.service.ResearchEvaluationEngine.ConditionGroup;
@@ -451,6 +454,25 @@ public class ResearchRunService {
                 runSample.rawMediaBytes(), runSample.signalBytes(), signalCount, types, sources,
                 minConfidence, maxConfidence, meanConfidence, maxDurationMs,
                 groundTruthLabel, baselinePositive, fusionPositive, scenarioAgreement);
+    }
+
+    public RunSampleReviewsDto runSampleReviews(User actor, String runSampleId) {
+        requireAdmin(actor);
+        ResearchRunSample runSample = researchRepository.findRunSampleById(runSampleId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "run sample not found"));
+        String researchSampleId = runSample.researchSampleId();
+        List<RunSampleReviewDto> reviews = new ArrayList<>();
+        if (researchSampleId != null) {
+            for (ResearchReview review : researchRepository.findReviewsBySampleId(researchSampleId)) {
+                reviews.add(new RunSampleReviewDto(review.reviewerId(), review.reviewerName(),
+                        review.reviewerEmail(), review.label(), review.confidence(), review.notes(),
+                        review.reviewedAt() == null ? null : review.reviewedAt().toString()));
+            }
+        }
+        boolean currentUserReviewed = reviews.stream()
+                .anyMatch(review -> review.reviewerId().equals(actor.id()));
+        return new RunSampleReviewsDto(runSample.id(), researchSampleId, runSample.scenario(),
+                reviews, currentUserReviewed);
     }
 
     public List<ScenarioInstructionDto> scenarioInstructions(User actor) {

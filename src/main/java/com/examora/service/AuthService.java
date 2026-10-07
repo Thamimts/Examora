@@ -10,6 +10,8 @@ import com.examora.security.JwtService;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,14 +33,17 @@ public class AuthService {
     private final ActivityService activityService;
     private final TwoFactorService twoFactorService;
     private final String dummyPasswordHash;
+    private final boolean adminTwoFactorMandatory;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       ActivityService activityService, TwoFactorService twoFactorService) {
+                       ActivityService activityService, TwoFactorService twoFactorService,
+                       @org.springframework.beans.factory.annotation.Value("${examora.admin.two-factor.mandatory:true}") boolean adminTwoFactorMandatory) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.activityService = activityService;
         this.twoFactorService = twoFactorService;
+        this.adminTwoFactorMandatory = adminTwoFactorMandatory;
         this.dummyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
@@ -58,11 +63,44 @@ public class AuthService {
         if (isLegacyHash(user.passwordHash())) {
             userRepository.updatePasswordHash(user.user().id(), passwordEncoder.encode(password));
         }
+        if (adminTwoFactorMandatory && user.user().role() == Role.ADMIN && !twoFactorService.isEnabled(user.user().id())) {
+            // Two-factor authentication is mandatory for administrators: do not issue a
+            // normal access token until the account is protected and a fresh sign-in
+            // completes the second factor.
+            return new LoginResult(null, user.user(), false, null, false, true,
+                    jwtService.generateSetupToken(user.user()));
+        }
         if (twoFactorService.isEnabled(user.user().id())) {
             String challengeToken = twoFactorService.issueChallenge(user.user().id());
             return new LoginResult(null, null, true, challengeToken);
         }
         return new LoginResult(issueToken(user.user()), user.user(), false, null);
+    }
+
+    /**
+     * First-login academic sign-in. A student who was created with a roll number and date of
+     * birth signs in once with those credentials and is forced to set a password. Once a
+     * password exists the date of birth is no longer a credential.
+     */
+    public LoginResult academicFirstLogin(String rollNumber, String dateOfBirth) {
+        if (isBlank(rollNumber) || isBlank(dateOfBirth)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Roll number and date of birth are required.");
+        }
+        LocalDate dob = parseIsoDate(dateOfBirth);
+        UserRepository.UserIdentityWithPassword identity = userRepository
+                .findByRollNumberWithPassword(rollNumber.trim())
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid roll number or date of birth."));
+        if (identity.user().role() != Role.STUDENT) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid roll number or date of birth.");
+        }
+        if (identity.dateOfBirth() == null || !identity.dateOfBirth().equals(dob)) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid roll number or date of birth.");
+        }
+        if (!identity.passwordChangeRequired()) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "A password is already set for this account. Sign in with your email address and password.");
+        }
+        return new LoginResult(issueToken(identity.user()), identity.user(), false, null, true);
     }
 
     public AuthResponse completeTwoFactor(String challengeToken, String code, String ip) {
@@ -91,6 +129,7 @@ public class AuthService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "The current password is incorrect.");
         }
         userRepository.updatePasswordHash(user.id(), passwordEncoder.encode(newPassword));
+        userRepository.setPasswordChangeRequired(user.id(), false);
         activityService.admin(user, "PASSWORD_CHANGED", user.name() + " changed their password.");
         if (user.role() == Role.STUDENT) {
             activityService.student(user, "PASSWORD_CHANGED", "Your password was changed.");
@@ -204,6 +243,14 @@ public class AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase();
+    }
+
+    private LocalDate parseIsoDate(String value) {
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Date of birth must use the format YYYY-MM-DD.");
+        }
     }
 
     private boolean isBlank(String value) {

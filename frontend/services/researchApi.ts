@@ -18,6 +18,8 @@ import type {
   ResearchSample,
   ResearchScenario,
   ScenarioInstruction,
+  RunSampleReview,
+  RunSampleReviews,
 } from '@/types/research'
 
 export const researchApi = {
@@ -25,6 +27,8 @@ export const researchApi = {
     api.get<ApiResponse<ResearchExperiment[]>>('/proctor/research/experiments'),
   createExperiment: (body: { name: string; description?: string; examId?: string }) =>
     api.post<ApiResponse<ResearchExperiment>>('/proctor/research/experiments', body),
+  updateExperimentStatus: (experimentId: string, status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED') =>
+    api.post<ApiResponse<ResearchExperiment>>(`/proctor/research/experiments/${experimentId}/status`, { status }),
   createSample: (experimentId: string, body: {
     attemptId?: string
     windowStart: string
@@ -79,6 +83,8 @@ export const researchApi = {
     api.post<ApiResponse<ResearchRunSample>>(`/proctor/research/runs/${runId}/samples/${sampleId}/capture`, body),
   getRunSampleDetail: (runSampleId: string) =>
     api.get<ApiResponse<ResearchRunSampleDetail>>(`/proctor/research/run-samples/${runSampleId}/detail`),
+  getRunSampleReviews: (runSampleId: string) =>
+    api.get<ApiResponse<RunSampleReviews>>(`/proctor/research/run-samples/${runSampleId}/reviews`),
   scenarioInstructions: () =>
     api.get<ApiResponse<ScenarioInstruction[]>>('/proctor/research/scenarios'),
   conditionCatalog: () =>

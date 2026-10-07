@@ -24,6 +24,18 @@ public class ExamAttemptRepository {
     public Optional<ExamAttempt> findLatestSubmitted(String examId, String studentId) {
         return jdbc.query("select * from exam_attempts where exam_id = ? and student_id = ? and status = 'SUBMITTED' order by submitted_at desc, started_at desc", this::map, examId, studentId).stream().findFirst();
     }
+    public List<ExamAttempt> findLatestForExam(String examId) {
+        return jdbc.query(
+                "select ea.id, ea.exam_id, ea.student_id, ea.attempt_number, ea.status, ea.started_at, "
+                        + "ea.expires_at, ea.submitted_at, ea.version "
+                        + "from exam_attempts ea "
+                        + "join (select student_id, max(attempt_number) as attempt_number "
+                        + "         from exam_attempts where exam_id = ? group by student_id) latest "
+                        + "  on latest.student_id = ea.student_id and latest.attempt_number = ea.attempt_number "
+                        + "where ea.exam_id = ?",
+                this::map, examId, examId);
+    }
+
     public ExamAttempt create(ExamAttempt a) {
         jdbc.update("insert into exam_attempts (id, exam_id, student_id, attempt_number, status, started_at, expires_at, version) values (?, ?, ?, ?, ?, ?, ?, ?)", a.id(), a.examId(), a.studentId(), a.attemptNumber(), a.status(), Timestamp.from(a.startedAt()), Timestamp.from(a.expiresAt()), a.version());
         return a;

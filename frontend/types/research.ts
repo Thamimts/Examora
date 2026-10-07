@@ -144,6 +144,24 @@ export interface ScenarioInstruction {
   expectedSignals: string[]
 }
 
+export interface RunSampleReview {
+  reviewerId: string
+  reviewerName: string
+  reviewerEmail: string
+  label: string
+  confidence: number | null
+  notes: string | null
+  reviewedAt: string | null
+}
+
+export interface RunSampleReviews {
+  runSampleId: string
+  sampleId: string | null
+  scenario: string
+  reviews: RunSampleReview[]
+  currentUserReviewed: boolean
+}
+
 export interface ConditionOption {
   value: string
   description: string

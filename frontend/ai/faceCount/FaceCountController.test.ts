@@ -115,7 +115,9 @@ describe('FaceCountController', () => {
     c.controller.start()
     c.advance(750)
     expect(payloads.length).toBe(1)
-    expect(payloads[0].metadata).toEqual({ faceCount: 2 })
+    expect(payloads[0].metadata).toMatchObject({ faceCount: 2 })
+    expect(payloads[0].metadata!.rawMediaBytesDelta).toBeTypeOf('number')
+    expect(payloads[0].metadata!.rawMediaBytesDelta!).toBeGreaterThanOrEqual(0)
   })
 
   it('does not emit after only two anomalous frames', () => {
@@ -134,7 +136,8 @@ describe('FaceCountController', () => {
     c.controller.start()
     c.advance(750)
     expect(payloads.length).toBe(1)
-    expect(payloads[0].metadata).toEqual({ faceCount: 0 })
+    expect(payloads[0].metadata).toMatchObject({ faceCount: 0 })
+    expect(payloads[0].metadata!.rawMediaBytesDelta).toBeTypeOf('number')
     expect(payloads[0].confidence).toBeUndefined()
   })
 
@@ -218,7 +221,9 @@ describe('FaceCountController', () => {
     const payload = payloads[0]
     expect(payload.signalType).toBe('FACE_COUNT_ANOMALY')
     expect(payload.source).toBe('CLIENT_AI')
-    expect(payload.metadata).toEqual({ faceCount: 2 })
+    expect(payload.metadata).toMatchObject({ faceCount: 2 })
+    expect(payload.metadata!.rawMediaBytesDelta).toBeTypeOf('number')
+    expect(payload.metadata!.rawMediaBytesDelta!).toBeGreaterThanOrEqual(0)
     expect(payload.confidence).toBeTypeOf('number')
     expect(payload.confidence!).toBeGreaterThanOrEqual(0)
     expect(payload.confidence!).toBeLessThanOrEqual(1)

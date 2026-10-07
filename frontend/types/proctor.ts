@@ -117,6 +117,7 @@ export interface ProctorUpdate {
   warningCount: number
   warningLevel: WarningLevel
   accessStatus: ExamAccessStatus
+  roomId?: string | null
 }
 
 export interface CommandCenterExam {

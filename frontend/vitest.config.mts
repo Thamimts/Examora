@@ -9,6 +9,6 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['ai/faceCount/**/*.test.ts'],
+    include: ['ai/faceCount/**/*.test.ts', 'lib/**/*.test.ts'],
   },
 })
